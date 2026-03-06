@@ -14,6 +14,7 @@ pub trait SourceRepository {
     fn upsert(&self, source: &SourceRecord) -> anyhow::Result<()>;
     fn count(&self) -> anyhow::Result<u64>;
     fn count_by_library(&self, library_id: &LibraryId) -> anyhow::Result<u64>;
+    fn list_by_library(&self, library_id: &LibraryId) -> anyhow::Result<Vec<SourceRecord>>;
 }
 
 pub trait ArchiveRepository {

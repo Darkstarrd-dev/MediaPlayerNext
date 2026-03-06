@@ -11,6 +11,7 @@ pub enum BackendCommand {
     ScanAddLibrary { path: PathBuf },
     ScanRun { library_id: String },
     ScanStats { library_id: String },
+    ScanDiff { library_id: String },
 }
 
 #[derive(Debug, Serialize)]
@@ -37,6 +38,9 @@ pub fn parse_command(args: &[String]) -> BackendCommand {
             (Some("stats"), Some(library_id)) => BackendCommand::ScanStats {
                 library_id: library_id.clone(),
             },
+            (Some("diff"), Some(library_id)) => BackendCommand::ScanDiff {
+                library_id: library_id.clone(),
+            },
             _ => BackendCommand::Help,
         },
         _ => BackendCommand::Help,
@@ -55,6 +59,7 @@ pub fn run_command(
         BackendCommand::ScanAddLibrary { .. } => "scan.add-library",
         BackendCommand::ScanRun { .. } => "scan.run",
         BackendCommand::ScanStats { .. } => "scan.stats",
+        BackendCommand::ScanDiff { .. } => "scan.diff",
     };
 
     Ok(CliExecutionOutput {
@@ -72,7 +77,8 @@ pub fn help_payload() -> Value {
             "cargo run --bin backend_harness -- diagnostics",
             "cargo run --bin backend_harness -- scan add-library <path>",
             "cargo run --bin backend_harness -- scan run <library-id>",
-            "cargo run --bin backend_harness -- scan stats <library-id>"
+            "cargo run --bin backend_harness -- scan stats <library-id>",
+            "cargo run --bin backend_harness -- scan diff <library-id>"
         ]
     })
 }
