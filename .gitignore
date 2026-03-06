@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+.vite/
+apps/desktop/node_modules/
+apps/desktop/dist/
+apps/subtitle-sidecar/node_modules/
+target/
+src-tauri/target/
