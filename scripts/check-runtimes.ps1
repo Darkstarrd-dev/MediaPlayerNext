@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$projectRoot = "C:\opencode\MediaPlayerNext"
+$projectRoot = Split-Path -Parent $PSScriptRoot
 $configPath = Join-Path $projectRoot "config\local.paths.json"
 
 if (-not (Test-Path $configPath)) {
@@ -8,10 +8,12 @@ if (-not (Test-Path $configPath)) {
 }
 
 $config = Get-Content $configPath -Raw | ConvertFrom-Json
-$cargoRunner = "C:\opencode\MediaPlayerNext\scripts\run-cargo-with-msvc.cmd"
+$cargoRunner = Join-Path $projectRoot "scripts\run-cargo-with-msvc.cmd"
 
 if (-not (Test-Path $cargoRunner)) {
   throw "missing cargo runner: $cargoRunner"
 }
 
-& $cargoRunner run --manifest-path "C:\opencode\MediaPlayerNext\src-tauri\Cargo.toml" --bin runtime-smoke-check -- --ffmpeg-path $config.ffmpeg --mpv-path $config.mpv
+$cargoManifestPath = Join-Path $projectRoot "src-tauri\Cargo.toml"
+
+& $cargoRunner run --manifest-path $cargoManifestPath --bin runtime-smoke-check -- --ffmpeg-path $config.ffmpeg --mpv-path $config.mpv

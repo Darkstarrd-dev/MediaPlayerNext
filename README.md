@@ -10,7 +10,8 @@ Current stage only lands the new repository skeleton and runtime prerequisites:
 - Verify `rusqlite`, `sharp`, `ffmpeg`, and `mpv` can be called from the new repository.
 - Do not migrate business code yet. Actual migration waits until the current project's theme system is fully converged.
 
-Local absolute runtime paths are tracked in `C:\opencode\MediaPlayerNext\config\local.paths.json`.
+Local absolute runtime paths are tracked in `config/local.paths.json`.
+Use `config/local.paths.example.json` as the template on a new machine.
 
 ## New Machine Handoff
 
@@ -20,13 +21,13 @@ After cloning the repository, a new developer can take over with the following c
 
 - Node.js `22.x`
 - npm `11.x`
-- Rust stable via `rustup`
+- Rust `1.88.0` or newer via `rustup`
 - Visual Studio 2022 MSVC/Build Tools
 - WebView2 runtime on Windows
 
 ### Local Runtime Paths
 
-Before running checks, confirm `C:\opencode\MediaPlayerNext\config\local.paths.json` points to valid local binaries:
+Before running checks, copy `config/local.paths.example.json` to `config/local.paths.json`, then confirm it points to valid local binaries:
 
 - `ffmpeg`
 - `ffprobe`
@@ -38,12 +39,12 @@ If your machine uses different install paths, update that file first.
 
 If direct access to npm or GitHub fails, use the local proxy:
 
-- `HTTP_PROXY=http://127.0.0.1:3066`
-- `HTTPS_PROXY=http://127.0.0.1:3066`
+- `HTTP_PROXY=http://127.0.0.1:2080`
+- `HTTPS_PROXY=http://127.0.0.1:2080`
 
 ### Bootstrap Commands
 
-Run these commands in `C:\opencode\MediaPlayerNext`:
+Run these commands in the repository root:
 
 ```bash
 npm install
