@@ -149,6 +149,16 @@ impl SourceRepository for SqliteRepositories<'_> {
             })?;
         Ok(count as u64)
     }
+
+    fn count_by_library(&self, library_id: &LibraryId) -> Result<u64> {
+        let count = self.connection.query_row(
+            "select count(*) from sources where library_id = :library_id",
+            named_params! { ":library_id": library_id.0 },
+            |row| row.get::<_, i64>(0),
+        )?;
+
+        Ok(count as u64)
+    }
 }
 
 impl ArchiveRepository for SqliteRepositories<'_> {

@@ -7,5 +7,6 @@ apps/desktop/dist/
 apps/subtitle-sidecar/node_modules/
 target/
 src-tauri/target/
+data/
 AGENTS.md
 config/local.paths.json

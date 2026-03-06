@@ -52,9 +52,11 @@ name = "app-core"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "media-io",
  "serde",
  "serde_json",
  "shared-model",
+ "tempfile",
  "tracing",
 ]
 
@@ -1773,8 +1775,10 @@ dependencies = [
 name = "media-io"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "serde",
  "shared-model",
+ "tempfile",
 ]
 
 [[package]]
@@ -1783,9 +1787,11 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "app-core",
+ "media-db",
  "rusqlite",
  "serde",
  "serde_json",
+ "shared-model",
  "tauri",
  "tauri-build",
  "thiserror 2.0.18",
