@@ -32,23 +32,67 @@
 
 ---
 
-## 2. 当前仓库基线
+## 2. 已完成内容与当前进度
 
-截至本文件编写时，仓库实际状态如下：
+截至目前，`B1` 与 `B2` 已完成，`B3` 已进入收尾阶段，`B4` 尚未开始。
 
-- `src-tauri` 已能运行最小 Tauri 宿主，但仅包含 `greet` 与 runtime smoke check
-- `crates/app-core`、`crates/media-io`、`crates/media-db`、`crates/media-thumb`、`crates/media-playback`、`crates/shared-model` 仍是目录占位
-- `packages/contracts` 仍是占位包，尚未建立 `models/commands/channels/events/errors`
-- `rusqlite` 已接入，但尚未建立 migration 与 repository 体系
-- `sharp` 仅作为 Node sidecar 依赖验证，不是业务主链路
+### 2.1 已完成内容
 
-因此本阶段的首要目标不是继续扩 `src-tauri`，而是把纯 Rust 能力真正沉到 `crates/*`。
+#### `B1` 已完成
+
+- 根 `Cargo.toml` workspace 已建立
+- `crates/shared-model`、`crates/app-core`、`crates/media-db`、`crates/media-io` 已变成真实 crate
+- `shared-model` 已落首批 ID、错误码、任务状态、任务进度、分页与记录模型
+- `packages/contracts` 已建立 `src/fixtures/tests` 初版结构，并有 Zod 校验测试
+- 开发期 CLI harness 已落到 `src-tauri/src/bin/backend_harness.rs`
+- `docs/fixtures/` 与 `docs/benchmarks/` 目录已建立
+
+#### `B2` 已完成
+
+- `media-db` 已具备数据库入口、migration runner、repository 首版实现
+- `0001_init_core.sql` 与 `0002_init_archive_and_thumb.sql` 已落库
+- 空库初始化、重复迁移、`N-1 -> N` 升级、事务回滚、1000+ 记录写入测试已存在
+
+#### `B3` 已完成的部分
+
+- 文件发现、路径归一化、扩展名分类已落地
+- `scan add-library`、`scan run`、`scan resume`、`scan stats`、`scan diff` 已可通过 CLI 调用
+- 首扫、重扫、未变化跳过、`exists=false` tombstone 已具备最小语义
+- 扫描失败会写入 `failed` 任务状态
+- `small-fixture` 扫描 smoke 样本与快照 fixture 已建立
+
+### 2.2 当前进度判断
+
+- `B1`：完成
+- `B2`：完成
+- `B3`：进行中（已完成主链路，仍需补更完整的失败恢复和结果固化）
+- `B4`：未开始
+
+### 2.3 当前最自然的下一步
+
+1. 收尾 `B3` 剩余内容，补更完整的失败恢复与扫描结果固化
+2. 开始 `B4`，推进 zip 目录、页序、entry 读取与归档索引落库
 
 ---
 
-## 3. 执行原则
+## 3. 当前仓库基线
 
-### 3.1 总原则
+截至当前更新时，仓库实际状态如下：
+
+- `src-tauri` 已能运行最小 Tauri 宿主，并已接入开发期 `backend_harness`
+- `crates/app-core`、`crates/media-io`、`crates/media-db`、`crates/shared-model` 已为真实 crate；`media-thumb`、`media-playback` 仍未启动
+- `packages/contracts` 已建立 `models/errors/fixtures/tests` 初版结构，`commands/channels/events` 仍待补全
+- `rusqlite` migration 与 repository 首版已建立，数据库 smoke tests 已可运行
+- `sharp` 仅作为 Node sidecar 依赖验证，不是业务主链路
+- 扫描 CLI 已能跑通 `add-library/run/resume/stats/diff` 最小链路
+
+因此当前阶段的首要目标，已经从“把纯 Rust 能力沉到 `crates/*`”推进为“继续补齐 B3 剩余语义，并准备切入 B4 的 zip 主链路”。
+
+---
+
+## 4. 执行原则
+
+### 4.1 总原则
 
 1. **先 crate，后宿主**
    - 先把逻辑写进纯 Rust crate，再由 `src-tauri` 暴露
@@ -61,7 +105,7 @@
 5. **先最小主链路，后扩展边角**
    - 先覆盖图片与 zip 主链路，不提前做 `rar/7z`、视频首帧、复杂 UI
 
-### 3.2 当前阶段禁止事项
+### 4.2 当前阶段禁止事项
 
 - 不把业务实现继续堆进 `src-tauri`
 - 不提前迁旧仓 UI/theme
@@ -69,7 +113,7 @@
 - 不把 `sharp` 继续推进为长期缩略图主链路
 - 不为了“看起来完整”而同时开做 `B1-B8`
 
-### 3.3 质量门禁继承关系
+### 4.3 质量门禁继承关系
 
 本文件所有阶段默认继承 `docs/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md` 中的要求，尤其是：
 
@@ -81,7 +125,7 @@
 
 ---
 
-## 4. 目标目录与职责落位
+## 5. 目标目录与职责落位
 
 在 `B1-B4` 内，目录职责固定如下：
 
@@ -112,13 +156,13 @@ MediaPlayerNext/
 
 ---
 
-## 5. 阶段拆分总览
+## 6. 阶段拆分总览
 
 | 阶段 | 目标 | 核心交付物 | 是否阻塞后续 |
 |---|---|---|---|
-| `B1` | 地基冻结 | workspace、shared-model、contracts、CLI 骨架、tracing | 是 |
-| `B2` | 数据地基 | migration、repository、DB smoke tests | 是 |
-| `B3` | 路径到数据库闭环 | 扫描/入库最小闭环、任务状态、fixture 扫描报告 | 是 |
+| `B1` | 地基冻结 | workspace、shared-model、contracts、CLI 骨架、tracing | 是（已完成） |
+| `B2` | 数据地基 | migration、repository、DB smoke tests | 是（已完成） |
+| `B3` | 路径到数据库闭环 | 扫描/入库最小闭环、任务状态、fixture 扫描报告 | 是（进行中） |
 | `B4` | zip 与归档索引 | zip 目录/排序/entry 读取、archive_entries 落库 | 是 |
 
 执行顺序必须串行推进：`B1 -> B2 -> B3 -> B4`。
@@ -127,27 +171,36 @@ MediaPlayerNext/
 
 ---
 
-## 6. B1：地基冻结
+## 7. B1：地基冻结
 
-## 6.1 阶段目标
+当前状态：已完成
+
+## 7.1 阶段目标
 
 把当前“有目录、无实现”的 bootstrap 仓库，升级为可承载真实 Rust 后端开发的 workspace。
 
-## 6.2 范围
+## 7.2 范围
 
 ### 本阶段要做
 
 1. 建立根 `Cargo.toml` workspace
+   - 完成情况：已完成
 2. 把以下目录变成真实 crate：
    - `crates/shared-model`
    - `crates/app-core`
    - `crates/media-db`
    - `crates/media-io`
+   - 完成情况：已完成
 3. 在 `shared-model` 中冻结首批共享模型
+   - 完成情况：已完成
 4. 在 `packages/contracts` 中建立 TS/Zod 合同目录结构
+   - 完成情况：已完成（当前已落 `src/errors`、`src/models`、`fixtures`、`tests`，`commands/channels/events` 仍可后补）
 5. 建立开发期 CLI harness 骨架
+   - 完成情况：已完成
 6. 接入 `thiserror`、`tokio`、`tracing`、`tracing-subscriber`
+   - 完成情况：已完成
 7. 建立最小 fixture 与 benchmark 目录结构
+   - 完成情况：已完成
 
 ### 本阶段不做
 
@@ -156,7 +209,7 @@ MediaPlayerNext/
 - 不实现 Tauri command/channel/protocol 全接线
 - 不实现缩略图 service
 
-## 6.3 目录与文件计划
+## 7.3 目录与文件计划
 
 ### Rust workspace
 
@@ -223,7 +276,7 @@ packages/contracts/
 
 若首版为减小改动继续放在 `src-tauri/src/bin/`，则后续业务实现仍必须沉到 `crates/*`。
 
-## 6.4 交付物
+## 7.4 交付物
 
 - 可编译的 Rust workspace
 - `shared-model` 初版
@@ -232,21 +285,21 @@ packages/contracts/
 - CLI harness 骨架
 - `docs/fixtures/` 与 `docs/benchmarks/` 目录
 
-## 6.5 验收标准
+## 7.5 验收标准
 
 - workspace 可 `cargo check --workspace`
 - `shared-model` 与 `packages/contracts` 能通过基础序列化/校验测试
 - 同一份示例 JSON 可通过 Zod parse 与 Rust 反序列化
 - CLI harness 至少能打印帮助、读取基础配置、调用空 use case
 
-## 6.6 本阶段必须补的测试
+## 7.6 本阶段必须补的测试
 
 - `shared-model` serde round-trip tests
 - `packages/contracts` zod parse tests
 - JSON fixture snapshot tests
 - CLI 启动 smoke test
 
-## 6.7 本阶段验证命令
+## 7.7 本阶段验证命令
 
 ```bash
 cargo fmt --all --check
@@ -257,21 +310,28 @@ cargo test --workspace
 
 ---
 
-## 7. B2：数据地基
+## 8. B2：数据地基
 
-## 7.1 阶段目标
+当前状态：已完成
+
+## 8.1 阶段目标
 
 把 SQLite schema、migration、repository 做成可重复执行、可测试、可被后续扫描与 zip 直接复用的数据底座。
 
-## 7.2 范围
+## 8.2 范围
 
 ### 本阶段要做
 
 1. 在 `media-db` 中建立连接层、migration runner、repository 实现
+   - 完成情况：已完成
 2. 冻结首版 schema
+   - 完成情况：已完成
 3. 明确 repository ports 与实现分工
+   - 完成情况：已完成
 4. 建立数据库 smoke tests 与基础 query benchmarks
+   - 完成情况：smoke tests 已完成，benchmark 仍待后补
 5. 建立历史 fixture 升级测试框架
+   - 完成情况：已完成
 
 ### 本阶段不做
 
@@ -279,7 +339,7 @@ cargo test --workspace
 - 不做播放器/字幕相关 schema
 - 不做缩略图生成，仅预留 `thumbnails` 表
 
-## 7.3 schema 拆分建议
+## 8.3 schema 拆分建议
 
 为了降低首轮返工与 migration 风险，建议首版拆成以下 migration：
 
@@ -289,19 +349,21 @@ cargo test --workspace
 - `sources`
 - `media_assets`
 - `tasks`
+- 完成情况：已完成
 
 ### `0002_init_archive_and_thumb`
 
 - `archives`
 - `archive_entries`
 - `thumbnails`
+- 完成情况：已完成（当前以预留表结构为主，业务链路尚未启用）
 
 说明：
 
 - 不要把所有未来字段一次塞满
 - 但字段命名要按最终稳定模型命名，不接受临时命名
 
-## 7.4 repository 边界建议
+## 8.4 repository 边界建议
 
 ### ports 所在层
 
@@ -329,7 +391,7 @@ repository traits 建议定义在 `app-core::ports`，例如：
 - 上层服务直接持有裸 `rusqlite::Connection`
 - 通过“删库重建”绕过 migration
 
-## 7.5 交付物
+## 8.5 交付物
 
 - `media-db` 真实 crate
 - migration runner
@@ -339,21 +401,21 @@ repository traits 建议定义在 `app-core::ports`，例如：
 - `N-1 -> N` 升级测试框架
 - 基础 query benchmark 脚本
 
-## 7.6 验收标准
+## 8.6 验收标准
 
 - 能初始化新库
 - 能重复执行 migration 而不报错
 - 能在测试中插入 / 更新 / 查询 1000+ 样本记录
 - 上层 service 不暴露 SQL 细节
 
-## 7.7 本阶段必须补的测试
+## 8.7 本阶段必须补的测试
 
 - migration smoke tests
 - repository integration tests
 - transaction rollback tests
 - schema fixture upgrade tests
 
-## 7.8 本阶段验证命令
+## 8.8 本阶段验证命令
 
 ```bash
 cargo test -p media-db
@@ -368,27 +430,37 @@ cargo bench -p media-db
 
 ---
 
-## 8. B3：扫描 / 入库最小闭环
+## 9. B3：扫描 / 入库最小闭环
 
-## 8.1 阶段目标
+当前状态：进行中
+
+## 9.1 阶段目标
 
 在无 UI 环境下，把“媒体库路径 -> source/archive/asset/task 落库”的最小主链路跑通。
 
-## 8.2 范围
+## 9.2 范围
 
 ### 本阶段要做
 
 1. 建立文件发现与路径归一化
+   - 完成情况：已完成
 2. 建立快速指纹规则
+   - 完成情况：已完成首版（基于 path + size + mtime 的快速指纹）
 3. 建立扩展名级媒体分类
+   - 完成情况：已完成
 4. 建立扫描 service 与入库 service
+   - 完成情况：已完成首版
 5. 建立扫描任务状态写入与读取
+   - 完成情况：已完成首版，支持 running/completed/failed 查询语义
 6. 建立 CLI 命令：
    - `scan add-library <path>`
    - `scan run <library-id>`
+   - `scan resume <library-id>`
    - `scan stats <library-id>`
    - `scan diff <library-id>`
+   - 完成情况：已完成
 7. 输出 fixture 扫描报告
+   - 完成情况：已完成首版 fixture 与 snapshot，对固定 smoke 样本可比对
 
 ### 本阶段不做
 
@@ -397,13 +469,14 @@ cargo bench -p media-db
 - 不做缩略图批量预热
 - 不做复杂并发优化到极致
 
-## 8.3 首版流水线切分
+## 9.3 首版流水线切分
 
 ### Stage 1：发现文件
 
 - 遍历 `library root`
 - 跳过隐藏目录与不支持扩展名
 - 产出候选 `source`
+- 完成情况：已完成
 
 ### Stage 2：快速指纹
 
@@ -411,6 +484,7 @@ cargo bench -p media-db
 - `size`
 - `mtime_ms`
 - 需要时补充轻量 hash
+- 完成情况：已完成首版；当前未引入额外文件内容 hash
 
 ### Stage 3：媒体分类
 
@@ -419,6 +493,7 @@ cargo bench -p media-db
 - `video`
 - `audio`
 - `other`
+- 完成情况：已完成扩展名级分类
 
 说明：B3 首版允许只对 `image/archive` 做完整主链路，`video/audio` 先完成分类与占位落库。
 
@@ -426,6 +501,7 @@ cargo bench -p media-db
 
 - 普通图片：读取基础尺寸/方向（若代价可控）
 - `zip`：只登记“待进一步解析”或调用 B4 的目录能力
+- 完成情况：未完成，当前仍停留在扫描分类与落库前置阶段
 
 ### Stage 5：DB upsert
 
@@ -433,14 +509,16 @@ cargo bench -p media-db
 - 创建/更新 `media_assets`
 - 创建/更新 `archives`（若当前已识别归档）
 - 写入 `tasks`
+- 完成情况：`sources` 与 `tasks` 已接通；`media_assets` / `archives` 的扫描侧联动仍待补全
 
 ### Stage 6：收尾
 
 - 标记 `exists = false`
 - 产出扫描统计
 - 写入日志
+- 完成情况：`exists = false`、统计、snapshot 已完成首版；更完整日志与失败恢复仍待补充
 
-## 8.4 并发与事务策略
+## 9.4 并发与事务策略
 
 首版建议：
 
@@ -450,7 +528,7 @@ cargo bench -p media-db
 
 原因：当前阶段优先稳定性与可回放性，不优先追求极限吞吐。
 
-## 8.5 交付物
+## 9.5 交付物
 
 - `media-io` 的文件发现与分类能力
 - `app-core` 扫描 use case
@@ -458,50 +536,62 @@ cargo bench -p media-db
 - 扫描任务状态持久化
 - `small-fixture` 扫描报告
 
-## 8.6 验收标准
+## 9.6 验收标准
 
 - 能对固定样本目录完成首轮入库
 - 二次重扫能跳过绝大多数未变化文件
 - 删除文件后能标记 `exists = false`
 - 出错文件不会导致整轮扫描崩溃
 
-## 8.7 本阶段必须补的测试
+## 9.7 本阶段必须补的测试
 
 - 路径归一化测试
 - 扩展名分类测试
 - 首扫/重扫 integration tests
 - tombstone 测试
 - 扫描中断恢复测试（首版可做最小恢复语义）
+- 完成情况：前四项已完成；扫描中断恢复已具备 `failed + resume` 最小语义，但仍未实现完整恢复策略
 
-## 8.8 本阶段验证命令
+## 9.8 本阶段验证命令
 
 ```bash
 cargo test -p media-io
 cargo test -p app-core
 cargo run --bin <scan-cli> -- scan run <library-id>
+cargo run --bin <scan-cli> -- scan resume <library-id>
+cargo run --bin <scan-cli> -- scan diff <library-id>
 ```
 
 若 CLI 二进制仍位于 `src-tauri`，则命令按实际 bin 名替换。
 
 ---
 
-## 9. B4：zip 与归档索引
+## 10. B4：zip 与归档索引
 
-## 9.1 阶段目标
+当前状态：未开始
+
+## 10.1 阶段目标
 
 把 zip 高频主链路的“列目录、判图、排序、entry 读取、归档索引落库”做成稳定底层能力，为 B5 缩略图与未来 zip 浏览打地基。
 
-## 9.2 范围
+## 10.2 范围
 
 ### 本阶段要做
 
 1. 在 `media-io` 中建立 zip 目录读取能力
+   - 完成情况：未开始
 2. 建立图片页判断规则
+   - 完成情况：未开始
 3. 建立页序排序规则
+   - 完成情况：未开始
 4. 建立 zip entry stream/read API
+   - 完成情况：未开始
 5. 建立封面候选提取
+   - 完成情况：未开始
 6. 建立 `archive_entries` 落库
+   - 完成情况：未开始
 7. 建立归档页序 snapshot tests
+   - 完成情况：未开始
 
 ### 本阶段不做
 
@@ -510,7 +600,7 @@ cargo run --bin <scan-cli> -- scan run <library-id>
 - 不做视频帧抽取
 - 不做缩略图生成
 
-## 9.3 `media-io` 建议模块
+## 10.3 `media-io` 建议模块
 
 - `archive/mod.rs`
 - `archive/zip_reader.rs`
@@ -518,7 +608,7 @@ cargo run --bin <scan-cli> -- scan run <library-id>
 - `archive/page_sort.rs`
 - `archive/entry_stream.rs`
 
-## 9.4 索引落库策略
+## 10.4 索引落库策略
 
 对 zip 文件首版至少要写入：
 
@@ -538,7 +628,7 @@ cargo run --bin <scan-cli> -- scan run <library-id>
 
 如果在当前阶段就能低成本拿到宽高，可一起写入；否则字段先允许为空。
 
-## 9.5 交付物
+## 10.5 交付物
 
 - `media-io` zip 读取服务
 - `app-core` archive index use case
@@ -546,14 +636,14 @@ cargo run --bin <scan-cli> -- scan run <library-id>
 - 归档 fixture 测试
 - `archive_entries` 落库逻辑
 
-## 9.6 验收标准
+## 10.6 验收标准
 
 - 能稳定列出 zip 图片集条目
 - 页序在固定 fixture 上稳定
 - 能读取指定 entry 数据流
 - 能把归档索引写入数据库并供后续查询
 
-## 9.7 本阶段必须补的测试
+## 10.7 本阶段必须补的测试
 
 - zip 目录读取 tests
 - 页序排序 tests
@@ -561,7 +651,7 @@ cargo run --bin <scan-cli> -- scan run <library-id>
 - 损坏 zip / 空 zip / 边缘命名样本 tests
 - 归档索引落库 tests
 
-## 9.8 本阶段验证命令
+## 10.8 本阶段验证命令
 
 ```bash
 cargo test -p media-io archive
@@ -576,7 +666,7 @@ cargo bench -p media-io
 
 ---
 
-## 10. 阶段间依赖关系
+## 11. 阶段间依赖关系
 
 ### `B1 -> B2`
 
@@ -598,9 +688,9 @@ cargo bench -p media-io
 
 ---
 
-## 11. fixture、golden、benchmark 计划
+## 12. fixture、golden、benchmark 计划
 
-## 11.1 fixture 目录建议
+## 12.1 fixture 目录建议
 
 ```text
 docs/fixtures/
@@ -628,15 +718,21 @@ docs/fixtures/
 - 边缘命名 zip
 - 后续补 rar/7z 样本
 
-## 11.2 当前阶段要产出的 golden
+## 12.2 当前阶段要产出的 golden
 
 - `shared-model` / contracts JSON fixtures
 - 扫描结果 snapshot
 - zip 页序 snapshot
 
+当前完成情况：
+
+- `shared-model` / contracts JSON fixtures：已完成
+- 扫描结果 snapshot：已完成首版（`small-fixture/scan-smoke.expected.json`）
+- zip 页序 snapshot：未开始
+
 说明：缩略图金图放到 `B5` 再正式建立。
 
-## 11.3 benchmark 计划
+## 12.3 benchmark 计划
 
 `B1-B4` 至少记录以下基线：
 
@@ -648,7 +744,7 @@ docs/fixtures/
 
 ---
 
-## 12. 与 `src-tauri` 的关系
+## 13. 与 `src-tauri` 的关系
 
 在 `B1-B4` 阶段，`src-tauri` 不是主开发面。
 
@@ -671,7 +767,7 @@ docs/fixtures/
 
 ---
 
-## 13. 每阶段完成定义（Definition of Done）
+## 14. 每阶段完成定义（Definition of Done）
 
 ## `B1` 完成定义
 
@@ -681,6 +777,8 @@ docs/fixtures/
 - contracts 初版与 fixture 初版存在
 - CLI harness 可运行
 
+当前状态：已达成
+
 ## `B2` 完成定义
 
 - migration 可执行
@@ -688,12 +786,16 @@ docs/fixtures/
 - 空库初始化与升级测试通过
 - 1000+ 样本记录 smoke test 通过
 
+当前状态：已达成
+
 ## `B3` 完成定义
 
 - 首扫/重扫/tombstone 路径可用
 - 扫描任务状态可查询
 - CLI 能输出基础统计
 - fixture 扫描结果可快照比对
+
+当前状态：大部分已达成；仍待补“更完整失败恢复”后可视为阶段完成
 
 ## `B4` 完成定义
 
@@ -703,9 +805,11 @@ docs/fixtures/
 - `archive_entries` 可落库
 - 为 `B5` 提供稳定 zip entry 输入面
 
+当前状态：未开始
+
 ---
 
-## 14. 当前建议的实际执行顺序
+## 15. 当前建议的实际执行顺序
 
 如果从当前仓库立即开工，建议严格按以下顺序落地：
 
@@ -715,12 +819,16 @@ docs/fixtures/
 2. 把 `shared-model` 变成真实 crate
 3. 把 `packages/contracts` 变成真实合同包
 
+完成情况：已完成
+
 ### 第 2 批：`B1-4` 到 `B2`
 
 1. 接入 `thiserror` / `tokio` / `tracing`
 2. 建 `media-db`
 3. 建 migration runner
 4. 建 repository 首版
+
+完成情况：已完成
 
 ### 第 3 批：`B3`
 
@@ -729,6 +837,8 @@ docs/fixtures/
 3. 建扫描 CLI
 4. 跑通首轮入库
 
+完成情况：已完成并继续扩展到重扫、tombstone、failed、resume、snapshot
+
 ### 第 4 批：`B4`
 
 1. 建 zip 列目录
@@ -736,11 +846,13 @@ docs/fixtures/
 3. 建 entry 读取
 4. 建归档索引落库
 
+完成情况：未开始
+
 完成以上四批后，再单独编写 `B5-B8` 的具体实施计划或在新文档中补续篇。
 
 ---
 
-## 15. 本文件对应的后续文档建议
+## 16. 本文件对应的后续文档建议
 
 当 `B1-B4` 接近完成时，新增下一份文档：
 
@@ -757,7 +869,7 @@ docs/fixtures/
 
 ---
 
-## 16. 最终执行结论
+## 17. 最终执行结论
 
 当前仓库后端先行阶段的正确落地方式不是：
 

@@ -30,6 +30,7 @@ pub trait AssetRepository {
 pub trait TaskRepository {
     fn exists(&self, task_id: &TaskId) -> anyhow::Result<bool>;
     fn upsert(&self, task: &TaskRecord) -> anyhow::Result<()>;
+    fn get(&self, task_id: &TaskId) -> anyhow::Result<Option<TaskRecord>>;
 }
 
 pub trait ThumbnailRepository {

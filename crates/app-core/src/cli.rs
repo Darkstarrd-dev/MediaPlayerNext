@@ -10,6 +10,7 @@ pub enum BackendCommand {
     Diagnostics,
     ScanAddLibrary { path: PathBuf },
     ScanRun { library_id: String },
+    ScanResume { library_id: String },
     ScanStats { library_id: String },
     ScanDiff { library_id: String },
 }
@@ -35,6 +36,9 @@ pub fn parse_command(args: &[String]) -> BackendCommand {
             (Some("run"), Some(library_id)) => BackendCommand::ScanRun {
                 library_id: library_id.clone(),
             },
+            (Some("resume"), Some(library_id)) => BackendCommand::ScanResume {
+                library_id: library_id.clone(),
+            },
             (Some("stats"), Some(library_id)) => BackendCommand::ScanStats {
                 library_id: library_id.clone(),
             },
@@ -58,6 +62,7 @@ pub fn run_command(
         BackendCommand::Diagnostics => "diagnostics",
         BackendCommand::ScanAddLibrary { .. } => "scan.add-library",
         BackendCommand::ScanRun { .. } => "scan.run",
+        BackendCommand::ScanResume { .. } => "scan.resume",
         BackendCommand::ScanStats { .. } => "scan.stats",
         BackendCommand::ScanDiff { .. } => "scan.diff",
     };
@@ -77,6 +82,7 @@ pub fn help_payload() -> Value {
             "cargo run --bin backend_harness -- diagnostics",
             "cargo run --bin backend_harness -- scan add-library <path>",
             "cargo run --bin backend_harness -- scan run <library-id>",
+            "cargo run --bin backend_harness -- scan resume <library-id>",
             "cargo run --bin backend_harness -- scan stats <library-id>",
             "cargo run --bin backend_harness -- scan diff <library-id>"
         ]

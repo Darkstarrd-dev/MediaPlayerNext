@@ -347,6 +347,37 @@ impl TaskRepository for SqliteRepositories<'_> {
 
         Ok(())
     }
+
+    fn get(&self, task_id: &TaskId) -> Result<Option<TaskRecord>> {
+        let record = self
+            .connection
+            .query_row(
+                "
+                select id, task_type, state, current, total, message, error_code,
+                       error_message, started_at, finished_at
+                from tasks
+                where id = :id
+                ",
+                named_params! { ":id": task_id.0 },
+                |row| {
+                    Ok(TaskRecord {
+                        id: TaskId(row.get::<_, String>(0)?),
+                        task_type: task_kind_from_db(&row.get::<_, String>(1)?),
+                        state: task_state_from_db(&row.get::<_, String>(2)?),
+                        current: row.get::<_, u64>(3)?,
+                        total: row.get(4)?,
+                        message: row.get(5)?,
+                        error_code: row.get(6)?,
+                        error_message: row.get(7)?,
+                        started_at: row.get(8)?,
+                        finished_at: row.get(9)?,
+                    })
+                },
+            )
+            .optional()?;
+
+        Ok(record)
+    }
 }
 
 impl ThumbnailRepository for SqliteRepositories<'_> {
@@ -442,6 +473,18 @@ fn task_kind_to_db(kind: &TaskKind) -> &'static str {
     }
 }
 
+fn task_kind_from_db(value: &str) -> TaskKind {
+    match value {
+        "scan" => TaskKind::Scan,
+        "ingest" => TaskKind::Ingest,
+        "normalize" => TaskKind::Normalize,
+        "thumbnail" => TaskKind::Thumbnail,
+        "ffmpeg" => TaskKind::Ffmpeg,
+        "subtitle" => TaskKind::Subtitle,
+        _ => TaskKind::Scan,
+    }
+}
+
 fn task_state_to_db(state: &TaskState) -> &'static str {
     match state {
         TaskState::Queued => "queued",
@@ -449,6 +492,17 @@ fn task_state_to_db(state: &TaskState) -> &'static str {
         TaskState::Completed => "completed",
         TaskState::Failed => "failed",
         TaskState::Cancelled => "cancelled",
+    }
+}
+
+fn task_state_from_db(value: &str) -> TaskState {
+    match value {
+        "queued" => TaskState::Queued,
+        "running" => TaskState::Running,
+        "completed" => TaskState::Completed,
+        "failed" => TaskState::Failed,
+        "cancelled" => TaskState::Cancelled,
+        _ => TaskState::Failed,
     }
 }
 

@@ -83,8 +83,7 @@ fn upserts_and_queries_core_records() {
     };
     LibraryRepository::upsert(&repositories, &library).expect("library upsert should succeed");
 
-    let fetched = repositories
-        .get(&library.id)
+    let fetched = LibraryRepository::get(&repositories, &library.id)
         .expect("library fetch should succeed")
         .expect("library should exist after insert");
 

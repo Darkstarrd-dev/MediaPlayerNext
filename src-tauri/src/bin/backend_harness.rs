@@ -1,5 +1,5 @@
 use app_core::cli::{help_payload, parse_command, run_command, BackendCommand};
-use app_core::scan::{register_library, run_scan, scan_snapshot, scan_stats};
+use app_core::scan::{register_library, resume_scan, run_scan, scan_snapshot, scan_stats};
 use media_db::{DatabaseLocation, MediaDatabase};
 use serde_json::json;
 use shared_model::LibraryId;
@@ -38,6 +38,15 @@ fn try_main() -> anyhow::Result<()> {
         }
         BackendCommand::ScanRun { library_id } => {
             let summary = run_scan(
+                &repositories,
+                &repositories,
+                &repositories,
+                &LibraryId(library_id.clone()),
+            )?;
+            Some(serde_json::to_value(summary)?)
+        }
+        BackendCommand::ScanResume { library_id } => {
+            let summary = resume_scan(
                 &repositories,
                 &repositories,
                 &repositories,

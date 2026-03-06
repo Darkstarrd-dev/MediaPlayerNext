@@ -1,0 +1,14 @@
+[
+  {
+    "fileName": "cover.png",
+    "ext": "png",
+    "kind": "Image",
+    "exists": true
+  },
+  {
+    "fileName": "chapter.cbz",
+    "ext": "cbz",
+    "kind": "Archive",
+    "exists": true
+  }
+]
