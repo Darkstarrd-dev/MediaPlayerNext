@@ -1,0 +1,25 @@
+{
+  "datasetName": "medium-fixture-example",
+  "targetFileCount": 500,
+  "typeDistribution": {
+    "image": 280,
+    "audio": 50,
+    "video": 40,
+    "archive": 80,
+    "other": 50
+  },
+  "pathDistribution": {
+    "english": true,
+    "chinese": true,
+    "japanese": true,
+    "spaces": true,
+    "deepNesting": true
+  },
+  "scenarios": [
+    "full_scan",
+    "rescan_no_changes",
+    "rescan_after_delete",
+    "rescan_after_add"
+  ],
+  "notes": "示例清单，仅用于说明 medium-fixture 的期望结构与验证口径。"
+}
