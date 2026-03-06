@@ -9,7 +9,10 @@ fn greet(name: &str) -> String {
 }
 
 #[tauri::command]
-fn runtime_smoke_check(ffmpeg_path: String, mpv_path: String) -> Result<RuntimeSmokeCheckResult, String> {
+fn runtime_smoke_check(
+    ffmpeg_path: String,
+    mpv_path: String,
+) -> Result<RuntimeSmokeCheckResult, String> {
     run_runtime_smoke_check(&ffmpeg_path, &mpv_path).map_err(|error| error.to_string())
 }
 

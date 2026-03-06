@@ -1,0 +1,9 @@
+{
+  "taskId": "task_scan_fixture_001",
+  "taskType": "scan",
+  "state": "running",
+  "current": 12,
+  "total": 40,
+  "message": "Scanning fixture library",
+  "errorCode": ""
+}

@@ -13,6 +13,7 @@
     "build:web": "npm run build --workspace @mediaplayernext/desktop",
     "tauri:dev": ".\\scripts\\run-tauri-dev.cmd",
     "tauri:build": ".\\scripts\\run-tauri-build.cmd",
+    "test:contracts": "npm run test --workspace @mediaplayernext/contracts",
     "check:sharp": "npm run check --workspace @mediaplayernext/subtitle-sidecar",
     "check:runtimes": "npm run check:sharp && powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\check-runtimes.ps1\"",
     "check": "npm run check:runtimes"

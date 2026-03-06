@@ -1,0 +1,9 @@
+{
+  "code": "DB_ERROR",
+  "message": "database is temporarily locked",
+  "retriable": true,
+  "details": {
+    "operation": "migration",
+    "databasePath": "data/media.db"
+  }
+}

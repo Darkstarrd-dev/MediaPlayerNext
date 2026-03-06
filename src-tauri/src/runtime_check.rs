@@ -13,7 +13,10 @@ pub struct RuntimeSmokeCheckResult {
     pub mpv_first_line: String,
 }
 
-pub fn run_runtime_smoke_check(ffmpeg_path: &str, mpv_path: &str) -> Result<RuntimeSmokeCheckResult> {
+pub fn run_runtime_smoke_check(
+    ffmpeg_path: &str,
+    mpv_path: &str,
+) -> Result<RuntimeSmokeCheckResult> {
     let sqlite_version = read_sqlite_version()?;
     let ffmpeg_first_line = read_process_first_line(ffmpeg_path, &["-version"])?;
     let mpv_first_line = read_process_first_line(mpv_path, &["--version"])?;
@@ -38,25 +41,24 @@ fn read_sqlite_version() -> Result<String> {
 fn read_process_first_line(program: &str, args: &[&str]) -> Result<String> {
     let program_path = Path::new(program);
     if !program_path.is_file() {
-        return Err(anyhow!("runtime binary not found: {}", program));
+        return Err(anyhow!("runtime binary not found: {program}"));
     }
 
     let output = Command::new(program)
         .args(args)
         .output()
-        .with_context(|| format!("spawn runtime binary: {}", program))?;
+        .with_context(|| format!("spawn runtime binary: {program}"))?;
 
     if !output.status.success() {
         return Err(anyhow!(
-            "runtime binary returned non-zero status: {}",
-            program
+            "runtime binary returned non-zero status: {program}"
         ));
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let first_line = stdout.lines().next().unwrap_or_default().trim().to_string();
     if first_line.is_empty() {
-        return Err(anyhow!("runtime binary produced empty output: {}", program));
+        return Err(anyhow!("runtime binary produced empty output: {program}"));
     }
 
     Ok(first_line)
