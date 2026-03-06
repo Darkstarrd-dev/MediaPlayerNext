@@ -5,5 +5,10 @@ edition.workspace = true
 
 [dependencies]
 anyhow.workspace = true
+app-core = { path = "../app-core" }
 rusqlite.workspace = true
+shared-model = { path = "../shared-model" }
 tracing.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

@@ -2,6 +2,7 @@ pub mod errors;
 pub mod ids;
 pub mod media;
 pub mod pagination;
+pub mod records;
 pub mod tasks;
 
 pub use errors::{AppError, AppErrorCode};
@@ -11,6 +12,10 @@ pub use ids::{
 };
 pub use media::{MediaAssetSummary, MediaSourceKind};
 pub use pagination::{PageRequest, PageResponse};
+pub use records::{
+    ArchiveEntryRecord, ArchiveRecord, LibraryRecord, MediaAssetRecord, SourceKind, SourceRecord,
+    TaskRecord, ThumbnailRecord,
+};
 pub use tasks::{TaskKind, TaskProgress, TaskState};
 
 #[cfg(test)]
