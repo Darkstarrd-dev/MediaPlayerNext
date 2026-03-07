@@ -1,8 +1,12 @@
-use app_core::ports::{AssetRepository, LibraryRepository, SourceRepository, TaskRepository};
+use app_core::ports::{
+    ArchiveEntryRepository, ArchiveRepository, AssetRepository, LibraryRepository,
+    SourceRepository, TaskRepository,
+};
 use media_db::{current_schema_version, latest_schema_version, DatabaseLocation, MediaDatabase};
 use shared_model::{
-    AssetId, LibraryId, LibraryRecord, MediaAssetRecord, MediaSourceKind, SourceId, SourceKind,
-    SourceRecord, TaskId, TaskKind, TaskRecord, TaskState,
+    ArchiveEntryId, ArchiveEntryRecord, ArchiveId, ArchiveRecord, AssetId, LibraryId,
+    LibraryRecord, MediaAssetRecord, MediaSourceKind, SourceId, SourceKind, SourceRecord, TaskId,
+    TaskKind, TaskRecord, TaskState,
 };
 use tempfile::NamedTempFile;
 
@@ -216,4 +220,104 @@ fn transaction_rolls_back_on_error() {
         .expect("count query should succeed after rollback");
 
     assert_eq!(count, 0);
+}
+
+#[test]
+fn replaces_and_lists_archive_entries() {
+    let database = MediaDatabase::open(DatabaseLocation::InMemory)
+        .expect("in-memory database should open with migrations");
+    let repositories = database.repositories();
+
+    let library = LibraryRecord {
+        id: LibraryId("library_archive_entries".to_string()),
+        root_path: "Z:/ArchiveLibrary".to_string(),
+        library_type: "images".to_string(),
+        scan_mode: "full".to_string(),
+        created_at: "2026-03-07T00:00:00Z".to_string(),
+        updated_at: "2026-03-07T00:00:00Z".to_string(),
+    };
+    LibraryRepository::upsert(&repositories, &library).expect("library upsert should succeed");
+
+    let source = SourceRecord {
+        id: SourceId("source_archive_entries".to_string()),
+        library_id: library.id.clone(),
+        normalized_path: "z:/archivelibrary/chapter.cbz".to_string(),
+        file_name: "chapter.cbz".to_string(),
+        ext: "cbz".to_string(),
+        kind: SourceKind::Archive,
+        size: 4_096,
+        mtime_ms: 1_700_000_000_100,
+        fingerprint: Some("archive-fp".to_string()),
+        exists: true,
+        last_seen_at: "2026-03-07T00:01:00Z".to_string(),
+    };
+    SourceRepository::upsert(&repositories, &source).expect("source upsert should succeed");
+
+    let archive = ArchiveRecord {
+        id: ArchiveId("archive_primary".to_string()),
+        source_id: source.id.clone(),
+        archive_type: "cbz".to_string(),
+        normalized_zip_path: Some(source.normalized_path.clone()),
+        page_count: Some(2),
+        cover_entry_id: Some(ArchiveEntryId("entry_cover".to_string())),
+        status: "indexed".to_string(),
+    };
+    ArchiveRepository::upsert(&repositories, &archive).expect("archive upsert should succeed");
+
+    let first_entries = vec![
+        ArchiveEntryRecord {
+            id: ArchiveEntryId("entry_cover".to_string()),
+            archive_id: archive.id.clone(),
+            entry_path: "001-cover.png".to_string(),
+            entry_name: "001-cover.png".to_string(),
+            page_index: 0,
+            media_kind: "image".to_string(),
+            width: None,
+            height: None,
+            compressed_size: Some(100),
+            uncompressed_size: Some(120),
+            crc32: Some(1),
+        },
+        ArchiveEntryRecord {
+            id: ArchiveEntryId("entry_page_2".to_string()),
+            archive_id: archive.id.clone(),
+            entry_path: "002-page.png".to_string(),
+            entry_name: "002-page.png".to_string(),
+            page_index: 1,
+            media_kind: "image".to_string(),
+            width: None,
+            height: None,
+            compressed_size: Some(101),
+            uncompressed_size: Some(121),
+            crc32: Some(2),
+        },
+    ];
+    ArchiveEntryRepository::replace_for_archive(&repositories, &archive.id, &first_entries)
+        .expect("archive entries should be stored");
+
+    let replaced_entries = vec![ArchiveEntryRecord {
+        id: ArchiveEntryId("entry_page_9".to_string()),
+        archive_id: archive.id.clone(),
+        entry_path: "009-page.png".to_string(),
+        entry_name: "009-page.png".to_string(),
+        page_index: 0,
+        media_kind: "image".to_string(),
+        width: None,
+        height: None,
+        compressed_size: Some(200),
+        uncompressed_size: Some(220),
+        crc32: Some(9),
+    }];
+    ArchiveEntryRepository::replace_for_archive(&repositories, &archive.id, &replaced_entries)
+        .expect("archive entries should be replaced");
+
+    let fetched_archive = ArchiveRepository::get_by_source(&repositories, &source.id)
+        .expect("archive by source query should succeed")
+        .expect("archive should exist");
+    let fetched_entries = ArchiveEntryRepository::list_by_archive(&repositories, &archive.id)
+        .expect("archive entries query should succeed");
+
+    assert_eq!(fetched_archive.id, archive.id);
+    assert_eq!(fetched_entries.len(), 1);
+    assert_eq!(fetched_entries[0].entry_path, "009-page.png");
 }

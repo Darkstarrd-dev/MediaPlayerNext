@@ -34,7 +34,7 @@
 
 ## 2. 已完成内容与当前进度
 
-截至目前，`B1` 与 `B2` 已完成，`B3` 已进入收尾阶段，`B4` 尚未开始。
+截至目前，`B1` 与 `B2` 已完成，`B3` 已进入收尾阶段，`B4` 已启动首批 zip 与归档索引能力。
 
 ### 2.1 已完成内容
 
@@ -66,7 +66,7 @@
 - `B1`：完成
 - `B2`：完成
 - `B3`：进行中（已完成主链路，仍需补更完整的失败恢复和结果固化）
-- `B4`：未开始
+- `B4`：进行中（zip 目录读取、页序排序、entry 读取、archive index 落库首版已落地）
 
 ### 2.3 当前最自然的下一步
 
@@ -764,7 +764,7 @@ cargo run --bin <scan-cli> -- scan diff <library-id>
 
 ## 10. B4：zip 与归档索引
 
-当前状态：未开始
+当前状态：进行中
 
 ## 10.1 阶段目标
 
@@ -775,19 +775,19 @@ cargo run --bin <scan-cli> -- scan diff <library-id>
 ### 本阶段要做
 
 1. 在 `media-io` 中建立 zip 目录读取能力
-   - 完成情况：未开始
+   - 完成情况：已完成首版
 2. 建立图片页判断规则
-   - 完成情况：未开始
+   - 完成情况：已完成首版（当前按扩展名判图）
 3. 建立页序排序规则
-   - 完成情况：未开始
+   - 完成情况：已完成首版（当前为自然排序规则）
 4. 建立 zip entry stream/read API
-   - 完成情况：未开始
+   - 完成情况：已完成首版
 5. 建立封面候选提取
-   - 完成情况：未开始
+   - 完成情况：已完成首版（当前取排序后第一页）
 6. 建立 `archive_entries` 落库
-   - 完成情况：未开始
+   - 完成情况：已完成首版
 7. 建立归档页序 snapshot tests
-   - 完成情况：未开始
+   - 完成情况：已完成首批 zip fixture tests，但尚未补仓库内独立 snapshot fixture 目录
 
 ### 本阶段不做
 
@@ -831,6 +831,15 @@ cargo run --bin <scan-cli> -- scan diff <library-id>
 - zip 页序 snapshot
 - 归档 fixture 测试
 - `archive_entries` 落库逻辑
+
+当前已完成的首批交付：
+
+- `crates/media-io/src/archive/mod.rs`
+- `crates/media-io/src/archive/zip_reader.rs`
+- `crates/media-io/src/archive/page_sort.rs`
+- `crates/media-io/src/archive/entry_stream.rs`
+- `crates/app-core/src/archive.rs`
+- `backend_harness` 的 `archive index` / `archive show` 开发期命令
 
 ## 10.6 验收标准
 

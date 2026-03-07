@@ -1,6 +1,6 @@
 use shared_model::{
-    ArchiveId, ArchiveRecord, AssetId, LibraryId, LibraryRecord, MediaAssetRecord, SourceId,
-    SourceRecord, TaskId, TaskRecord, ThumbnailKey, ThumbnailRecord,
+    ArchiveEntryRecord, ArchiveId, ArchiveRecord, AssetId, LibraryId, LibraryRecord,
+    MediaAssetRecord, SourceId, SourceRecord, TaskId, TaskRecord, ThumbnailKey, ThumbnailRecord,
 };
 
 pub trait LibraryRepository {
@@ -20,6 +20,16 @@ pub trait SourceRepository {
 pub trait ArchiveRepository {
     fn exists(&self, archive_id: &ArchiveId) -> anyhow::Result<bool>;
     fn upsert(&self, archive: &ArchiveRecord) -> anyhow::Result<()>;
+    fn get_by_source(&self, source_id: &SourceId) -> anyhow::Result<Option<ArchiveRecord>>;
+}
+
+pub trait ArchiveEntryRepository {
+    fn replace_for_archive(
+        &self,
+        archive_id: &ArchiveId,
+        entries: &[ArchiveEntryRecord],
+    ) -> anyhow::Result<()>;
+    fn list_by_archive(&self, archive_id: &ArchiveId) -> anyhow::Result<Vec<ArchiveEntryRecord>>;
 }
 
 pub trait AssetRepository {

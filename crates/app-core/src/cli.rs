@@ -13,6 +13,8 @@ pub enum BackendCommand {
     ScanResume { library_id: String },
     ScanStats { library_id: String },
     ScanDiff { library_id: String },
+    ArchiveIndex { library_id: String },
+    ArchiveShow { source_id: String },
 }
 
 #[derive(Debug, Serialize)]
@@ -47,6 +49,15 @@ pub fn parse_command(args: &[String]) -> BackendCommand {
             },
             _ => BackendCommand::Help,
         },
+        Some("archive") => match (args.get(1).map(String::as_str), args.get(2)) {
+            (Some("index"), Some(library_id)) => BackendCommand::ArchiveIndex {
+                library_id: library_id.clone(),
+            },
+            (Some("show"), Some(source_id)) => BackendCommand::ArchiveShow {
+                source_id: source_id.clone(),
+            },
+            _ => BackendCommand::Help,
+        },
         _ => BackendCommand::Help,
     }
 }
@@ -65,6 +76,8 @@ pub fn run_command(
         BackendCommand::ScanResume { .. } => "scan.resume",
         BackendCommand::ScanStats { .. } => "scan.stats",
         BackendCommand::ScanDiff { .. } => "scan.diff",
+        BackendCommand::ArchiveIndex { .. } => "archive.index",
+        BackendCommand::ArchiveShow { .. } => "archive.show",
     };
 
     Ok(CliExecutionOutput {
@@ -84,7 +97,9 @@ pub fn help_payload() -> Value {
             "cargo run --bin backend_harness -- scan run <library-id>",
             "cargo run --bin backend_harness -- scan resume <library-id>",
             "cargo run --bin backend_harness -- scan stats <library-id>",
-            "cargo run --bin backend_harness -- scan diff <library-id>"
+            "cargo run --bin backend_harness -- scan diff <library-id>",
+            "cargo run --bin backend_harness -- archive index <library-id>",
+            "cargo run --bin backend_harness -- archive show <source-id>"
         ]
     })
 }

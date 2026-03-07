@@ -1,8 +1,9 @@
+use app_core::archive::{archive_snapshot, index_library_archives};
 use app_core::cli::{help_payload, parse_command, run_command, BackendCommand};
 use app_core::scan::{register_library, resume_scan, run_scan, scan_snapshot, scan_stats};
 use media_db::{DatabaseLocation, MediaDatabase};
 use serde_json::json;
-use shared_model::LibraryId;
+use shared_model::{LibraryId, SourceId};
 use std::env;
 use std::path::PathBuf;
 
@@ -61,6 +62,21 @@ fn try_main() -> anyhow::Result<()> {
         BackendCommand::ScanDiff { library_id } => {
             let snapshot =
                 scan_snapshot(&repositories, &repositories, &LibraryId(library_id.clone()))?;
+            Some(serde_json::to_value(snapshot)?)
+        }
+        BackendCommand::ArchiveIndex { library_id } => {
+            let summary = index_library_archives(
+                &repositories,
+                &repositories,
+                &repositories,
+                &repositories,
+                &LibraryId(library_id.clone()),
+            )?;
+            Some(serde_json::to_value(summary)?)
+        }
+        BackendCommand::ArchiveShow { source_id } => {
+            let snapshot =
+                archive_snapshot(&repositories, &repositories, &SourceId(source_id.clone()))?;
             Some(serde_json::to_value(snapshot)?)
         }
     };

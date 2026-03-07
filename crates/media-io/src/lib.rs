@@ -1,3 +1,5 @@
+pub mod archive;
+
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use shared_model::SourceKind;
@@ -57,6 +59,10 @@ pub fn candidate_kind_to_source_kind(kind: &CandidateMediaKind) -> SourceKind {
         CandidateMediaKind::Audio => SourceKind::Audio,
         CandidateMediaKind::Other => SourceKind::Other,
     }
+}
+
+pub fn is_primary_archive_extension(extension: &str) -> bool {
+    matches!(extension.to_ascii_lowercase().as_str(), "zip" | "cbz")
 }
 
 fn visit_directory(directory: &Path, files: &mut Vec<DiscoveredFile>) -> Result<()> {
