@@ -1,0 +1,90 @@
+{
+  "updatedAt": "2026-03-08T01:00:00",
+  "policy": "No new duplicate dependency families or versions; only allow reductions within the baseline.",
+  "families": [
+    {
+      "name": "bitflags",
+      "versions": ["1.3.2", "2.11.0"]
+    },
+    {
+      "name": "getrandom",
+      "versions": ["0.1.16", "0.2.17", "0.3.4", "0.4.2"]
+    },
+    {
+      "name": "hashbrown",
+      "versions": ["0.12.3", "0.15.5", "0.16.1"]
+    },
+    {
+      "name": "indexmap",
+      "versions": ["1.9.3", "2.13.0"]
+    },
+    {
+      "name": "phf",
+      "versions": ["0.8.0", "0.10.1", "0.11.3"]
+    },
+    {
+      "name": "phf_codegen",
+      "versions": ["0.8.0", "0.11.3"]
+    },
+    {
+      "name": "phf_generator",
+      "versions": ["0.8.0", "0.10.0", "0.11.3"]
+    },
+    {
+      "name": "phf_macros",
+      "versions": ["0.10.0", "0.11.3"]
+    },
+    {
+      "name": "phf_shared",
+      "versions": ["0.8.0", "0.10.0", "0.11.3"]
+    },
+    {
+      "name": "png",
+      "versions": ["0.17.16", "0.18.1"]
+    },
+    {
+      "name": "rand",
+      "versions": ["0.7.3", "0.8.5"]
+    },
+    {
+      "name": "rand_chacha",
+      "versions": ["0.2.2", "0.3.1"]
+    },
+    {
+      "name": "rand_core",
+      "versions": ["0.5.1", "0.6.4"]
+    },
+    {
+      "name": "siphasher",
+      "versions": ["0.3.11", "1.0.2"]
+    },
+    {
+      "name": "syn",
+      "versions": ["1.0.109", "2.0.117"]
+    },
+    {
+      "name": "thiserror",
+      "versions": ["1.0.69", "2.0.18"]
+    },
+    {
+      "name": "thiserror-impl",
+      "versions": ["1.0.69", "2.0.18"]
+    },
+    {
+      "name": "windows-link",
+      "versions": ["0.1.3", "0.2.1"]
+    },
+    {
+      "name": "windows-sys",
+      "versions": ["0.59.0", "0.60.2", "0.61.2"]
+    },
+    {
+      "name": "windows-targets",
+      "versions": ["0.52.6", "0.53.5"]
+    },
+    {
+      "name": "windows_x86_64_msvc",
+      "versions": ["0.52.6", "0.53.1"]
+    }
+  ]
+}

@@ -25,5 +25,5 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
 tempfile = "3"
 zip = { version = "2", default-features = false, features = ["deflate"] }
-image = "0.25"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
 sha2 = "0.10"

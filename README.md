@@ -111,7 +111,7 @@ Current `check:quality` gate includes:
 - `cargo deny check advisories licenses bans sources`
 - `cargo audit`
 - `cargo +nightly udeps --workspace --all-targets`
-- `cargo tree -d --workspace`
+- `cargo tree -d --workspace`（按 `config/quality/duplicate-deps-baseline.json` 做 baseline-delta 治理）
 - workspace forbidden-edges check
 - `cargo tauri build` release verification
 

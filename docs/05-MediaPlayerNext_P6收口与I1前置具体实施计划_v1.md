@@ -54,7 +54,7 @@
 ### 2.2 当前进度判断
 
 - `P6-0`：已完成首轮（真实性能数字已补齐，见 `docs/benchmarks/p6-performance-baseline-20260307.md`）
-- `P6-1`：已完成首轮（统一脚本、结果产物与首轮 gate run 已落地；当前仍保留 `duplicate deps` 作为已暴露的 P2 治理项）
+- `P6-1`：已完成首轮（统一脚本、结果产物与首轮 gate run 已落地；`duplicate deps` 已按 baseline-delta 进入 P2 治理）
 - `P6-2`：进行中（部分 sidecar bad path 已覆盖，但 runtimes、DB upgrade、protocol 404 等异常路径仍不完整）
 - `P6-3`：未开始（尚无旧仓 `window.* -> command/channel/protocol` 映射表与 `MediaRepository` 方法清单文档）
 - `P6-4`：未开始（开发态 / 打包态资源查找顺序仍未被单独收口为策略文档与校验脚本）
@@ -326,7 +326,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\bench\run-sidecar-
 当前首轮结果：
 
 - `P0 / P1` 当前已全部可自动执行并形成 JSON / log 产物
-- 当前唯一保留失败项为 `duplicate deps`，已被单独稳定暴露为 P2 治理问题
+- `duplicate deps` 已从“绝对归零”改为 baseline-delta 治理，当前基线已收敛到 `21` 个多版本 crate family
 
 ## 8.6 本阶段必须补的测试/验证
 
