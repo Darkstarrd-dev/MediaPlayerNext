@@ -257,6 +257,7 @@ where
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn normalize_archive_source<L, S, A, E, T>(
     library_repository: &L,
     source_repository: &S,
@@ -296,6 +297,7 @@ where
         .ok_or_else(|| anyhow!("task not found: {}", task_id.0))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn normalize_archive_source_with_extractor<L, S, A, E, T, X>(
     library_repository: &L,
     source_repository: &S,

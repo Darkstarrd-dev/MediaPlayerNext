@@ -1,0 +1,15 @@
+{
+  "id": "req-health-001",
+  "type": "response",
+  "ok": true,
+  "payload": {
+    "service": "subtitle-sidecar",
+    "protocolVersion": "b8-v1",
+    "transport": "stdio",
+    "nodeVersion": "v22.13.1",
+    "sharpVersion": "0.34.4",
+    "uptimeMs": 12,
+    "activeSessions": 0,
+    "sessionsRoot": "Z:\\Playground\\CurrentWorking\\MediaPlayerNext\\data\\cache\\subtitle\\sessions"
+  }
+}

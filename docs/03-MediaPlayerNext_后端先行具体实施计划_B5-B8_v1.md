@@ -164,7 +164,7 @@ MediaPlayerNext/
 
 ## 7. B5：缩略图主链路 Rust 化
 
-当前状态：进行中（已完成 `B5-0`、`B5-1` 与 `B5-2` 核心链路，主要缺文档基线）
+当前状态：已完成（真实 crate、应用层编排、`thumb://`、fixture / golden / validation 文档已具备）
 
 ## 7.1 阶段目标
 
@@ -830,7 +830,7 @@ cargo run --bin backend_harness -- playback status <session-id>
 
 ## 10. B8：subtitle sidecar 宿主协议
 
-当前状态：未开始
+当前状态：已完成（contracts、Node sidecar、Rust host wrapper、`subtitle.*` 开发期命令、fixture / validation 文档已具备）
 
 ## 10.1 阶段目标
 
@@ -1047,7 +1047,7 @@ docs/fixtures/
 - 方向异常图片
 - 超长图 / 超宽图
 - zip 内页样本
-- 当前完成情况：未开始
+- 当前完成情况：已开始（README、expected JSON 与 validation 记录已具备）
 
 ### `playback-fixture`
 
@@ -1055,13 +1055,13 @@ docs/fixtures/
 - 小体积音频
 - `ffprobe` 结果快照样本
 - `ffmpeg` 进度样本
-- 当前完成情况：未开始
+- 当前完成情况：已开始（README、expected JSON 与 validation 记录已具备）
 
 ### `sidecar-fixture`
 
 - sidecar 请求/响应 transcript
 - crash / timeout 样本
-- 当前完成情况：未开始
+- 当前完成情况：已开始（`ping.request.json`、`ping.response.json`、`health.response.json`、`sidecar-transcript.sample.ndjson` 已具备）
 
 ## 12.2 当前阶段要产出的 golden
 
@@ -1152,7 +1152,7 @@ docs/fixtures/
 - Rust 宿主能 ping / health / restart
 - 协议与宿主错误可稳定观测
 
-当前状态：未开始
+当前状态：已完成（subtitle contracts、最小 Node sidecar、Rust host wrapper、restart 语义、fixture / validation 文档已具备）
 
 ---
 
@@ -1189,7 +1189,7 @@ docs/fixtures/
 2. 把 `apps/subtitle-sidecar` 从 placeholder 推进为最小服务
 3. 建 Rust host wrapper 与 heartbeat/restart
 
-完成以上四批后，再进入 UI 接入阶段或单独编写 UI 对接实施文档。
+以上四批当前都已完成首版闭环；后续应转入 UI 接入准备、benchmark 补强或阶段性回归。
 
 ---
 

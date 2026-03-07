@@ -71,6 +71,17 @@ pub enum BackendCommand {
     PlaybackStop {
         session_id: String,
     },
+    SubtitlePing,
+    SubtitleHealth,
+    SubtitleStartSession {
+        asset_id: Option<String>,
+    },
+    SubtitleStopSession {
+        session_id: String,
+    },
+    SubtitleGetProgress {
+        session_id: String,
+    },
 }
 
 #[derive(Debug, Serialize)]
@@ -167,6 +178,20 @@ pub fn parse_command(args: &[String]) -> BackendCommand {
             },
             _ => BackendCommand::Help,
         },
+        Some("subtitle") => match args.get(1).map(String::as_str) {
+            Some("ping") => BackendCommand::SubtitlePing,
+            Some("health") => BackendCommand::SubtitleHealth,
+            Some("start-session") => BackendCommand::SubtitleStartSession {
+                asset_id: args.get(2).cloned(),
+            },
+            Some("stop-session") if args.get(2).is_some() => BackendCommand::SubtitleStopSession {
+                session_id: args[2].clone(),
+            },
+            Some("get-progress") if args.get(2).is_some() => BackendCommand::SubtitleGetProgress {
+                session_id: args[2].clone(),
+            },
+            _ => BackendCommand::Help,
+        },
         _ => BackendCommand::Help,
     }
 }
@@ -200,6 +225,11 @@ pub fn run_command(
         BackendCommand::PlaybackPause { .. } => "playback.pause",
         BackendCommand::PlaybackSeek { .. } => "playback.seek",
         BackendCommand::PlaybackStop { .. } => "playback.stop",
+        BackendCommand::SubtitlePing => "subtitle.ping",
+        BackendCommand::SubtitleHealth => "subtitle.health",
+        BackendCommand::SubtitleStartSession { .. } => "subtitle.start-session",
+        BackendCommand::SubtitleStopSession { .. } => "subtitle.stop-session",
+        BackendCommand::SubtitleGetProgress { .. } => "subtitle.get-progress",
     };
 
     Ok(CliExecutionOutput {
@@ -234,7 +264,12 @@ pub fn help_payload() -> Value {
             "cargo run --bin backend_harness -- playback status <session-id>",
             "cargo run --bin backend_harness -- playback pause <session-id>",
             "cargo run --bin backend_harness -- playback seek <session-id> <position-ms>",
-            "cargo run --bin backend_harness -- playback stop <session-id>"
+            "cargo run --bin backend_harness -- playback stop <session-id>",
+            "cargo run --bin backend_harness -- subtitle ping",
+            "cargo run --bin backend_harness -- subtitle health",
+            "cargo run --bin backend_harness -- subtitle start-session [asset-id]",
+            "cargo run --bin backend_harness -- subtitle stop-session <session-id>",
+            "cargo run --bin backend_harness -- subtitle get-progress <session-id>"
         ]
     })
 }

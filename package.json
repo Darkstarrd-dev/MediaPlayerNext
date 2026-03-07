@@ -18,8 +18,9 @@
     "fixtures:fill-real": "node ./scripts/fill-scan-fixtures-with-realdata.mjs",
     "fixtures:create-run": "node ./scripts/create-scan-validation-run.mjs",
     "test:contracts": "npm run test --workspace @mediaplayernext/contracts",
-    "check:sharp": "npm run check --workspace @mediaplayernext/subtitle-sidecar",
-    "check:runtimes": "npm run check:sharp && powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\check-runtimes.ps1\"",
+    "check:subtitle-sidecar": "npm run check --workspace @mediaplayernext/subtitle-sidecar",
+    "check:sharp": "npm run check:subtitle-sidecar",
+    "check:runtimes": "npm run check:subtitle-sidecar && powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\check-runtimes.ps1\"",
     "check": "npm run check:runtimes"
   },
   "devDependencies": {

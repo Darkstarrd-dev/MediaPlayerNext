@@ -1,0 +1,10 @@
+{
+  "id": "req-ping-001",
+  "type": "response",
+  "ok": true,
+  "payload": {
+    "service": "subtitle-sidecar",
+    "protocolVersion": "b8-v1",
+    "transport": "stdio"
+  }
+}

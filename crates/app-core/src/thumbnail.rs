@@ -29,6 +29,7 @@ pub struct ThumbnailEnsureSummary {
     pub cache_hit: bool,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn ensure_thumbnail_for_asset<L, S, A, E, R, T>(
     library_repository: &L,
     source_repository: &S,

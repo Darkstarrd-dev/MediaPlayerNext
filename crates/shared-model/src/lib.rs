@@ -3,6 +3,7 @@ pub mod ids;
 pub mod media;
 pub mod pagination;
 pub mod records;
+pub mod subtitle;
 pub mod tasks;
 
 pub use errors::{AppError, AppErrorCode};
@@ -19,6 +20,10 @@ pub use records::{
     ArchiveEntryRecord, ArchiveRecord, LibraryRecord, MediaAssetRecord, SourceKind, SourceRecord,
     TaskRecord, ThumbnailRecord,
 };
+pub use subtitle::{
+    SubtitleHealthSummary, SubtitleHostSummary, SubtitlePingSummary, SubtitleProgressEvent,
+    SubtitleSessionState, SubtitleSessionSummary,
+};
 pub use tasks::{TaskKind, TaskProgress, TaskState};
 
 #[cfg(test)]
@@ -29,6 +34,10 @@ mod tests {
         include_str!("../../../packages/contracts/fixtures/task-progress.sample.json");
     const APP_ERROR_FIXTURE: &str =
         include_str!("../../../packages/contracts/fixtures/app-error.sample.json");
+    const SUBTITLE_HEALTH_FIXTURE: &str =
+        include_str!("../../../packages/contracts/fixtures/subtitle-health.sample.json");
+    const SUBTITLE_SESSION_FIXTURE: &str =
+        include_str!("../../../packages/contracts/fixtures/subtitle-session.sample.json");
 
     #[test]
     fn parses_task_progress_fixture() {
@@ -56,5 +65,33 @@ mod tests {
 
         assert_eq!(parsed_again.code, app_error.code);
         assert_eq!(parsed_again.retriable, app_error.retriable);
+    }
+
+    #[test]
+    fn parses_subtitle_health_fixture() {
+        let health: super::SubtitleHealthSummary = serde_json::from_str(SUBTITLE_HEALTH_FIXTURE)
+            .expect("subtitle health fixture should deserialize");
+        let round_trip =
+            serde_json::to_string(&health).expect("subtitle health fixture should serialize");
+
+        let parsed_again: super::SubtitleHealthSummary = serde_json::from_str(&round_trip)
+            .expect("round-trip subtitle health should deserialize");
+
+        assert_eq!(parsed_again.transport, health.transport);
+        assert_eq!(parsed_again.service, health.service);
+    }
+
+    #[test]
+    fn parses_subtitle_session_fixture() {
+        let session: super::SubtitleSessionSummary = serde_json::from_str(SUBTITLE_SESSION_FIXTURE)
+            .expect("subtitle session fixture should deserialize");
+        let round_trip =
+            serde_json::to_string(&session).expect("subtitle session fixture should serialize");
+
+        let parsed_again: super::SubtitleSessionSummary = serde_json::from_str(&round_trip)
+            .expect("round-trip subtitle session should deserialize");
+
+        assert_eq!(parsed_again.session_id, session.session_id);
+        assert_eq!(parsed_again.state, session.state);
     }
 }

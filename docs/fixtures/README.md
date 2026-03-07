@@ -9,6 +9,7 @@
 - `archive-fixture/`：zip、rar、7z 与损坏包样本
 - `thumbnail-fixture/`：缩略图 profile、cache key、协议与 golden 说明
 - `playback-fixture/`：probe、session、`media://` / `archive://` 协议与 golden 说明
+- `sidecar-fixture/`：subtitle sidecar transcript、health、restart 与错误语义说明
 
 `B1` 仅先落目录约定与说明，真实样本在 `B2-B4` 逐步补齐。
 
@@ -45,6 +46,12 @@ Git 管理约束：
 - 普通图片与 zip 内页图片两类输入面
 - `grid-sm` / `grid-md` / `detail-md` / `detail-lg` profile
 - `thumbnail_key`、磁盘缓存布局与 `thumb://cache/<thumbnail_key>` 协议约定
+
+`sidecar-fixture/` 当前开始承载 `B8` 的 sidecar 协议基线，用于固定：
+
+- `stdio + newline-delimited JSON` framing
+- `ping / health / start_session / stop_session / get_progress / shutdown` 首版请求响应
+- sidecar crash 后的宿主 retry / restart 语义
 
 一次性真实文件填充：
 

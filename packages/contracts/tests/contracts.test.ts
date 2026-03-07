@@ -7,6 +7,9 @@ import {
   appErrorSchema,
   mediaProbeSchema,
   playbackSessionSchema,
+  subtitleHealthSchema,
+  subtitleProgressEventSchema,
+  subtitleSessionSchema,
   taskProgressSchema,
 } from "../src/index.js";
 
@@ -43,4 +46,28 @@ test("playback session fixture passes zod parse", async () => {
 
   assert.equal(parsed.sessionId, "playback_001");
   assert.equal(parsed.state, "paused");
+});
+
+test("subtitle health fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "subtitle-health.sample.json"), "utf8");
+  const parsed = subtitleHealthSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.transport, "stdio");
+  assert.equal(parsed.service, "subtitle-sidecar");
+});
+
+test("subtitle session fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "subtitle-session.sample.json"), "utf8");
+  const parsed = subtitleSessionSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.sessionId, "subtitle_001");
+  assert.equal(parsed.state, "idle");
+});
+
+test("subtitle progress fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "subtitle-progress.sample.json"), "utf8");
+  const parsed = subtitleProgressEventSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.sessionId, "subtitle_001");
+  assert.equal(parsed.message, "waiting");
 });

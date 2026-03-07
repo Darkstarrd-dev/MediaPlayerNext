@@ -1,7 +1,8 @@
 use shared_model::{
     ArchiveEntryId, ArchiveEntryRecord, ArchiveId, ArchiveRecord, AssetId, LibraryId,
-    LibraryRecord, MediaAssetRecord, SourceId, SourceRecord, TaskId, TaskRecord, ThumbnailKey,
-    ThumbnailRecord,
+    LibraryRecord, MediaAssetRecord, SourceId, SourceRecord, SubtitleHostSummary,
+    SubtitleProgressEvent, SubtitleSessionId, SubtitleSessionSummary, TaskId, TaskRecord,
+    ThumbnailKey, ThumbnailRecord,
 };
 
 pub trait LibraryRepository {
@@ -52,4 +53,16 @@ pub trait ThumbnailRepository {
     fn exists(&self, thumbnail_key: &ThumbnailKey) -> anyhow::Result<bool>;
     fn upsert(&self, thumbnail: &ThumbnailRecord) -> anyhow::Result<()>;
     fn get(&self, thumbnail_key: &ThumbnailKey) -> anyhow::Result<Option<ThumbnailRecord>>;
+}
+
+pub trait SubtitleHostPort {
+    fn ping(&self) -> anyhow::Result<SubtitleHostSummary>;
+    fn health(&self) -> anyhow::Result<SubtitleHostSummary>;
+    fn start_session(&self, asset_id: Option<&AssetId>) -> anyhow::Result<SubtitleSessionSummary>;
+    fn stop_session(
+        &self,
+        session_id: &SubtitleSessionId,
+    ) -> anyhow::Result<SubtitleSessionSummary>;
+    fn get_progress(&self, session_id: &SubtitleSessionId)
+        -> anyhow::Result<SubtitleProgressEvent>;
 }

@@ -6,8 +6,8 @@ Current stage only lands the new repository skeleton and runtime prerequisites:
 
 - Keep frontend on React + Vite, still showing the default Vite React screen.
 - Prepare Rust desktop host with Tauri 2.
-- Prepare Node.js subtitle sidecar workspace with `sharp` runtime smoke check.
-- Verify `rusqlite`, `sharp`, `ffmpeg`, and `mpv` can be called from the new repository.
+- Prepare Node.js subtitle sidecar workspace with `stdio + JSON` host protocol smoke check.
+- Verify subtitle sidecar protocol smoke plus `sharp`, `rusqlite`, `ffmpeg`, `ffprobe`, and `mpv` can be called from the new repository.
 - Do not migrate business code yet. Actual migration waits until the current project's theme system is fully converged.
 
 Local absolute runtime paths are tracked in `config/local.paths.json`.
@@ -37,6 +37,7 @@ Before running checks, copy `config/local.paths.example.json` to `config/local.p
 
 - `ffmpeg`
 - `ffprobe`
+- `node`
 - `sevenz`
 - `mpv`
 
@@ -46,6 +47,8 @@ Current usage notes:
 
 - `ffmpeg` and `ffprobe`
   - used by runtime smoke and `B7` playback metadata / frame extraction chain
+- `node`
+  - used by `B8` subtitle sidecar host wrapper; if omitted, the host falls back to `node` from `PATH`
 - `sevenz`
   - used by `B6` archive normalization (`rar/7z -> zip`)
 - `mpv`
@@ -76,7 +79,7 @@ npm run tauri:dev
 - `npm run build:web`
   - builds the React frontend with the minimal Tauri command demo
 - `npm run check`
-  - verifies `sharp`, `rusqlite`, `ffmpeg`, `ffprobe`, and `mpv`
+  - verifies subtitle sidecar `stdio + JSON` smoke, `sharp`, `rusqlite`, `ffmpeg`, `ffprobe`, and `mpv`
 - `npm run tauri:dev`
   - starts the Tauri host and loads the frontend
 

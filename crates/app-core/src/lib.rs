@@ -5,4 +5,5 @@ pub mod diagnostics;
 pub mod playback;
 pub mod ports;
 pub mod scan;
+pub mod subtitle_host;
 pub mod thumbnail;

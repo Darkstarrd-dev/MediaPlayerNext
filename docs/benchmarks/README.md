@@ -11,3 +11,6 @@
 - 关键查询耗时
 - zip 目录读取耗时
 - zip 连续 entry 读取耗时
+- `ffprobe` 元数据读取耗时
+- `mpv` 会话启动耗时
+- sidecar `ping / health / restart` 耗时

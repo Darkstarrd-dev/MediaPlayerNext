@@ -9,11 +9,18 @@ use app_core::playback::{
     playback_stop,
 };
 use app_core::scan::{register_library, resume_scan, run_scan, scan_snapshot, scan_stats};
+use app_core::subtitle_host::{
+    subtitle_get_progress, subtitle_health, subtitle_ping, subtitle_start_session,
+    subtitle_stop_session,
+};
 use app_core::thumbnail::{ensure_thumbnail_for_asset, get_thumbnail, parse_thumbnail_profile};
 use media_db::{DatabaseLocation, MediaDatabase};
+use mediaplayernext_lib::subtitle_sidecar::development_subtitle_host;
 use serde::Deserialize;
 use serde_json::json;
-use shared_model::{AssetId, LibraryId, PlaybackSessionId, SourceId, TaskId, ThumbnailKey};
+use shared_model::{
+    AssetId, LibraryId, PlaybackSessionId, SourceId, SubtitleSessionId, TaskId, ThumbnailKey,
+};
 use std::env;
 use std::path::PathBuf;
 
@@ -226,6 +233,36 @@ fn try_main() -> anyhow::Result<()> {
                 &PlaybackSessionId(session_id.clone()),
             )?;
             Some(serde_json::to_value(summary)?)
+        }
+        BackendCommand::SubtitlePing => {
+            let host = development_subtitle_host()?;
+            Some(serde_json::to_value(subtitle_ping(&host)?)?)
+        }
+        BackendCommand::SubtitleHealth => {
+            let host = development_subtitle_host()?;
+            Some(serde_json::to_value(subtitle_health(&host)?)?)
+        }
+        BackendCommand::SubtitleStartSession { asset_id } => {
+            let host = development_subtitle_host()?;
+            let asset_id = asset_id.as_ref().map(|value| AssetId(value.clone()));
+            Some(serde_json::to_value(subtitle_start_session(
+                &host,
+                asset_id.as_ref(),
+            )?)?)
+        }
+        BackendCommand::SubtitleStopSession { session_id } => {
+            let host = development_subtitle_host()?;
+            Some(serde_json::to_value(subtitle_stop_session(
+                &host,
+                &SubtitleSessionId(session_id.clone()),
+            )?)?)
+        }
+        BackendCommand::SubtitleGetProgress { session_id } => {
+            let host = development_subtitle_host()?;
+            Some(serde_json::to_value(subtitle_get_progress(
+                &host,
+                &SubtitleSessionId(session_id.clone()),
+            )?)?)
         }
     };
 

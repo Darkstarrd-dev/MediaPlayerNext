@@ -1,11 +1,16 @@
 mod runtime_check;
+pub mod subtitle_sidecar;
 
 use app_core::archive::{read_archive_entry, resolve_archive_entry_location};
 use app_core::playback::resolve_media_asset_path;
+use app_core::subtitle_host::{
+    subtitle_get_progress, subtitle_health, subtitle_ping, subtitle_start_session,
+    subtitle_stop_session,
+};
 use app_core::thumbnail::get_thumbnail;
 use media_db::{DatabaseLocation, MediaDatabase};
 use runtime_check::{run_runtime_smoke_check, RuntimeSmokeCheckResult};
-use shared_model::{ArchiveEntryId, AssetId, ThumbnailKey};
+use shared_model::{ArchiveEntryId, AssetId, SubtitleSessionId, ThumbnailKey};
 use std::env;
 use std::path::{Path, PathBuf};
 use tauri::http::{header::CONTENT_TYPE, Response, StatusCode, Uri};
@@ -23,6 +28,43 @@ fn runtime_smoke_check(
 ) -> Result<RuntimeSmokeCheckResult, String> {
     run_runtime_smoke_check(&ffmpeg_path, &ffprobe_path, &mpv_path)
         .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn subtitle_ping_command() -> Result<shared_model::SubtitleHostSummary, String> {
+    let host = subtitle_sidecar::development_subtitle_host().map_err(|error| error.to_string())?;
+    subtitle_ping(&host).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn subtitle_health_command() -> Result<shared_model::SubtitleHostSummary, String> {
+    let host = subtitle_sidecar::development_subtitle_host().map_err(|error| error.to_string())?;
+    subtitle_health(&host).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn subtitle_start_session_command(
+    asset_id: Option<String>,
+) -> Result<shared_model::SubtitleSessionSummary, String> {
+    let host = subtitle_sidecar::development_subtitle_host().map_err(|error| error.to_string())?;
+    let asset_id = asset_id.map(AssetId);
+    subtitle_start_session(&host, asset_id.as_ref()).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn subtitle_stop_session_command(
+    session_id: String,
+) -> Result<shared_model::SubtitleSessionSummary, String> {
+    let host = subtitle_sidecar::development_subtitle_host().map_err(|error| error.to_string())?;
+    subtitle_stop_session(&host, &SubtitleSessionId(session_id)).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn subtitle_get_progress_command(
+    session_id: String,
+) -> Result<shared_model::SubtitleProgressEvent, String> {
+    let host = subtitle_sidecar::development_subtitle_host().map_err(|error| error.to_string())?;
+    subtitle_get_progress(&host, &SubtitleSessionId(session_id)).map_err(|error| error.to_string())
 }
 
 pub fn runtime_smoke_check_entry() -> anyhow::Result<()> {
@@ -57,7 +99,15 @@ pub fn runtime_smoke_check_entry() -> anyhow::Result<()> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![greet, runtime_smoke_check])
+        .invoke_handler(tauri::generate_handler![
+            greet,
+            runtime_smoke_check,
+            subtitle_ping_command,
+            subtitle_health_command,
+            subtitle_start_session_command,
+            subtitle_stop_session_command,
+            subtitle_get_progress_command
+        ])
         .register_uri_scheme_protocol("thumb", |_app, request| {
             match thumbnail_protocol_response(&development_database_path(), request.uri()) {
                 Ok(response) => response,

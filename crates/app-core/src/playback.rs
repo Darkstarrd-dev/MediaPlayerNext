@@ -57,6 +57,7 @@ pub fn media_url_for_asset(asset_id: &AssetId) -> MediaUrlSummary {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn open_playback_session<L, S, A, E, R>(
     library_repository: &L,
     source_repository: &S,
@@ -198,6 +199,7 @@ where
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn open_playback_session_with_launcher<L, S, A, E, R, X>(
     library_repository: &L,
     source_repository: &S,

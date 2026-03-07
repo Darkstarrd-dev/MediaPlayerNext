@@ -4,8 +4,10 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "start": "tsx src/index.ts",
-    "check": "tsx scripts/check.ts"
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/src/index.js",
+    "check": "npm run build && tsx scripts/check.ts"
   },
   "dependencies": {
     "sharp": "^0.34.4",
