@@ -83,6 +83,8 @@ where
             .collect::<Vec<_>>();
         let cover_entry_id = entry_records.first().map(|item| item.id.clone());
 
+        let is_empty_archive = entry_records.is_empty();
+
         archive_repository.upsert(&ArchiveRecord {
             id: archive_id.clone(),
             source_id: source.id.clone(),
@@ -90,7 +92,11 @@ where
             normalized_zip_path: Some(zip_index.normalized_zip_path),
             page_count: Some(entry_records.len() as i64),
             cover_entry_id,
-            status: "indexed".to_string(),
+            status: if is_empty_archive {
+                "empty".to_string()
+            } else {
+                "indexed".to_string()
+            },
         })?;
         archive_entry_repository.replace_for_archive(&archive_id, &entry_records)?;
 
@@ -365,6 +371,62 @@ mod tests {
         assert_eq!(summary.indexed_entries, 2);
         assert_eq!(snapshot.entries.len(), 2);
         assert_eq!(snapshot.entries[0].entry_path, "001-cover.png");
+        assert_eq!(
+            snapshot.archive.expect("archive should exist").status,
+            "indexed"
+        );
+    }
+
+    #[test]
+    fn marks_empty_archive_as_empty_status() {
+        let repos = MemoryRepos::default();
+        let temp = tempdir().expect("tempdir should be created");
+        let zip_path = temp.path().join("empty.cbz");
+        write_test_zip(&zip_path, &[]);
+
+        let library = LibraryRecord {
+            id: LibraryId("library_empty_archive".to_string()),
+            root_path: temp.path().display().to_string(),
+            library_type: "filesystem".to_string(),
+            scan_mode: "full".to_string(),
+            created_at: "1".to_string(),
+            updated_at: "1".to_string(),
+        };
+        LibraryRepository::upsert(&repos, &library).expect("library should be stored");
+        SourceRepository::upsert(
+            &repos,
+            &SourceRecord {
+                id: SourceId("source_empty_archive".to_string()),
+                library_id: library.id.clone(),
+                normalized_path: zip_path.display().to_string(),
+                file_name: "empty.cbz".to_string(),
+                ext: "cbz".to_string(),
+                kind: SourceKind::Archive,
+                size: 10,
+                mtime_ms: 1,
+                fingerprint: None,
+                exists: true,
+                last_seen_at: "1".to_string(),
+            },
+        )
+        .expect("source should be stored");
+
+        let summary = index_library_archives(&repos, &repos, &repos, &repos, &library.id)
+            .expect("archive index should succeed");
+        let snapshot = archive_snapshot(
+            &repos,
+            &repos,
+            &SourceId("source_empty_archive".to_string()),
+        )
+        .expect("archive snapshot should succeed");
+
+        assert_eq!(summary.indexed_archives, 1);
+        assert_eq!(summary.indexed_entries, 0);
+        assert_eq!(snapshot.entries.len(), 0);
+        assert_eq!(
+            snapshot.archive.expect("archive should exist").status,
+            "empty"
+        );
     }
 
     fn write_test_zip(path: &Path, files: &[(&str, &[u8])]) {

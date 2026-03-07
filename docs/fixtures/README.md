@@ -36,6 +36,8 @@ Git 管理约束：
 - 基线目录：保存已经填充真实文件后的 `small` / `medium` / `local` 样本
 - 临时运行目录：每次测试前从基线复制到 `data/scan-validation/runs/`，测试后再删除
 
+`archive-fixture/` 当前也已开始承载 `B4` 的 golden 文件，用于固定 zip 页序、空归档等归档语义验证。
+
 一次性真实文件填充：
 
 - `npm run fixtures:fill-real`

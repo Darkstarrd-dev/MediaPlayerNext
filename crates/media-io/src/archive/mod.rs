@@ -62,11 +62,28 @@ pub fn build_zip_index(path: &Path) -> Result<ZipArchiveIndex> {
 #[cfg(test)]
 mod tests {
     use super::{build_zip_index, list_zip_entries, read_zip_entry_bytes};
+    use serde::Deserialize;
     use std::fs::File;
     use std::io::Write;
+    use std::path::Path;
     use tempfile::tempdir;
     use zip::write::SimpleFileOptions;
     use zip::{CompressionMethod, ZipWriter};
+
+    #[derive(Debug, Deserialize, PartialEq, Eq)]
+    #[serde(rename_all = "camelCase")]
+    struct PageExpectation {
+        entry_path: String,
+        page_index: usize,
+    }
+
+    #[derive(Debug, Deserialize, PartialEq, Eq)]
+    #[serde(rename_all = "camelCase")]
+    struct EmptyExpectation {
+        page_count: usize,
+        cover_entry_path: Option<String>,
+        pages: Vec<PageExpectation>,
+    }
 
     #[test]
     fn builds_zip_index_with_natural_page_order() {
@@ -86,8 +103,47 @@ mod tests {
 
         assert_eq!(index.page_count, 3);
         assert_eq!(index.cover_entry_path.as_deref(), Some("001-cover.png"));
-        assert_eq!(index.pages[1].entry_path, "002-page.png");
-        assert_eq!(index.pages[2].entry_path, "010-page.png");
+        assert_eq!(
+            reduced_pages(&index),
+            load_page_expectations("zip-page-order.expected.json")
+        );
+    }
+
+    #[test]
+    fn builds_zip_index_for_edge_named_pages() {
+        let temp = tempdir().expect("tempdir should be created");
+        let zip_path = temp.path().join("edge.cbz");
+        write_test_zip(
+            &zip_path,
+            &[
+                ("chapter/10.webp", b"10"),
+                ("chapter/2.webp", b"2"),
+                ("chapter/1.webp", b"1"),
+                ("chapter/02-alt.webp", b"2-alt"),
+                ("chapter/readme.txt", b"ignore"),
+            ],
+        );
+
+        let index = build_zip_index(&zip_path).expect("zip index should build");
+
+        assert_eq!(
+            reduced_pages(&index),
+            load_page_expectations("zip-edge-order.expected.json")
+        );
+    }
+
+    #[test]
+    fn builds_empty_zip_index() {
+        let temp = tempdir().expect("tempdir should be created");
+        let zip_path = temp.path().join("empty.cbz");
+        write_test_zip(&zip_path, &[]);
+
+        let index = build_zip_index(&zip_path).expect("empty zip should build");
+        let expected = load_empty_expectation("zip-empty.expected.json");
+
+        assert_eq!(index.page_count, expected.page_count);
+        assert_eq!(index.cover_entry_path, expected.cover_entry_path);
+        assert_eq!(reduced_pages(&index), expected.pages);
     }
 
     #[test]
@@ -136,5 +192,40 @@ mod tests {
         }
 
         writer.finish().expect("zip writer should finish");
+    }
+
+    fn reduced_pages(index: &super::ZipArchiveIndex) -> Vec<PageExpectation> {
+        index
+            .pages
+            .iter()
+            .map(|item| PageExpectation {
+                entry_path: item.entry_path.clone(),
+                page_index: item.page_index,
+            })
+            .collect()
+    }
+
+    fn load_page_expectations(file_name: &str) -> Vec<PageExpectation> {
+        serde_json::from_str(
+            &std::fs::read_to_string(archive_fixture_root().join(file_name))
+                .expect("page expectation should be readable"),
+        )
+        .expect("page expectation should deserialize")
+    }
+
+    fn load_empty_expectation(file_name: &str) -> EmptyExpectation {
+        serde_json::from_str(
+            &std::fs::read_to_string(archive_fixture_root().join(file_name))
+                .expect("empty expectation should be readable"),
+        )
+        .expect("empty expectation should deserialize")
+    }
+
+    fn archive_fixture_root() -> std::path::PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .and_then(|path| path.parent())
+            .expect("workspace root should exist")
+            .join("docs/fixtures/archive-fixture")
     }
 }

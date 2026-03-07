@@ -787,7 +787,7 @@ cargo run --bin <scan-cli> -- scan diff <library-id>
 6. 建立 `archive_entries` 落库
    - 完成情况：已完成首版
 7. 建立归档页序 snapshot tests
-   - 完成情况：已完成首批 zip fixture tests，但尚未补仓库内独立 snapshot fixture 目录
+   - 完成情况：已完成首批 zip fixture tests，并已补仓库内 `archive-fixture` golden 文件
 
 ### 本阶段不做
 
@@ -840,6 +840,7 @@ cargo run --bin <scan-cli> -- scan diff <library-id>
 - `crates/media-io/src/archive/entry_stream.rs`
 - `crates/app-core/src/archive.rs`
 - `backend_harness` 的 `archive index` / `archive show` 开发期命令
+- `docs/fixtures/archive-fixture/` 下的页序 / 空归档 golden 文件
 
 ## 10.6 验收标准
 
