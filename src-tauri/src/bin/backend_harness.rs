@@ -1,4 +1,4 @@
-use app_core::archive::{archive_snapshot, index_library_archives};
+use app_core::archive::{archive_snapshot, index_library_archives, read_archive_entry_by_source};
 use app_core::cli::{help_payload, parse_command, run_command, BackendCommand};
 use app_core::scan::{register_library, resume_scan, run_scan, scan_snapshot, scan_stats};
 use media_db::{DatabaseLocation, MediaDatabase};
@@ -78,6 +78,18 @@ fn try_main() -> anyhow::Result<()> {
             let snapshot =
                 archive_snapshot(&repositories, &repositories, &SourceId(source_id.clone()))?;
             Some(serde_json::to_value(snapshot)?)
+        }
+        BackendCommand::ArchiveReadEntry {
+            source_id,
+            entry_path,
+        } => {
+            let summary = read_archive_entry_by_source(
+                &repositories,
+                &repositories,
+                &SourceId(source_id.clone()),
+                entry_path,
+            )?;
+            Some(serde_json::to_value(summary)?)
         }
     };
 

@@ -109,6 +109,9 @@ fn upserts_and_queries_core_records() {
         last_seen_at: "2026-03-07T00:01:00Z".to_string(),
     };
     SourceRepository::upsert(&repositories, &source).expect("source upsert should succeed");
+    let fetched_source = SourceRepository::get(&repositories, &source.id)
+        .expect("source fetch should succeed")
+        .expect("source should exist after insert");
 
     let asset = MediaAssetRecord {
         id: AssetId("asset_primary".to_string()),
@@ -141,6 +144,7 @@ fn upserts_and_queries_core_records() {
     assert!(
         SourceRepository::exists(&repositories, &source.id).expect("source exists should succeed")
     );
+    assert_eq!(fetched_source.file_name, source.file_name);
     assert!(AssetRepository::exists(&repositories, &asset.id).expect("asset exists should succeed"));
     assert!(TaskRepository::exists(&repositories, &task.id).expect("task exists should succeed"));
 }

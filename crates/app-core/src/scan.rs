@@ -364,6 +364,10 @@ mod tests {
             unreachable!()
         }
 
+        fn get(&self, source_id: &SourceId) -> anyhow::Result<Option<SourceRecord>> {
+            Ok(self.sources.get(&source_id.0).cloned())
+        }
+
         fn count(&self) -> anyhow::Result<u64> {
             Ok(self.sources.len() as u64)
         }
@@ -461,6 +465,16 @@ mod tests {
                 .sources
                 .insert(source.id.0.clone(), source.clone());
             Ok(())
+        }
+
+        fn get(&self, source_id: &SourceId) -> anyhow::Result<Option<SourceRecord>> {
+            Ok(self
+                .inner
+                .lock()
+                .expect("lock")
+                .sources
+                .get(&source_id.0)
+                .cloned())
         }
 
         fn count(&self) -> anyhow::Result<u64> {

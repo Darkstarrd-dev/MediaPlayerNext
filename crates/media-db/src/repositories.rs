@@ -141,6 +141,38 @@ impl SourceRepository for SqliteRepositories<'_> {
         Ok(())
     }
 
+    fn get(&self, source_id: &SourceId) -> Result<Option<SourceRecord>> {
+        let record = self
+            .connection
+            .query_row(
+                "
+                select id, library_id, normalized_path, file_name, ext, kind, size, mtime_ms,
+                       fingerprint, exists_flag, last_seen_at
+                from sources
+                where id = :id
+                ",
+                named_params! { ":id": source_id.0 },
+                |row| {
+                    Ok(SourceRecord {
+                        id: SourceId(row.get::<_, String>(0)?),
+                        library_id: LibraryId(row.get::<_, String>(1)?),
+                        normalized_path: row.get(2)?,
+                        file_name: row.get(3)?,
+                        ext: row.get(4)?,
+                        kind: source_kind_from_db(&row.get::<_, String>(5)?),
+                        size: row.get(6)?,
+                        mtime_ms: row.get(7)?,
+                        fingerprint: row.get(8)?,
+                        exists: row.get::<_, bool>(9)?,
+                        last_seen_at: row.get(10)?,
+                    })
+                },
+            )
+            .optional()?;
+
+        Ok(record)
+    }
+
     fn count(&self) -> Result<u64> {
         let count = self
             .connection

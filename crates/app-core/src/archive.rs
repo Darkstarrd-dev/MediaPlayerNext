@@ -30,6 +30,15 @@ pub struct ArchiveSnapshot {
     pub entries: Vec<ArchiveEntryRecord>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArchiveEntryReadSummary {
+    pub source_id: String,
+    pub entry_path: String,
+    pub byte_count: usize,
+    pub preview_hex: String,
+}
+
 pub fn index_library_archives<L, S, A, E>(
     library_repository: &L,
     source_repository: &S,
@@ -138,6 +147,37 @@ pub fn read_archive_entry(source_path: &Path, entry_path: &str) -> Result<Vec<u8
     read_zip_entry_bytes(source_path, entry_path)
 }
 
+pub fn read_archive_entry_by_source<L, S>(
+    library_repository: &L,
+    source_repository: &S,
+    source_id: &SourceId,
+    entry_path: &str,
+) -> Result<ArchiveEntryReadSummary>
+where
+    L: LibraryRepository,
+    S: SourceRepository,
+{
+    let source = source_repository
+        .get(source_id)?
+        .ok_or_else(|| anyhow!("archive source not found: {}", source_id.0))?;
+    let library = library_repository
+        .get(&source.library_id)?
+        .ok_or_else(|| anyhow!("library not found: {}", source.library_id.0))?;
+    let archive_path = archive_path_from_source(&library.root_path, &source.normalized_path);
+    let bytes = read_archive_entry(&archive_path, entry_path)?;
+
+    Ok(ArchiveEntryReadSummary {
+        source_id: source_id.0.clone(),
+        entry_path: entry_path.to_string(),
+        byte_count: bytes.len(),
+        preview_hex: bytes
+            .iter()
+            .take(16)
+            .map(|value| format!("{value:02x}"))
+            .collect::<String>(),
+    })
+}
+
 fn archive_path_from_source(library_root: &str, normalized_source_path: &str) -> PathBuf {
     let candidate = PathBuf::from(normalized_source_path);
     if candidate.is_absolute() {
@@ -169,7 +209,7 @@ fn stable_hash(value: &str) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{archive_snapshot, index_library_archives};
+    use super::{archive_snapshot, index_library_archives, read_archive_entry_by_source};
     use crate::ports::{
         ArchiveEntryRepository, ArchiveRepository, LibraryRepository, SourceRepository,
     };
@@ -236,6 +276,15 @@ mod tests {
                 .expect("lock")
                 .insert(source.id.0.clone(), source.clone());
             Ok(())
+        }
+
+        fn get(&self, source_id: &SourceId) -> anyhow::Result<Option<SourceRecord>> {
+            Ok(self
+                .sources
+                .lock()
+                .expect("lock")
+                .get(&source_id.0)
+                .cloned())
         }
 
         fn count(&self) -> anyhow::Result<u64> {
@@ -427,6 +476,52 @@ mod tests {
             snapshot.archive.expect("archive should exist").status,
             "empty"
         );
+    }
+
+    #[test]
+    fn reads_archive_entry_bytes_by_source() {
+        let repos = MemoryRepos::default();
+        let temp = tempdir().expect("tempdir should be created");
+        let zip_path = temp.path().join("chapter.cbz");
+        write_test_zip(&zip_path, &[("001-cover.png", b"cover-binary")]);
+
+        let library = LibraryRecord {
+            id: LibraryId("library_read_entry".to_string()),
+            root_path: temp.path().display().to_string(),
+            library_type: "filesystem".to_string(),
+            scan_mode: "full".to_string(),
+            created_at: "1".to_string(),
+            updated_at: "1".to_string(),
+        };
+        LibraryRepository::upsert(&repos, &library).expect("library should be stored");
+        SourceRepository::upsert(
+            &repos,
+            &SourceRecord {
+                id: SourceId("source_read_entry".to_string()),
+                library_id: library.id.clone(),
+                normalized_path: zip_path.display().to_string(),
+                file_name: "chapter.cbz".to_string(),
+                ext: "cbz".to_string(),
+                kind: SourceKind::Archive,
+                size: 10,
+                mtime_ms: 1,
+                fingerprint: None,
+                exists: true,
+                last_seen_at: "1".to_string(),
+            },
+        )
+        .expect("source should be stored");
+
+        let summary = read_archive_entry_by_source(
+            &repos,
+            &repos,
+            &SourceId("source_read_entry".to_string()),
+            "001-cover.png",
+        )
+        .expect("archive entry should be read");
+
+        assert_eq!(summary.byte_count, b"cover-binary".len());
+        assert!(!summary.preview_hex.is_empty());
     }
 
     fn write_test_zip(path: &Path, files: &[(&str, &[u8])]) {

@@ -34,7 +34,7 @@
 
 ## 2. 已完成内容与当前进度
 
-截至目前，`B1` 与 `B2` 已完成，`B3` 已进入收尾阶段，`B4` 已启动首批 zip 与归档索引能力。
+截至目前，`B1` 与 `B2` 已完成，`B3` 已进入收尾阶段，`B4` 已完成首版收口。
 
 ### 2.1 已完成内容
 
@@ -66,7 +66,7 @@
 - `B1`：完成
 - `B2`：完成
 - `B3`：进行中（已完成主链路，仍需补更完整的失败恢复和结果固化）
-- `B4`：进行中（zip 目录读取、页序排序、entry 读取、archive index 落库首版已落地）
+- `B4`：已完成首版（zip 目录读取、页序排序、entry 读取、archive index 落库与验证已落地）
 
 ### 2.3 当前最自然的下一步
 
@@ -432,7 +432,7 @@ cargo bench -p media-db
 
 ## 9. B3：扫描 / 入库最小闭环
 
-当前状态：进行中
+当前状态：已完成首版
 
 ## 9.1 阶段目标
 
@@ -839,8 +839,9 @@ cargo run --bin <scan-cli> -- scan diff <library-id>
 - `crates/media-io/src/archive/page_sort.rs`
 - `crates/media-io/src/archive/entry_stream.rs`
 - `crates/app-core/src/archive.rs`
-- `backend_harness` 的 `archive index` / `archive show` 开发期命令
+- `backend_harness` 的 `archive index` / `archive show` / `archive read-entry` 开发期命令
 - `docs/fixtures/archive-fixture/` 下的页序 / 空归档 golden 文件
+- `docs/benchmarks/archive-validation-20260307.md` 的首轮真实样本归档验证记录
 
 ## 10.6 验收标准
 
@@ -862,6 +863,9 @@ cargo run --bin <scan-cli> -- scan diff <library-id>
 ```bash
 cargo test -p media-io archive
 cargo test --workspace
+cargo run --bin backend_harness -- archive index <library-id>
+cargo run --bin backend_harness -- archive show <source-id>
+cargo run --bin backend_harness -- archive read-entry <source-id> <entry-path>
 ```
 
 必要时补充：

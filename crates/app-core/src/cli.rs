@@ -8,13 +8,31 @@ use std::path::PathBuf;
 pub enum BackendCommand {
     Help,
     Diagnostics,
-    ScanAddLibrary { path: PathBuf },
-    ScanRun { library_id: String },
-    ScanResume { library_id: String },
-    ScanStats { library_id: String },
-    ScanDiff { library_id: String },
-    ArchiveIndex { library_id: String },
-    ArchiveShow { source_id: String },
+    ScanAddLibrary {
+        path: PathBuf,
+    },
+    ScanRun {
+        library_id: String,
+    },
+    ScanResume {
+        library_id: String,
+    },
+    ScanStats {
+        library_id: String,
+    },
+    ScanDiff {
+        library_id: String,
+    },
+    ArchiveIndex {
+        library_id: String,
+    },
+    ArchiveShow {
+        source_id: String,
+    },
+    ArchiveReadEntry {
+        source_id: String,
+        entry_path: String,
+    },
 }
 
 #[derive(Debug, Serialize)]
@@ -56,6 +74,12 @@ pub fn parse_command(args: &[String]) -> BackendCommand {
             (Some("show"), Some(source_id)) => BackendCommand::ArchiveShow {
                 source_id: source_id.clone(),
             },
+            (Some("read-entry"), Some(source_id)) if args.get(3).is_some() => {
+                BackendCommand::ArchiveReadEntry {
+                    source_id: source_id.clone(),
+                    entry_path: args[3].clone(),
+                }
+            }
             _ => BackendCommand::Help,
         },
         _ => BackendCommand::Help,
@@ -78,6 +102,7 @@ pub fn run_command(
         BackendCommand::ScanDiff { .. } => "scan.diff",
         BackendCommand::ArchiveIndex { .. } => "archive.index",
         BackendCommand::ArchiveShow { .. } => "archive.show",
+        BackendCommand::ArchiveReadEntry { .. } => "archive.read-entry",
     };
 
     Ok(CliExecutionOutput {
@@ -99,7 +124,8 @@ pub fn help_payload() -> Value {
             "cargo run --bin backend_harness -- scan stats <library-id>",
             "cargo run --bin backend_harness -- scan diff <library-id>",
             "cargo run --bin backend_harness -- archive index <library-id>",
-            "cargo run --bin backend_harness -- archive show <source-id>"
+            "cargo run --bin backend_harness -- archive show <source-id>",
+            "cargo run --bin backend_harness -- archive read-entry <source-id> <entry-path>"
         ]
     })
 }
