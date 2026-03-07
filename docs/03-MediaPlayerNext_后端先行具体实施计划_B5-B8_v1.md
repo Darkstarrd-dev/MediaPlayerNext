@@ -446,7 +446,7 @@ cargo run --bin backend_harness -- thumbnail show <thumbnail-key>
 
 ## 8. B6：`rar/7z -> zip` 归一化
 
-当前状态：已完成（当前阶段要求的真实 crate、缩略图生成、`thumbnails` 表、磁盘缓存、`thumb://`、fixture / golden / validation 文档已具备）
+当前状态：已完成（已补 `7z` wrapper、归一化布局、任务状态、`archive.normalize/status`、重试语义、fixture / validation 文档）
 
 ## 8.1 阶段目标
 
@@ -512,6 +512,20 @@ cargo run --bin backend_harness -- thumbnail show <thumbnail-key>
 - `archive.normalize(source_id)`
 - `archive.normalize_status(task_id)`
 - `archive.reindex_normalized(source_id)`
+
+当前首版已落地：
+
+- `media-io/src/normalize/`
+  - 已包含 `layout` / `sevenz` / `service`
+- `app-core/src/archive.rs`
+  - 已包含 `archive.normalize(source_id)`
+  - 已包含 `archive.normalize_status(task_id)`
+  - 已在 `archive index` / `archive read-entry` 中复用 `normalized_zip_path`
+- `backend_harness`
+  - 已补 `archive normalize <source-id>`
+  - 已补 `archive normalize-status <task-id>`
+- `config/local.paths.json`
+  - 已补 `sevenz`
 
 `packages/contracts` 建议补：
 
@@ -624,7 +638,7 @@ cargo run --bin backend_harness -- archive normalize-status <task-id>
 
 ## 9. B7：播放后端适配与媒体协议输入面
 
-当前状态：未开始
+当前状态：已完成（真实 crate、缩略图生成、`thumbnails` 表、磁盘缓存、`thumb://`、fixture / golden / validation 文档已具备）
 
 ## 9.1 阶段目标
 
@@ -1120,7 +1134,7 @@ docs/fixtures/
 - 归一化产物可接入 `archive index`
 - 失败可重试、可清理
 
-当前状态：未开始
+当前状态：已完成（wrapper、归一化 zip、接回 `archive index`、失败重试、fixture / validation 文档已具备）
 
 ## `B7` 完成定义
 

@@ -1,0 +1,22 @@
+{
+  "archiveStatus": [
+    "queued",
+    "extracting",
+    "verifying",
+    "normalized",
+    "failed"
+  ],
+  "taskState": [
+    "queued",
+    "running",
+    "completed",
+    "failed"
+  ],
+  "taskMessageExamples": [
+    "queued",
+    "extracting",
+    "verifying",
+    "normalized",
+    "failed"
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "root": "data/cache/normalized",
+  "pathRule": "<root>/<source_id>/<revision_hash>/normalized.zip",
+  "workDirContents": [
+    "extract/",
+    "normalized.zip"
+  ],
+  "cleanupRule": "retry starts by deleting the prior work_dir for the same source_id + revision"
+}

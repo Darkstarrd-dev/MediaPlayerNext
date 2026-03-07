@@ -1,4 +1,5 @@
 pub mod archive;
+pub mod normalize;
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -65,6 +66,10 @@ pub fn is_primary_archive_extension(extension: &str) -> bool {
     matches!(extension.to_ascii_lowercase().as_str(), "zip" | "cbz")
 }
 
+pub fn is_normalizable_archive_extension(extension: &str) -> bool {
+    matches!(extension.to_ascii_lowercase().as_str(), "rar" | "7z")
+}
+
 fn visit_directory(directory: &Path, files: &mut Vec<DiscoveredFile>) -> Result<()> {
     for entry in fs::read_dir(directory)? {
         let entry = entry?;
@@ -119,8 +124,8 @@ fn visit_directory(directory: &Path, files: &mut Vec<DiscoveredFile>) -> Result<
 #[cfg(test)]
 mod tests {
     use super::{
-        candidate_kind_to_source_kind, classify_extension, discover_media_files, normalize_path,
-        CandidateMediaKind,
+        candidate_kind_to_source_kind, classify_extension, discover_media_files,
+        is_normalizable_archive_extension, normalize_path, CandidateMediaKind,
     };
     use shared_model::SourceKind;
     use std::fs;
@@ -131,6 +136,8 @@ mod tests {
     fn classifies_archive_extensions() {
         assert_eq!(classify_extension("zip"), CandidateMediaKind::Archive);
         assert_eq!(classify_extension("cbz"), CandidateMediaKind::Archive);
+        assert!(is_normalizable_archive_extension("rar"));
+        assert!(is_normalizable_archive_extension("7z"));
     }
 
     #[test]

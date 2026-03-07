@@ -1,11 +1,15 @@
-use app_core::archive::{archive_snapshot, index_library_archives, read_archive_entry_by_source};
+use app_core::archive::{
+    archive_snapshot, index_library_archives, normalize_archive_source, normalize_archive_status,
+    read_archive_entry_by_source,
+};
 use app_core::asset::{ensure_media_assets_for_library, resolve_asset};
 use app_core::cli::{help_payload, parse_command, run_command, BackendCommand};
 use app_core::scan::{register_library, resume_scan, run_scan, scan_snapshot, scan_stats};
 use app_core::thumbnail::{ensure_thumbnail_for_asset, get_thumbnail, parse_thumbnail_profile};
 use media_db::{DatabaseLocation, MediaDatabase};
+use serde::Deserialize;
 use serde_json::json;
-use shared_model::{AssetId, LibraryId, SourceId, ThumbnailKey};
+use shared_model::{AssetId, LibraryId, SourceId, TaskId, ThumbnailKey};
 use std::env;
 use std::path::PathBuf;
 
@@ -22,6 +26,11 @@ fn try_main() -> anyhow::Result<()> {
     let config_path = workspace_root().join("config").join("local.paths.json");
     let db_path = workspace_root().join("data").join("mediaplayernext-dev.db");
     let thumbnail_cache_root = workspace_root().join("data").join("cache").join("thumbs");
+    let normalize_root = workspace_root()
+        .join("data")
+        .join("cache")
+        .join("normalized");
+    let runtime_paths = load_runtime_paths(&config_path)?;
 
     if let Some(parent) = db_path.parent() {
         std::fs::create_dir_all(parent)?;
@@ -89,9 +98,27 @@ fn try_main() -> anyhow::Result<()> {
             let summary = read_archive_entry_by_source(
                 &repositories,
                 &repositories,
+                &repositories,
                 &SourceId(source_id.clone()),
                 entry_path,
             )?;
+            Some(serde_json::to_value(summary)?)
+        }
+        BackendCommand::ArchiveNormalize { source_id } => {
+            let summary = normalize_archive_source(
+                &repositories,
+                &repositories,
+                &repositories,
+                &repositories,
+                &repositories,
+                &runtime_paths.sevenz_path,
+                &normalize_root,
+                &SourceId(source_id.clone()),
+            )?;
+            Some(serde_json::to_value(summary)?)
+        }
+        BackendCommand::ArchiveNormalizeStatus { task_id } => {
+            let summary = normalize_archive_status(&repositories, &TaskId(task_id.clone()))?;
             Some(serde_json::to_value(summary)?)
         }
         BackendCommand::AssetEnsure { library_id } => {
@@ -140,6 +167,33 @@ fn try_main() -> anyhow::Result<()> {
     println!("{}", serde_json::to_string_pretty(&output)?);
 
     Ok(())
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RuntimePathsConfig {
+    sevenz: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+struct RuntimePaths {
+    sevenz_path: PathBuf,
+}
+
+fn load_runtime_paths(config_path: &PathBuf) -> anyhow::Result<RuntimePaths> {
+    let config = if config_path.exists() {
+        serde_json::from_slice::<RuntimePathsConfig>(&std::fs::read(config_path)?)?
+    } else {
+        RuntimePathsConfig::default()
+    };
+
+    Ok(RuntimePaths {
+        sevenz_path: PathBuf::from(
+            config
+                .sevenz
+                .unwrap_or_else(|| "C:/Program Files/7-Zip/7z.exe".to_string()),
+        ),
+    })
 }
 
 fn workspace_root() -> PathBuf {

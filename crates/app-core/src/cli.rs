@@ -33,6 +33,12 @@ pub enum BackendCommand {
         source_id: String,
         entry_path: String,
     },
+    ArchiveNormalize {
+        source_id: String,
+    },
+    ArchiveNormalizeStatus {
+        task_id: String,
+    },
     AssetEnsure {
         library_id: String,
     },
@@ -87,6 +93,12 @@ pub fn parse_command(args: &[String]) -> BackendCommand {
             (Some("show"), Some(source_id)) => BackendCommand::ArchiveShow {
                 source_id: source_id.clone(),
             },
+            (Some("normalize"), Some(source_id)) => BackendCommand::ArchiveNormalize {
+                source_id: source_id.clone(),
+            },
+            (Some("normalize-status"), Some(task_id)) => BackendCommand::ArchiveNormalizeStatus {
+                task_id: task_id.clone(),
+            },
             (Some("read-entry"), Some(source_id)) if args.get(3).is_some() => {
                 BackendCommand::ArchiveReadEntry {
                     source_id: source_id.clone(),
@@ -134,6 +146,8 @@ pub fn run_command(
         BackendCommand::ScanDiff { .. } => "scan.diff",
         BackendCommand::ArchiveIndex { .. } => "archive.index",
         BackendCommand::ArchiveShow { .. } => "archive.show",
+        BackendCommand::ArchiveNormalize { .. } => "archive.normalize",
+        BackendCommand::ArchiveNormalizeStatus { .. } => "archive.normalize-status",
         BackendCommand::ArchiveReadEntry { .. } => "archive.read-entry",
         BackendCommand::AssetEnsure { .. } => "asset.ensure",
         BackendCommand::AssetResolve { .. } => "asset.resolve",
@@ -161,6 +175,8 @@ pub fn help_payload() -> Value {
             "cargo run --bin backend_harness -- scan diff <library-id>",
             "cargo run --bin backend_harness -- archive index <library-id>",
             "cargo run --bin backend_harness -- archive show <source-id>",
+            "cargo run --bin backend_harness -- archive normalize <source-id>",
+            "cargo run --bin backend_harness -- archive normalize-status <task-id>",
             "cargo run --bin backend_harness -- archive read-entry <source-id> <entry-path>",
             "cargo run --bin backend_harness -- asset ensure <library-id>",
             "cargo run --bin backend_harness -- asset resolve <asset-id>",
