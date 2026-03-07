@@ -3,6 +3,7 @@ name = "mediaplayernext"
 version = "0.1.0"
 description = "MediaPlayerNext desktop host bootstrap"
 edition = "2021"
+license = "MIT"
 default-run = "mediaplayernext"
 
 [lib]
@@ -31,8 +32,6 @@ shared-model = { path = "../crates/shared-model" }
 tauri.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
-tracing.workspace = true
-tracing-subscriber.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

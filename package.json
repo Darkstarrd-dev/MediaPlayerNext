@@ -21,6 +21,8 @@
     "check:subtitle-sidecar": "npm run check --workspace @mediaplayernext/subtitle-sidecar",
     "check:sharp": "npm run check:subtitle-sidecar",
     "check:runtimes": "npm run check:subtitle-sidecar && powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\check-runtimes.ps1\"",
+    "check:quality": "powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\quality\\run-rust-gates.ps1\"",
+    "check:release": "powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\quality\\run-release-verify.ps1\"",
     "check": "npm run check:runtimes"
   },
   "devDependencies": {

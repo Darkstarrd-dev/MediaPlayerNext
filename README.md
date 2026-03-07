@@ -89,3 +89,44 @@ Useful commands:
 - `npm run build:web`
 - `npm run tauri:dev`
 - `npm run check`
+- `npm run check:quality`
+- `npm run check:release`
+
+### Quality Gates
+
+`P6-1` adds a unified quality gate entry under `scripts/quality/`.
+
+- `npm run check:quality`
+  - runs Rust quality gates and writes logs/artifacts to `data/quality-gates/<timestamp>/rust-gates`
+- `npm run check:release`
+  - builds subtitle sidecar + Tauri bundle and verifies current release artifacts
+
+Current `check:quality` gate includes:
+
+- `cargo fmt --all --check`
+- `cargo clippy --workspace --all-targets --all-features -- -D warnings`
+- `cargo check --workspace --all-targets --locked`
+- `cargo nextest run --workspace --all-features` x3
+- `cargo llvm-cov nextest --workspace --all-features --lcov`
+- `cargo deny check advisories licenses bans sources`
+- `cargo audit`
+- `cargo +nightly udeps --workspace --all-targets`
+- `cargo tree -d --workspace`
+- workspace forbidden-edges check
+- `cargo tauri build` release verification
+
+Before the full quality gate can pass on a new machine, install the required Cargo subcommands:
+
+- `cargo-nextest`
+- `cargo-llvm-cov`
+- `cargo-deny`
+- `cargo-audit`
+- `cargo-udeps`
+
+Current validated tool versions for the Rust `1.88.0` project baseline:
+
+- `cargo-nextest 0.9.114`
+- `cargo-llvm-cov 0.8.4`
+- `cargo-deny 0.19.0`
+- `cargo-audit 0.22.1`
+- `cargo-udeps 0.1.56`

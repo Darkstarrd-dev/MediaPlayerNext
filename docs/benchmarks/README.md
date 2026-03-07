@@ -14,11 +14,13 @@
 - `sidecar-validation-20260307.md`
 - `backend-regression-20260307.md`
 - `p6-performance-baseline-20260307.md`
+- `p6-quality-gates-20260307.md`
 
 说明：
 
 - 当前多数记录仍以 validation / regression 为主，优先固定链路闭环、协议边界与回归口径
 - `P6-0` 已补首轮真实性能基线，后续可继续扩成更大样本与多机对照
+- `P6-1` 已补统一质量门禁入口，后续可继续围绕 duplicate deps 做 P2 治理收敛
 
 后续最低基线项：
 
