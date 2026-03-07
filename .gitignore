@@ -10,3 +10,7 @@ src-tauri/target/
 data/
 AGENTS.md
 config/local.paths.json
+docs/fixtures/generated-scan-placeholders.summary.json
+docs/fixtures/real-fixture-fill.summary.json
+docs/fixtures/small-fixture/generated-placeholder/
+docs/fixtures/medium-fixture/generated-placeholder/

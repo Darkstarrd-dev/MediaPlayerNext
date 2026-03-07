@@ -109,5 +109,81 @@ docs/fixtures/medium-fixture/
 
 - 目录规范：已建立
 - 验证口径：已建立
-- 真实样本：待补
+- 真实样本：待补（当前可先用 `generated-placeholder/` 占位）
 - 扫描报告：待补
+
+## 8. 占位数据生成
+
+为避免 `medium-fixture` 长期停留在纯文档状态，当前已约定先通过脚本生成一套可扫描的占位数据集：
+
+```bash
+npm run fixtures:scan-placeholders
+```
+
+如需明确重建现有目录，才使用：
+
+```bash
+npm run fixtures:scan-placeholders:force
+```
+
+若 `docs/fixtures/realdata/` 与 `docs/fixtures/realdatasmall/` 已经就位，则应改用：
+
+```bash
+npm run fixtures:fill-real
+```
+
+该命令会把：
+
+- `docs/fixtures/realdatasmall/` 填充到 `small-fixture` 基线目录
+- `docs/fixtures/realdata/` 填充到 `medium-fixture` 基线目录
+- `docs/fixtures/realdata/` 同步填充到 `data/scan-validation/local-real-dir-mock/`
+
+生成结果位于：
+
+- `docs/fixtures/medium-fixture/generated-placeholder/scan-root/`
+
+若目录下存在：
+
+- `docs/fixtures/medium-fixture/generated-placeholder/realdata/`
+
+则脚本会优先从 `realdata/` 中按类型随机抽样，复制到 `scan-root/` 对应位置；不足的类型再回退到脚本内置最小样本。
+
+生成完成后：
+
+- `realdata/` 仅作为一次性样本池使用，会被自动清理
+- 最终保留用于扫描验证的目录只有 `scan-root/`
+- 后续再次执行脚本时，如果没有新的 `realdata/` 样本池，现有 `scan-root/` 会被保留，不会被脚本自动重置
+
+使用约束：
+
+- 该目录用于当前阶段的结构验证、扫描命名覆盖和路径覆盖
+- 实际扫描时应以 `scan-root/` 作为库根目录，不应直接把 `realdata/` 一并纳入扫描根
+- 该目录不纳入 Git，按本地生成产物处理
+- `realdata/` 中当前优先识别并替换的类型是：图片、音频、视频、`zip/cbz`、其他文件
+- 不在当前扫描主链路内的扩展名会被当作“其他文件”来源，不会改变当前 B3 的分类边界
+- 后续可用同类真实文件逐步替换，占位文件本身不是最终验证终点
+- 替换时优先保持类型分布、目录层级、中英日与空格路径覆盖不变
+
+## 9. local-real-dir-mock 同步规则
+
+对 `data/scan-validation/local-real-dir-mock/` 也执行同样的策略：
+
+- 若存在 `data/scan-validation/local-real-dir-mock/realdata/`，脚本会优先按类型抽样生成最终 mock 目录
+- 生成完成后 `realdata/` 会被自动清理，不保留在最终扫描根中
+- 若后续没有新的 `realdata/`，现有 mock 目录会被保留
+
+## 10. runs 临时目录
+
+日常扫描测试不直接修改基线目录，而是统一复制到：
+
+- `data/scan-validation/runs/<run-name>/small/`
+- `data/scan-validation/runs/<run-name>/medium/`
+- `data/scan-validation/runs/<run-name>/local/`
+
+生成命令：
+
+```bash
+npm run fixtures:create-run -- <run-name>
+```
+
+测试结束后，直接删除对应 `run-name` 目录即可。

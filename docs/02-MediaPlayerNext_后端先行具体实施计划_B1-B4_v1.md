@@ -676,6 +676,7 @@ cargo run --bin <scan-cli> -- scan diff <library-id>
 
 - 需要是真实存在的文件，不能只放文件名清单
 - 在 `B3` 阶段允许部分样本使用轻量占位文件，只要文件真实存在且能稳定体现 `size/mtime/path` 变化即可
+- 对 `small-fixture` 的多语言路径覆盖，允许复用同一份底层文件内容，仅通过不同目录和文件名覆盖中/英/日/空格路径；当前阶段重点是验证路径、扫描、分类和重扫语义，不要求每个语言样本都对应不同媒体内容
 - 但至少应保留少量真实可打开的图片、音频、视频、zip/cbz 样本，为后续阶段过渡做准备
 
 ### B. `medium-fixture` 要求
@@ -745,6 +746,8 @@ cargo run --bin <scan-cli> -- scan diff <library-id>
 1. 仓库内必须至少维护：
    - `small-fixture`
    - `medium-fixture` 方案说明（可先文档化，后补样本）
+   - 当前补充要求：允许先通过脚本生成 `generated-placeholder/` 占位数据集，用于提前建立路径分布、类型分布和扫描回归骨架；后续再用同类真实文件逐步替换
+   - 当前进一步补充：当 `docs/fixtures/realdatasmall/` 与 `docs/fixtures/realdata/` 准备完成后，应通过一次性脚本把真实文件填充到三个基线目录；日常测试不直接修改基线目录，而是复制到 `data/scan-validation/runs/` 下的临时目录执行
 2. 在 `B3` 结束前，至少完成：
    - `small-fixture` 全链路验证
    - 一轮 `medium-fixture` 扫描验证
@@ -897,13 +900,13 @@ docs/fixtures/
 - 几十个普通图片
 - 1~2 个 zip
 - 用于单元/集成测试与本地调试
-- 当前完成情况：已完成首版 `scan-smoke` 样本与快照
+- 当前完成情况：已完成首版 `scan-smoke` 样本与快照；并补充脚本生成的 `generated-placeholder/` 占位数据集
 
 ### `medium-fixture`
 
 - 几百到一千级文件
 - 用于扫描回归和 benchmark
-- 当前完成情况：尚未落样本；当前要求先补方案说明与验证记录
+- 当前完成情况：已补方案说明，并补充脚本生成的 `generated-placeholder/` 占位数据集；后续再按验证结果逐步替换为真实文件
 
 ### `archive-fixture`
 
