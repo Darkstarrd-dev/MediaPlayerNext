@@ -57,6 +57,12 @@ async function main(): Promise<void> {
     assert.equal(progress.ok, true);
     assert.equal((progress.payload as { message: string }).message, "waiting");
 
+    const exportSrt = await sendRequest(child, stdin, stderr, readline, "req-export", "export_srt", {
+      sessionId,
+    });
+    assert.equal(exportSrt.ok, false);
+    assert.equal(exportSrt.error?.code, "UNSUPPORTED_FORMAT");
+
     const stopped = await sendRequest(child, stdin, stderr, readline, "req-stop", "stop_session", {
       sessionId,
     });

@@ -473,6 +473,30 @@ mod tests {
         assert!(error.to_string().contains("NOT_FOUND"));
     }
 
+    #[test]
+    fn times_out_when_sidecar_does_not_respond() {
+        let temp = tempdir().expect("tempdir should exist");
+        let script_path = temp.path().join("timeout-sidecar.mjs");
+        let sessions_root = temp.path().join("sessions");
+        fs::write(&script_path, timeout_sidecar_script())
+            .expect("timeout sidecar script should exist");
+
+        let host = StdioSubtitleHost::with_options(
+            SubtitleSidecarRuntime {
+                node_path: PathBuf::from("node"),
+                entry_path: script_path,
+                sessions_root,
+                extra_env: Vec::new(),
+            },
+            Duration::from_millis(150),
+            0,
+        );
+
+        let error = host.ping().expect_err("timed out sidecar should fail");
+
+        assert!(error.to_string().contains("timed out"));
+    }
+
     fn mock_sidecar_script() -> &'static str {
         r#"import { createInterface } from 'node:readline';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
@@ -631,6 +655,20 @@ for await (const line of rl) {
       sessionsRoot: 'sessions',
     },
   })}\n`);
+}
+"#
+    }
+
+    fn timeout_sidecar_script() -> &'static str {
+        r#"import { createInterface } from 'node:readline';
+
+const rl = createInterface({ input: process.stdin, crlfDelay: Infinity });
+for await (const line of rl) {
+  if (!line.trim()) {
+    continue;
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, 5_000));
 }
 "#
     }

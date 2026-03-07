@@ -927,6 +927,12 @@ cargo run --bin backend_harness -- playback status <session-id>
 - host restart tests
 - sidecar crash / heartbeat timeout tests
 
+当前首版已具备：
+
+- contracts subtitle fixture / schema tests
+- `apps/subtitle-sidecar/scripts/check.ts` 对 `ping / health / start_session / get_progress / export_srt / stop_session / shutdown` 的真实协议 smoke
+- `src-tauri/src/subtitle_sidecar.rs` 对 restart、错误透传、timeout 的单元测试
+
 ## 10.8 本阶段验证命令
 
 ```bash
@@ -934,6 +940,9 @@ npm run check --workspace @mediaplayernext/subtitle-sidecar
 cargo test --workspace
 cargo run --bin backend_harness -- subtitle ping
 cargo run --bin backend_harness -- subtitle health
+cargo run --bin backend_harness -- subtitle start-session [asset-id]
+cargo run --bin backend_harness -- subtitle get-progress <session-id>
+cargo run --bin backend_harness -- subtitle stop-session <session-id>
 ```
 
 ## 10.9 本阶段涉及文件与目录

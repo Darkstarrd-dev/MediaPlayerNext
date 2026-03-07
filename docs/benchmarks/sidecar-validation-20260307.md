@@ -50,6 +50,22 @@
   - `get_progress` 会返回最小进度快照
 - 当前未实现真实字幕识别 / 对齐 / 导出
 
+### `export_srt` 占位错误语义
+
+- 输入场景：调用 `export_srt`
+- 结果：
+  - sidecar 返回 `UNSUPPORTED_FORMAT`
+  - 错误信息固定为 `export_srt is not implemented in B8`
+  - 明确声明该能力不属于当前阶段范围
+
+### 宿主 timeout 语义
+
+- 输入场景：sidecar 收到请求但长时间不返回
+- 结果：
+  - host wrapper 会按超时阈值终止子进程
+  - Rust 侧返回包含 `timed out` 的错误信息
+  - timeout 语义已有单元测试固定
+
 ## 当前结果判断
 
 - 结果符合预期：`B8` 首版已经完成协议冻结、sidecar 最小服务、Rust host wrapper 与 restart 语义
