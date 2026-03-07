@@ -214,8 +214,8 @@ mod tests {
         ArchiveEntryRepository, ArchiveRepository, LibraryRepository, SourceRepository,
     };
     use shared_model::{
-        ArchiveEntryRecord, ArchiveId, ArchiveRecord, LibraryId, LibraryRecord, SourceId,
-        SourceKind, SourceRecord,
+        ArchiveEntryId, ArchiveEntryRecord, ArchiveId, ArchiveRecord, LibraryId, LibraryRecord,
+        SourceId, SourceKind, SourceRecord,
     };
     use std::collections::HashMap;
     use std::fs::File;
@@ -332,6 +332,15 @@ mod tests {
             Ok(())
         }
 
+        fn get(&self, archive_id: &ArchiveId) -> anyhow::Result<Option<ArchiveRecord>> {
+            Ok(self
+                .archives
+                .lock()
+                .expect("lock")
+                .get(&archive_id.0)
+                .cloned())
+        }
+
         fn get_by_source(&self, source_id: &SourceId) -> anyhow::Result<Option<ArchiveRecord>> {
             Ok(self
                 .archives
@@ -354,6 +363,20 @@ mod tests {
                 .expect("lock")
                 .insert(archive_id.0.clone(), entries.to_vec());
             Ok(())
+        }
+
+        fn get(
+            &self,
+            archive_entry_id: &ArchiveEntryId,
+        ) -> anyhow::Result<Option<ArchiveEntryRecord>> {
+            Ok(self
+                .archive_entries
+                .lock()
+                .expect("lock")
+                .values()
+                .flat_map(|items| items.iter())
+                .find(|item| item.id == *archive_entry_id)
+                .cloned())
         }
 
         fn list_by_archive(

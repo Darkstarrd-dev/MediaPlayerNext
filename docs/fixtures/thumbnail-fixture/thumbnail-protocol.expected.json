@@ -1,0 +1,21 @@
+{
+  "scheme": "thumb",
+  "successPath": "thumb://cache/<thumbnail_key>",
+  "responses": [
+    {
+      "case": "record_and_file_exist",
+      "status": 200,
+      "contentType": "image/webp"
+    },
+    {
+      "case": "record_missing",
+      "status": 404,
+      "contentType": "text/plain; charset=utf-8"
+    },
+    {
+      "case": "file_missing",
+      "status": 404,
+      "contentType": "text/plain; charset=utf-8"
+    }
+  ]
+}

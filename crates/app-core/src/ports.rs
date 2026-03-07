@@ -1,6 +1,7 @@
 use shared_model::{
-    ArchiveEntryRecord, ArchiveId, ArchiveRecord, AssetId, LibraryId, LibraryRecord,
-    MediaAssetRecord, SourceId, SourceRecord, TaskId, TaskRecord, ThumbnailKey, ThumbnailRecord,
+    ArchiveEntryId, ArchiveEntryRecord, ArchiveId, ArchiveRecord, AssetId, LibraryId,
+    LibraryRecord, MediaAssetRecord, SourceId, SourceRecord, TaskId, TaskRecord, ThumbnailKey,
+    ThumbnailRecord,
 };
 
 pub trait LibraryRepository {
@@ -21,6 +22,7 @@ pub trait SourceRepository {
 pub trait ArchiveRepository {
     fn exists(&self, archive_id: &ArchiveId) -> anyhow::Result<bool>;
     fn upsert(&self, archive: &ArchiveRecord) -> anyhow::Result<()>;
+    fn get(&self, archive_id: &ArchiveId) -> anyhow::Result<Option<ArchiveRecord>>;
     fn get_by_source(&self, source_id: &SourceId) -> anyhow::Result<Option<ArchiveRecord>>;
 }
 
@@ -30,12 +32,14 @@ pub trait ArchiveEntryRepository {
         archive_id: &ArchiveId,
         entries: &[ArchiveEntryRecord],
     ) -> anyhow::Result<()>;
+    fn get(&self, archive_entry_id: &ArchiveEntryId) -> anyhow::Result<Option<ArchiveEntryRecord>>;
     fn list_by_archive(&self, archive_id: &ArchiveId) -> anyhow::Result<Vec<ArchiveEntryRecord>>;
 }
 
 pub trait AssetRepository {
     fn exists(&self, asset_id: &AssetId) -> anyhow::Result<bool>;
     fn upsert(&self, asset: &MediaAssetRecord) -> anyhow::Result<()>;
+    fn get(&self, asset_id: &AssetId) -> anyhow::Result<Option<MediaAssetRecord>>;
 }
 
 pub trait TaskRepository {
@@ -47,4 +51,5 @@ pub trait TaskRepository {
 pub trait ThumbnailRepository {
     fn exists(&self, thumbnail_key: &ThumbnailKey) -> anyhow::Result<bool>;
     fn upsert(&self, thumbnail: &ThumbnailRecord) -> anyhow::Result<()>;
+    fn get(&self, thumbnail_key: &ThumbnailKey) -> anyhow::Result<Option<ThumbnailRecord>>;
 }

@@ -34,7 +34,7 @@
 
 ## 2. 已完成内容与当前进度
 
-截至目前，`B1-B4` 已完成首版收口；`B5-B8` 仍未开始，但其关键前置条件已具备。
+截至目前，`B1-B4` 已完成首版收口；`B5` 已进入 `B5-0` 资产输入面阶段，`B6-B8` 仍未开始，但其关键前置条件已具备。
 
 ### 2.1 已完成内容（承接 `B1-B4`）
 
@@ -47,15 +47,15 @@
 
 ### 2.2 当前进度判断
 
-- `B5`：未开始（`crates/media-thumb` 仍是目录占位，但 `thumbnails` 表、`archive_entries`、真实样本基线已具备）
+- `B5`：进行中（`B5-0` 已接通资产输入面；`B5-1` 已完成 `media-thumb` crate 首版；`B5-2` 已补 `thumbnail.ensure/show`、`thumbnails` 表写回与 `thumb://` 协议；当前只剩 thumbnail golden 细化与真实样本 benchmark）
 - `B6`：未开始（未接入 `7z` 运行时、未实现归一化流程，当前仅完成 zip 主链路）
 - `B7`：未开始（`crates/media-playback` 仍是目录占位，`ffprobe`/`ffmpeg`/`mpv` 只停留在运行时校验层）
 - `B8`：未开始（`apps/subtitle-sidecar` 仍是 placeholder，尚无真实 stdio 协议与宿主管理器）
 
 ### 2.3 当前最自然的下一步
 
-1. 先在 `B5` 中把 `media_assets <- source/archive_entry` 的资产输入面接通
-2. 再把普通图片与 zip 内页缩略图收回 Rust，并建立 `thumb://` 协议输入面
+1. 补 thumbnail golden JSON，固定 profile / cache layout / protocol 期望
+2. 再基于真实样本补一轮 thumbnail benchmark 记录
 
 ---
 
@@ -64,7 +64,7 @@
 截至当前更新时，仓库实际状态如下：
 
 - `crates/shared-model`、`crates/app-core`、`crates/media-db`、`crates/media-io` 已为真实 crate
-- `crates/media-thumb`、`crates/media-playback` 仍只有 `README.md`，尚未加入 workspace
+- `crates/media-thumb` 已是 workspace 内真实 crate；`crates/media-playback` 仍只有 `README.md`
 - `packages/contracts` 当前只落了 `errors` 与 `models` 首版；`commands/channels/events` 仍待补齐
 - `apps/subtitle-sidecar` 当前只有 `sharp` 验证脚本与 placeholder 入口，不具备 sidecar 协议能力
 - `config/local.paths.json` 当前仅记录 `ffmpeg`、`ffprobe`、`mpv` 与旧仓路径；尚无 `7z` 本地 override
@@ -164,7 +164,7 @@ MediaPlayerNext/
 
 ## 7. B5：缩略图主链路 Rust 化
 
-当前状态：未开始
+当前状态：进行中（已完成 `B5-0`、`B5-1` 与 `B5-2` 核心链路，主要缺文档基线）
 
 ## 7.1 阶段目标
 
@@ -203,6 +203,42 @@ MediaPlayerNext/
 
 说明：如果没有这层资产输入，缩略图缓存 key、URL、后续 UI 对接都会失稳。
 
+### 7.3.1 当前已完成的 `B5-0`
+
+- `app-core` 已新增 `asset` 模块，补上：
+  - `asset.ensure <library-id>`
+  - `asset.resolve <asset-id>`
+- 普通图片 `SourceRecord(kind=image)` 现在可稳定写成 `MediaAssetRecord(source_kind=file)`
+- `ArchiveEntryRecord(media_kind=image)` 现在可稳定写成 `MediaAssetRecord(source_kind=archive_entry)`
+- `app-core` 现在可按 `asset_id` 解析出：
+  - 普通文件绝对路径
+  - zip 归档路径 + entry 路径
+- `media-db` 已补齐 `AssetRepository::get`、`ArchiveRepository::get`、`ArchiveEntryRepository::get`
+- 当前还未开始：
+  - `thumb://` 协议
+  - 缩略图 fixture / golden / benchmark 文档
+
+### 7.3.2 当前已完成的 `B5-1/B5-2` 首版接线
+
+- `crates/media-thumb` 已加入 workspace，并可直接处理：
+  - 普通文件图片缩略图
+  - zip 内页图片缩略图
+- `app-core` 已新增 `thumbnail` 模块，补上：
+  - `thumbnail.ensure <asset-id> <profile>`
+  - `thumbnail.show <thumbnail-key>`
+- `media-db` 已补齐 `ThumbnailRepository::get`
+- `thumbnail.ensure` 当前已完成：
+  - `asset_id -> ThumbnailSource` 解析
+  - `media-thumb` 调用
+  - `thumbnails` 表写回
+  - cache hit / miss 结果返回
+- `src-tauri` 当前已完成：
+  - `thumb://cache/<thumbnail_key>` 协议首版
+  - 按 `thumbnail_key` 读取 DB 记录并返回实际图片字节
+- 当前还未完成：
+  - thumbnail golden JSON
+  - 基于真实样本的 benchmark 记录
+
 ## 7.4 模块与文件计划
 
 ### `crates/media-thumb`
@@ -228,6 +264,26 @@ MediaPlayerNext/
   - 解码、方向修正、resize、编码
 - `service.rs`
   - 负责编排 `asset -> source -> thumbnail record`
+
+当前首版已落地：
+
+- `src/profiles.rs`
+  - 已定义 `grid-sm` / `grid-md` / `detail-md` / `detail-lg`
+- `src/source.rs`
+  - 已定义 `ThumbnailSource::FilePath | ArchiveEntry`
+- `src/cache.rs`
+  - 已实现 `thumbnail_key`、两级磁盘布局与原子写入
+- `src/pipeline.rs`
+  - 已实现普通图片与 zip entry 图片的最小缩略图生成与 lossless webp 编码
+- `src/service.rs`
+  - 已实现 `ensure_thumbnail`，支持文件图与 zip 内页图，且具备 cache hit / miss 语义
+
+当前 `app-core` 已补首版编排：
+
+- `thumbnail.ensure(asset_id, profile)`
+  - 已接到 `media-thumb` 并会回写 `thumbnails` 表
+- `thumbnail.get(thumbnail_key)`
+  - 已可查询现有缩略图记录
 
 ### `shared-model` / `packages/contracts`
 
@@ -390,7 +446,7 @@ cargo run --bin backend_harness -- thumbnail show <thumbnail-key>
 
 ## 8. B6：`rar/7z -> zip` 归一化
 
-当前状态：未开始
+当前状态：已完成（当前阶段要求的真实 crate、缩略图生成、`thumbnails` 表、磁盘缓存、`thumb://`、fixture / golden / validation 文档已具备）
 
 ## 8.1 阶段目标
 

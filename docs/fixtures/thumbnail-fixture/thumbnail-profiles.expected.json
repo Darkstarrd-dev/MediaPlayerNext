@@ -1,0 +1,28 @@
+{
+  "profiles": [
+    {
+      "profile": "grid-sm",
+      "maxWidth": 240,
+      "maxHeight": 240,
+      "format": "webp"
+    },
+    {
+      "profile": "grid-md",
+      "maxWidth": 480,
+      "maxHeight": 480,
+      "format": "webp"
+    },
+    {
+      "profile": "detail-md",
+      "maxWidth": 960,
+      "maxHeight": 960,
+      "format": "webp"
+    },
+    {
+      "profile": "detail-lg",
+      "maxWidth": 1440,
+      "maxHeight": 1440,
+      "format": "webp"
+    }
+  ]
+}

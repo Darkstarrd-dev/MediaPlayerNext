@@ -7,6 +7,7 @@
 - `small-fixture/`：本地快速调试与单元/集成测试
 - `medium-fixture/`：扫描回归与性能回归
 - `archive-fixture/`：zip、rar、7z 与损坏包样本
+- `thumbnail-fixture/`：缩略图 profile、cache key、协议与 golden 说明
 
 `B1` 仅先落目录约定与说明，真实样本在 `B2-B4` 逐步补齐。
 
@@ -37,6 +38,12 @@ Git 管理约束：
 - 临时运行目录：每次测试前从基线复制到 `data/scan-validation/runs/`，测试后再删除
 
 `archive-fixture/` 当前也已开始承载 `B4` 的 golden 文件，用于固定 zip 页序、空归档等归档语义验证。
+
+`thumbnail-fixture/` 当前开始承载 `B5` 的缩略图基线说明，用于固定：
+
+- 普通图片与 zip 内页图片两类输入面
+- `grid-sm` / `grid-md` / `detail-md` / `detail-lg` profile
+- `thumbnail_key`、磁盘缓存布局与 `thumb://cache/<thumbnail_key>` 协议约定
 
 一次性真实文件填充：
 

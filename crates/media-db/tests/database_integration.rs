@@ -1,12 +1,12 @@
 use app_core::ports::{
     ArchiveEntryRepository, ArchiveRepository, AssetRepository, LibraryRepository,
-    SourceRepository, TaskRepository,
+    SourceRepository, TaskRepository, ThumbnailRepository,
 };
 use media_db::{current_schema_version, latest_schema_version, DatabaseLocation, MediaDatabase};
 use shared_model::{
     ArchiveEntryId, ArchiveEntryRecord, ArchiveId, ArchiveRecord, AssetId, LibraryId,
     LibraryRecord, MediaAssetRecord, MediaSourceKind, SourceId, SourceKind, SourceRecord, TaskId,
-    TaskKind, TaskRecord, TaskState,
+    TaskKind, TaskRecord, TaskState, ThumbnailKey, ThumbnailRecord,
 };
 use tempfile::NamedTempFile;
 
@@ -146,7 +146,11 @@ fn upserts_and_queries_core_records() {
     );
     assert_eq!(fetched_source.file_name, source.file_name);
     assert!(AssetRepository::exists(&repositories, &asset.id).expect("asset exists should succeed"));
+    let fetched_asset = AssetRepository::get(&repositories, &asset.id)
+        .expect("asset fetch should succeed")
+        .expect("asset should exist after insert");
     assert!(TaskRepository::exists(&repositories, &task.id).expect("task exists should succeed"));
+    assert_eq!(fetched_asset.source_ref_id, source.id.0);
 }
 
 #[test]
@@ -320,8 +324,56 @@ fn replaces_and_lists_archive_entries() {
         .expect("archive should exist");
     let fetched_entries = ArchiveEntryRepository::list_by_archive(&repositories, &archive.id)
         .expect("archive entries query should succeed");
+    let fetched_entry =
+        ArchiveEntryRepository::get(&repositories, &ArchiveEntryId("entry_page_9".to_string()))
+            .expect("archive entry fetch should succeed")
+            .expect("archive entry should exist");
 
     assert_eq!(fetched_archive.id, archive.id);
     assert_eq!(fetched_entries.len(), 1);
     assert_eq!(fetched_entries[0].entry_path, "009-page.png");
+    assert_eq!(fetched_entry.entry_name, "009-page.png");
+}
+
+#[test]
+fn upserts_and_gets_thumbnail_records() {
+    let database = MediaDatabase::open(DatabaseLocation::InMemory)
+        .expect("in-memory database should open with migrations");
+    let repositories = database.repositories();
+
+    let asset = MediaAssetRecord {
+        id: AssetId("asset_primary".to_string()),
+        source_kind: MediaSourceKind::File,
+        source_ref_id: "source_primary".to_string(),
+        mime: "image/png".to_string(),
+        width: None,
+        height: None,
+        duration_ms: None,
+        codec_info_json: None,
+        orientation: None,
+        created_at: "2026-03-07T00:03:00Z".to_string(),
+    };
+    AssetRepository::upsert(&repositories, &asset).expect("asset upsert should succeed");
+
+    let thumbnail = ThumbnailRecord {
+        thumbnail_key: ThumbnailKey("thumb_primary".to_string()),
+        asset_id: asset.id.clone(),
+        profile: "grid-sm".to_string(),
+        width: 240,
+        height: 180,
+        format: "webp".to_string(),
+        disk_path: "Z:/cache/thumbs/ab/cd/thumb_primary.webp".to_string(),
+        byte_size: 1234,
+        state: "ready".to_string(),
+        updated_at: "2026-03-07T00:04:00Z".to_string(),
+    };
+
+    ThumbnailRepository::upsert(&repositories, &thumbnail)
+        .expect("thumbnail upsert should succeed");
+    let fetched = ThumbnailRepository::get(&repositories, &thumbnail.thumbnail_key)
+        .expect("thumbnail fetch should succeed")
+        .expect("thumbnail should exist");
+
+    assert_eq!(fetched.asset_id, thumbnail.asset_id);
+    assert_eq!(fetched.profile, "grid-sm");
 }

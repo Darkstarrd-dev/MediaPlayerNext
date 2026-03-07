@@ -5,6 +5,7 @@ members = [
   "crates/app-core",
   "crates/media-db",
   "crates/media-io",
+  "crates/media-thumb",
 ]
 resolver = "2"
 
@@ -23,3 +24,5 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
 tempfile = "3"
 zip = { version = "2", default-features = false, features = ["deflate"] }
+image = "0.25"
+sha2 = "0.10"

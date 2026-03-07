@@ -1,0 +1,14 @@
+{
+  "pipelineVersion": "b5-v1",
+  "keyRule": "hash(source_identity + source_revision + profile + pipeline_version)",
+  "examples": [
+    {
+      "thumbnailKey": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+      "relativePath": "ab/cd/abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789.webp"
+    },
+    {
+      "thumbnailKey": "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
+      "relativePath": "00/11/00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff.webp"
+    }
+  ]
+}

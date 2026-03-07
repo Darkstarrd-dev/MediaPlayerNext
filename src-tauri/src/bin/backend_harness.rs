@@ -1,9 +1,11 @@
 use app_core::archive::{archive_snapshot, index_library_archives, read_archive_entry_by_source};
+use app_core::asset::{ensure_media_assets_for_library, resolve_asset};
 use app_core::cli::{help_payload, parse_command, run_command, BackendCommand};
 use app_core::scan::{register_library, resume_scan, run_scan, scan_snapshot, scan_stats};
+use app_core::thumbnail::{ensure_thumbnail_for_asset, get_thumbnail, parse_thumbnail_profile};
 use media_db::{DatabaseLocation, MediaDatabase};
 use serde_json::json;
-use shared_model::{LibraryId, SourceId};
+use shared_model::{AssetId, LibraryId, SourceId, ThumbnailKey};
 use std::env;
 use std::path::PathBuf;
 
@@ -19,6 +21,7 @@ fn try_main() -> anyhow::Result<()> {
     let command = parse_command(&args);
     let config_path = workspace_root().join("config").join("local.paths.json");
     let db_path = workspace_root().join("data").join("mediaplayernext-dev.db");
+    let thumbnail_cache_root = workspace_root().join("data").join("cache").join("thumbs");
 
     if let Some(parent) = db_path.parent() {
         std::fs::create_dir_all(parent)?;
@@ -89,6 +92,46 @@ fn try_main() -> anyhow::Result<()> {
                 &SourceId(source_id.clone()),
                 entry_path,
             )?;
+            Some(serde_json::to_value(summary)?)
+        }
+        BackendCommand::AssetEnsure { library_id } => {
+            let summary = ensure_media_assets_for_library(
+                &repositories,
+                &repositories,
+                &repositories,
+                &repositories,
+                &repositories,
+                &LibraryId(library_id.clone()),
+            )?;
+            Some(serde_json::to_value(summary)?)
+        }
+        BackendCommand::AssetResolve { asset_id } => {
+            let summary = resolve_asset(
+                &repositories,
+                &repositories,
+                &repositories,
+                &repositories,
+                &repositories,
+                &AssetId(asset_id.clone()),
+            )?;
+            Some(serde_json::to_value(summary)?)
+        }
+        BackendCommand::ThumbnailEnsure { asset_id, profile } => {
+            let summary = ensure_thumbnail_for_asset(
+                &repositories,
+                &repositories,
+                &repositories,
+                &repositories,
+                &repositories,
+                &repositories,
+                &thumbnail_cache_root,
+                &AssetId(asset_id.clone()),
+                parse_thumbnail_profile(profile)?,
+            )?;
+            Some(serde_json::to_value(summary)?)
+        }
+        BackendCommand::ThumbnailShow { thumbnail_key } => {
+            let summary = get_thumbnail(&repositories, &ThumbnailKey(thumbnail_key.clone()))?;
             Some(serde_json::to_value(summary)?)
         }
     };

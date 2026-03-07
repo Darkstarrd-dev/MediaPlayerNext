@@ -33,6 +33,19 @@ pub enum BackendCommand {
         source_id: String,
         entry_path: String,
     },
+    AssetEnsure {
+        library_id: String,
+    },
+    AssetResolve {
+        asset_id: String,
+    },
+    ThumbnailEnsure {
+        asset_id: String,
+        profile: String,
+    },
+    ThumbnailShow {
+        thumbnail_key: String,
+    },
 }
 
 #[derive(Debug, Serialize)]
@@ -82,6 +95,25 @@ pub fn parse_command(args: &[String]) -> BackendCommand {
             }
             _ => BackendCommand::Help,
         },
+        Some("asset") => match (args.get(1).map(String::as_str), args.get(2)) {
+            (Some("ensure"), Some(library_id)) => BackendCommand::AssetEnsure {
+                library_id: library_id.clone(),
+            },
+            (Some("resolve"), Some(asset_id)) => BackendCommand::AssetResolve {
+                asset_id: asset_id.clone(),
+            },
+            _ => BackendCommand::Help,
+        },
+        Some("thumbnail") => match (args.get(1).map(String::as_str), args.get(2), args.get(3)) {
+            (Some("ensure"), Some(asset_id), Some(profile)) => BackendCommand::ThumbnailEnsure {
+                asset_id: asset_id.clone(),
+                profile: profile.clone(),
+            },
+            (Some("show"), Some(thumbnail_key), _) => BackendCommand::ThumbnailShow {
+                thumbnail_key: thumbnail_key.clone(),
+            },
+            _ => BackendCommand::Help,
+        },
         _ => BackendCommand::Help,
     }
 }
@@ -103,6 +135,10 @@ pub fn run_command(
         BackendCommand::ArchiveIndex { .. } => "archive.index",
         BackendCommand::ArchiveShow { .. } => "archive.show",
         BackendCommand::ArchiveReadEntry { .. } => "archive.read-entry",
+        BackendCommand::AssetEnsure { .. } => "asset.ensure",
+        BackendCommand::AssetResolve { .. } => "asset.resolve",
+        BackendCommand::ThumbnailEnsure { .. } => "thumbnail.ensure",
+        BackendCommand::ThumbnailShow { .. } => "thumbnail.show",
     };
 
     Ok(CliExecutionOutput {
@@ -125,7 +161,11 @@ pub fn help_payload() -> Value {
             "cargo run --bin backend_harness -- scan diff <library-id>",
             "cargo run --bin backend_harness -- archive index <library-id>",
             "cargo run --bin backend_harness -- archive show <source-id>",
-            "cargo run --bin backend_harness -- archive read-entry <source-id> <entry-path>"
+            "cargo run --bin backend_harness -- archive read-entry <source-id> <entry-path>",
+            "cargo run --bin backend_harness -- asset ensure <library-id>",
+            "cargo run --bin backend_harness -- asset resolve <asset-id>",
+            "cargo run --bin backend_harness -- thumbnail ensure <asset-id> <profile>",
+            "cargo run --bin backend_harness -- thumbnail show <thumbnail-key>"
         ]
     })
 }

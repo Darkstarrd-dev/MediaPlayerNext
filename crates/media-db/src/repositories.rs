@@ -273,6 +273,34 @@ impl ArchiveRepository for SqliteRepositories<'_> {
         Ok(())
     }
 
+    fn get(&self, archive_id: &ArchiveId) -> Result<Option<ArchiveRecord>> {
+        let record = self
+            .connection
+            .query_row(
+                "
+                select id, source_id, archive_type, normalized_zip_path, page_count, cover_entry_id, status
+                from archives
+                where id = :id
+                limit 1
+                ",
+                named_params! { ":id": archive_id.0 },
+                |row| {
+                    Ok(ArchiveRecord {
+                        id: ArchiveId(row.get::<_, String>(0)?),
+                        source_id: SourceId(row.get::<_, String>(1)?),
+                        archive_type: row.get(2)?,
+                        normalized_zip_path: row.get(3)?,
+                        page_count: row.get(4)?,
+                        cover_entry_id: row.get::<_, Option<String>>(5)?.map(ArchiveEntryId),
+                        status: row.get(6)?,
+                    })
+                },
+            )
+            .optional()?;
+
+        Ok(record)
+    }
+
     fn get_by_source(&self, source_id: &SourceId) -> Result<Option<ArchiveRecord>> {
         let record = self
             .connection
@@ -341,6 +369,39 @@ impl ArchiveEntryRepository for SqliteRepositories<'_> {
         }
 
         Ok(())
+    }
+
+    fn get(&self, archive_entry_id: &ArchiveEntryId) -> Result<Option<ArchiveEntryRecord>> {
+        let record = self
+            .connection
+            .query_row(
+                "
+                select id, archive_id, entry_path, entry_name, page_index, media_kind,
+                       width, height, compressed_size, uncompressed_size, crc32
+                from archive_entries
+                where id = :id
+                limit 1
+                ",
+                named_params! { ":id": archive_entry_id.0 },
+                |row| {
+                    Ok(ArchiveEntryRecord {
+                        id: ArchiveEntryId(row.get::<_, String>(0)?),
+                        archive_id: ArchiveId(row.get::<_, String>(1)?),
+                        entry_path: row.get(2)?,
+                        entry_name: row.get(3)?,
+                        page_index: row.get(4)?,
+                        media_kind: row.get(5)?,
+                        width: row.get(6)?,
+                        height: row.get(7)?,
+                        compressed_size: row.get(8)?,
+                        uncompressed_size: row.get(9)?,
+                        crc32: row.get(10)?,
+                    })
+                },
+            )
+            .optional()?;
+
+        Ok(record)
     }
 
     fn list_by_archive(&self, archive_id: &ArchiveId) -> Result<Vec<ArchiveEntryRecord>> {
@@ -429,6 +490,38 @@ impl AssetRepository for SqliteRepositories<'_> {
         )?;
 
         Ok(())
+    }
+
+    fn get(&self, asset_id: &AssetId) -> Result<Option<MediaAssetRecord>> {
+        let record = self
+            .connection
+            .query_row(
+                "
+                select id, source_kind, source_ref_id, mime, width, height, duration_ms,
+                       codec_info_json, orientation, created_at
+                from media_assets
+                where id = :id
+                limit 1
+                ",
+                named_params! { ":id": asset_id.0 },
+                |row| {
+                    Ok(MediaAssetRecord {
+                        id: AssetId(row.get::<_, String>(0)?),
+                        source_kind: media_source_kind_from_db(&row.get::<_, String>(1)?),
+                        source_ref_id: row.get(2)?,
+                        mime: row.get(3)?,
+                        width: row.get(4)?,
+                        height: row.get(5)?,
+                        duration_ms: row.get(6)?,
+                        codec_info_json: row.get(7)?,
+                        orientation: row.get(8)?,
+                        created_at: row.get(9)?,
+                    })
+                },
+            )
+            .optional()?;
+
+        Ok(record)
     }
 }
 
@@ -569,6 +662,38 @@ impl ThumbnailRepository for SqliteRepositories<'_> {
 
         Ok(())
     }
+
+    fn get(&self, thumbnail_key: &ThumbnailKey) -> Result<Option<ThumbnailRecord>> {
+        let record = self
+            .connection
+            .query_row(
+                "
+                select thumbnail_key, asset_id, profile, width, height, format,
+                       disk_path, byte_size, state, updated_at
+                from thumbnails
+                where thumbnail_key = :thumbnail_key
+                limit 1
+                ",
+                named_params! { ":thumbnail_key": thumbnail_key.0 },
+                |row| {
+                    Ok(ThumbnailRecord {
+                        thumbnail_key: ThumbnailKey(row.get::<_, String>(0)?),
+                        asset_id: AssetId(row.get::<_, String>(1)?),
+                        profile: row.get(2)?,
+                        width: row.get(3)?,
+                        height: row.get(4)?,
+                        format: row.get(5)?,
+                        disk_path: row.get(6)?,
+                        byte_size: row.get(7)?,
+                        state: row.get(8)?,
+                        updated_at: row.get(9)?,
+                    })
+                },
+            )
+            .optional()?;
+
+        Ok(record)
+    }
 }
 
 fn source_kind_to_db(kind: &SourceKind) -> &'static str {
@@ -596,6 +721,15 @@ fn media_source_kind_to_db(kind: &MediaSourceKind) -> &'static str {
         MediaSourceKind::File => "file",
         MediaSourceKind::ArchiveEntry => "archive_entry",
         MediaSourceKind::NormalizedFile => "normalized_file",
+    }
+}
+
+fn media_source_kind_from_db(value: &str) -> MediaSourceKind {
+    match value {
+        "file" => MediaSourceKind::File,
+        "archive_entry" => MediaSourceKind::ArchiveEntry,
+        "normalized_file" => MediaSourceKind::NormalizedFile,
+        _ => MediaSourceKind::File,
     }
 }
 
