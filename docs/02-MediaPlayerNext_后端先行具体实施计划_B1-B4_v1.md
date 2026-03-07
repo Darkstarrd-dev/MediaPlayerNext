@@ -70,8 +70,8 @@
 
 ### 2.3 当前最自然的下一步
 
-1. 收尾 `B3` 剩余内容，补更完整的失败恢复与扫描结果固化
-2. 开始 `B4`，推进 zip 目录、页序、entry 读取与归档索引落库
+1. 补写 `docs/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md`
+2. 进入 `B5`，把 `archive_entries` 接到 `media_assets` 与缩略图输入面
 
 ---
 
@@ -86,7 +86,7 @@
 - `sharp` 仅作为 Node sidecar 依赖验证，不是业务主链路
 - 扫描 CLI 已能跑通 `add-library/run/resume/stats/diff` 最小链路
 
-因此当前阶段的首要目标，已经从“把纯 Rust 能力沉到 `crates/*`”推进为“继续补齐 B3 剩余语义，并准备切入 B4 的 zip 主链路”。
+因此当前阶段的首要目标，已经从“把纯 Rust 能力沉到 `crates/*`”推进为“在保持 `B3/B4` 基线稳定的前提下，进入 `B5` 的归档页资产化与缩略图主链路”。
 
 ---
 
@@ -764,7 +764,7 @@ cargo run --bin <scan-cli> -- scan diff <library-id>
 
 ## 10. B4：zip 与归档索引
 
-当前状态：进行中
+当前状态：已完成首版
 
 ## 10.1 阶段目标
 
@@ -929,7 +929,7 @@ docs/fixtures/
 - 损坏 zip
 - 边缘命名 zip
 - 后续补 rar/7z 样本
-- 当前完成情况：未开始
+- 当前完成情况：已完成首版 golden 与说明文档；当前已覆盖标准页序、边缘命名页序与空归档语义
 
 ## 12.2 当前阶段要产出的 golden
 
@@ -941,7 +941,7 @@ docs/fixtures/
 
 - `shared-model` / contracts JSON fixtures：已完成
 - 扫描结果 snapshot：已完成首版（`small-fixture/scan-smoke.expected.json`）
-- zip 页序 snapshot：未开始
+- zip 页序 snapshot：已完成首版（`docs/fixtures/archive-fixture/`）
 
 说明：缩略图金图放到 `B5` 再正式建立。
 
@@ -1018,7 +1018,7 @@ docs/fixtures/
 - `archive_entries` 可落库
 - 为 `B5` 提供稳定 zip entry 输入面
 
-当前状态：未开始
+当前状态：已达成首版
 
 ---
 
@@ -1059,7 +1059,7 @@ docs/fixtures/
 3. 建 entry 读取
 4. 建归档索引落库
 
-完成情况：未开始
+完成情况：已完成首版，并已补真实样本归档验证记录
 
 完成以上四批后，再单独编写 `B5-B8` 的具体实施计划或在新文档中补续篇。
 
@@ -1067,7 +1067,7 @@ docs/fixtures/
 
 ## 16. 本文件对应的后续文档建议
 
-当 `B1-B4` 接近完成时，新增下一份文档：
+当 `B1-B4` 已完成首版后，新增下一份文档：
 
 - `docs/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md`
 
