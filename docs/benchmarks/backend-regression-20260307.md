@@ -93,21 +93,28 @@ scripts/run-cargo-with-msvc.cmd test --workspace
   - restart retry
   - timeout
 
-## 当前仍未完成的 benchmark 项
+## `P6-0` 首轮性能基线
 
-本轮收口已经完成“统一回归”，但还没有把 `docs/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md` 里规划的所有性能数字补齐。
+缺失项已在 `docs/benchmarks/p6-performance-baseline-20260307.md` 补齐，本轮首轮结果如下：
 
-仍待补强的项目包括：
+- 普通图片缩略图冷生成：`avg 2980.124ms`，`median 2979.274ms`
+- 普通图片缩略图热命中：`avg 19.595ms`，`median 14.472ms`
+- zip 内页缩略图冷生成：`avg 4410.095ms`，`median 4394.651ms`
+- `7z -> normalized.zip`：`avg 173.717ms`，`median 183.128ms`
+- `ffprobe`：`avg 40.592ms`，`median 36.779ms`
+- `ffmpeg` 单帧抽取：`avg 76.005ms`，`median 75.855ms`
+- `mpv` 最小启动代理：`avg 6.228ms`，`median 3.991ms`
+- sidecar `ping`：`avg 465.839ms`，`median 108.263ms`
+- sidecar `health`：`avg 127.286ms`，`median 129.021ms`
+- sidecar `restart`：`avg 136.634ms`，`median 136.249ms`
 
-- 普通图片缩略图冷 / 热命中耗时
-- zip 内页缩略图冷生成耗时
-- 真实 `7z.exe` 环境下的归一化耗时
-- 真实视频样本下的 `ffprobe` / `ffmpeg` 耗时
-- `mpv` 会话启动的可重复耗时基线
-- sidecar `ping / health / restart` 的独立毫秒级统计
+说明：
+
+- sidecar `ping` 首轮存在明显冷启动离群值，因此当前更适合把中位数作为常态口径
+- `mpv` 当前使用最小启动代理命令，而不是最终 UI 会话口径
 
 ## 本轮结论
 
 - `B5-B8` 当前已经具备“阶段完成后仍能整体回归通过”的状态
+- `P6-0` 已完成首轮真实性能补齐，后续可以切到 `P6-1` 质量门禁自动化
 - 当前仓库已经可以从“逐阶段落地”切换到“等待 UI 收尾并准备 `I1` 接入”的节奏
-- 后续如果继续做 `P6`，重点应放在真实样本 benchmark 与 UI 接口对接前的 regression automation，而不是继续扩写新的后端阶段能力

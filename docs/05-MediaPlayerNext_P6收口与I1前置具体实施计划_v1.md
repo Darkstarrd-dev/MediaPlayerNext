@@ -53,7 +53,7 @@
 
 ### 2.2 当前进度判断
 
-- `P6-0`：未完成（`docs/benchmarks/backend-regression-20260307.md` 已列出缺失项，但真实性能数字仍未补齐）
+- `P6-0`：已完成首轮（真实性能数字已补齐，见 `docs/benchmarks/p6-performance-baseline-20260307.md`）
 - `P6-1`：未完成（质量门禁要求已存在于 `docs/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md`，但尚未落成统一脚本/流程）
 - `P6-2`：进行中（部分 sidecar bad path 已覆盖，但 runtimes、DB upgrade、protocol 404 等异常路径仍不完整）
 - `P6-3`：未开始（尚无旧仓 `window.* -> command/channel/protocol` 映射表与 `MediaRepository` 方法清单文档）
@@ -62,7 +62,7 @@
 
 ### 2.3 当前最自然的下一步
 
-1. 先补齐真实性能基线与质量门禁自动化，让后续 `I1` 建立在可重复验证的地基上
+1. 继续进入 `P6-1` 质量门禁自动化，让后续 `I1` 建立在可重复验证的地基上
 2. 再补错误场景、接口收口文档、资源路径策略与 contracts，避免 UI 接线时仍靠猜测和临场判断
 
 ---
@@ -179,7 +179,7 @@ MediaPlayerNext/
 
 ## 7. P6-0：真实性能基线补齐
 
-当前状态：未开始
+当前状态：已完成首轮
 
 ## 7.1 阶段目标
 
@@ -756,7 +756,7 @@ docs/fixtures/
 - `backend-regression` 列出的缺失性能项已全部有基线数字
 - benchmark 脚本可重复执行
 
-当前状态：未开始
+当前状态：已完成首轮
 
 ## `P6-1` 完成定义
 

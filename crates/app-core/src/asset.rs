@@ -46,6 +46,21 @@ pub struct ResolvedArchiveEntryAsset {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AssetSnapshotItem {
+    pub asset_id: String,
+    pub source_kind: String,
+    pub source_ref_id: String,
+    pub library_id: String,
+    pub source_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub archive_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub entry_path: Option<String>,
+    pub mime: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum AssetResolution {
     File(ResolvedFileAsset),
@@ -144,6 +159,76 @@ where
         skipped_sources,
         skipped_archive_entries,
     })
+}
+
+pub fn asset_snapshot_for_library<L, S, A, E>(
+    library_repository: &L,
+    source_repository: &S,
+    archive_repository: &A,
+    archive_entry_repository: &E,
+    library_id: &LibraryId,
+) -> Result<Vec<AssetSnapshotItem>>
+where
+    L: LibraryRepository,
+    S: SourceRepository,
+    A: ArchiveRepository,
+    E: ArchiveEntryRepository,
+{
+    if !library_repository.exists(library_id)? {
+        return Err(anyhow!("library not found: {}", library_id.0));
+    }
+
+    let mut items = Vec::new();
+
+    for source in source_repository.list_by_library(library_id)? {
+        if !source.exists {
+            continue;
+        }
+
+        match source.kind {
+            SourceKind::Image => items.push(AssetSnapshotItem {
+                asset_id: asset_id_from_file_source(&source.id).0,
+                source_kind: "file".to_string(),
+                source_ref_id: source.id.0.clone(),
+                library_id: library_id.0.clone(),
+                source_id: source.id.0,
+                archive_id: None,
+                entry_path: None,
+                mime: file_mime_from_extension(&source.ext),
+            }),
+            SourceKind::Archive => {
+                let Some(archive) = archive_repository.get_by_source(&source.id)? else {
+                    continue;
+                };
+
+                for entry in archive_entry_repository.list_by_archive(&archive.id)? {
+                    if !entry.media_kind.eq_ignore_ascii_case("image") {
+                        continue;
+                    }
+
+                    items.push(AssetSnapshotItem {
+                        asset_id: asset_id_from_archive_entry(&entry.id).0,
+                        source_kind: "archive_entry".to_string(),
+                        source_ref_id: entry.id.0.clone(),
+                        library_id: library_id.0.clone(),
+                        source_id: source.id.0.clone(),
+                        archive_id: Some(archive.id.0.clone()),
+                        entry_path: Some(entry.entry_path.clone()),
+                        mime: file_mime_from_path(&entry.entry_path),
+                    });
+                }
+            }
+            _ => {}
+        }
+    }
+
+    items.sort_by(|left, right| {
+        left.source_kind
+            .cmp(&right.source_kind)
+            .then(left.source_id.cmp(&right.source_id))
+            .then(left.entry_path.cmp(&right.entry_path))
+    });
+    Ok(items)
 }
 
 pub fn resolve_asset<L, S, A, E, R>(
@@ -287,8 +372,8 @@ fn now_string() -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        archive_entry_asset_id_from_entry, ensure_media_assets_for_library,
-        file_asset_id_from_source, resolve_asset, AssetResolution,
+        archive_entry_asset_id_from_entry, asset_snapshot_for_library,
+        ensure_media_assets_for_library, file_asset_id_from_source, resolve_asset, AssetResolution,
     };
     use crate::ports::{
         ArchiveEntryRepository, ArchiveRepository, AssetRepository, LibraryRepository,
@@ -590,6 +675,84 @@ mod tests {
             &archive_entry_asset_id_from_entry(&ArchiveEntryId("entry_cover".to_string())),
         )
         .expect("archive entry asset should exist"));
+    }
+
+    #[test]
+    fn builds_asset_snapshot_for_library() {
+        let repos = MemoryRepos::default();
+        let library = LibraryRecord {
+            id: LibraryId("library_assets_snapshot".to_string()),
+            root_path: "Z:/Library".to_string(),
+            library_type: "filesystem".to_string(),
+            scan_mode: "full".to_string(),
+            created_at: "1".to_string(),
+            updated_at: "1".to_string(),
+        };
+        let image_source = SourceRecord {
+            id: SourceId("source_snapshot_image".to_string()),
+            library_id: library.id.clone(),
+            normalized_path: "z:/library/cover.png".to_string(),
+            file_name: "cover.png".to_string(),
+            ext: "png".to_string(),
+            kind: SourceKind::Image,
+            size: 100,
+            mtime_ms: 1,
+            fingerprint: Some("fp-image".to_string()),
+            exists: true,
+            last_seen_at: "1".to_string(),
+        };
+        let archive_source = SourceRecord {
+            id: SourceId("source_snapshot_archive".to_string()),
+            library_id: library.id.clone(),
+            normalized_path: "z:/library/chapter.cbz".to_string(),
+            file_name: "chapter.cbz".to_string(),
+            ext: "cbz".to_string(),
+            kind: SourceKind::Archive,
+            size: 200,
+            mtime_ms: 2,
+            fingerprint: Some("fp-archive".to_string()),
+            exists: true,
+            last_seen_at: "2".to_string(),
+        };
+        let archive = ArchiveRecord {
+            id: ArchiveId("archive_snapshot_primary".to_string()),
+            source_id: archive_source.id.clone(),
+            archive_type: "cbz".to_string(),
+            normalized_zip_path: Some(archive_source.normalized_path.clone()),
+            page_count: Some(1),
+            cover_entry_id: Some(ArchiveEntryId("entry_snapshot_cover".to_string())),
+            status: "indexed".to_string(),
+        };
+        let entry = ArchiveEntryRecord {
+            id: ArchiveEntryId("entry_snapshot_cover".to_string()),
+            archive_id: archive.id.clone(),
+            entry_path: "001-cover.png".to_string(),
+            entry_name: "001-cover.png".to_string(),
+            page_index: 0,
+            media_kind: "image".to_string(),
+            width: Some(1000),
+            height: Some(800),
+            compressed_size: Some(10),
+            uncompressed_size: Some(20),
+            crc32: Some(1),
+        };
+
+        LibraryRepository::upsert(&repos, &library).expect("library should exist");
+        SourceRepository::upsert(&repos, &image_source).expect("image source should exist");
+        SourceRepository::upsert(&repos, &archive_source).expect("archive source should exist");
+        ArchiveRepository::upsert(&repos, &archive).expect("archive should exist");
+        ArchiveEntryRepository::replace_for_archive(&repos, &archive.id, &[entry.clone()])
+            .expect("entry should exist");
+
+        let snapshot = asset_snapshot_for_library(&repos, &repos, &repos, &repos, &library.id)
+            .expect("asset snapshot should succeed");
+
+        assert_eq!(snapshot.len(), 2);
+        assert!(snapshot.iter().any(|item| item.source_kind == "file"));
+        assert!(snapshot
+            .iter()
+            .any(|item| item.source_kind == "archive_entry"
+                && item.entry_path.as_deref() == Some("001-cover.png")));
     }
 
     #[test]

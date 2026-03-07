@@ -2,7 +2,7 @@ use app_core::archive::{
     archive_snapshot, index_library_archives, normalize_archive_source, normalize_archive_status,
     read_archive_entry_by_source,
 };
-use app_core::asset::{ensure_media_assets_for_library, resolve_asset};
+use app_core::asset::{asset_snapshot_for_library, ensure_media_assets_for_library, resolve_asset};
 use app_core::cli::{help_payload, parse_command, run_command, BackendCommand};
 use app_core::playback::{
     open_playback_session, playback_pause, playback_probe, playback_seek, playback_status,
@@ -35,17 +35,30 @@ fn try_main() -> anyhow::Result<()> {
     let args: Vec<String> = env::args().skip(1).collect();
     let command = parse_command(&args);
     let config_path = workspace_root().join("config").join("local.paths.json");
-    let db_path = workspace_root().join("data").join("mediaplayernext-dev.db");
-    let thumbnail_cache_root = workspace_root().join("data").join("cache").join("thumbs");
+    let db_path = env_path_or_default(
+        "MPNEXT_BACKEND_DB_PATH",
+        workspace_root().join("data").join("mediaplayernext-dev.db"),
+    );
+    let thumbnail_cache_root = env_path_or_default(
+        "MPNEXT_BACKEND_THUMB_CACHE_ROOT",
+        workspace_root().join("data").join("cache").join("thumbs"),
+    );
     let playback_sessions_root = workspace_root()
         .join("data")
         .join("cache")
         .join("playback")
         .join("sessions");
-    let normalize_root = workspace_root()
-        .join("data")
-        .join("cache")
-        .join("normalized");
+    let playback_sessions_root = env_path_or_default(
+        "MPNEXT_BACKEND_PLAYBACK_SESSIONS_ROOT",
+        playback_sessions_root,
+    );
+    let normalize_root = env_path_or_default(
+        "MPNEXT_BACKEND_NORMALIZE_ROOT",
+        workspace_root()
+            .join("data")
+            .join("cache")
+            .join("normalized"),
+    );
     let runtime_paths = load_runtime_paths(&config_path)?;
 
     if let Some(parent) = db_path.parent() {
@@ -140,6 +153,16 @@ fn try_main() -> anyhow::Result<()> {
         BackendCommand::AssetEnsure { library_id } => {
             let summary = ensure_media_assets_for_library(
                 &repositories,
+                &repositories,
+                &repositories,
+                &repositories,
+                &repositories,
+                &LibraryId(library_id.clone()),
+            )?;
+            Some(serde_json::to_value(summary)?)
+        }
+        BackendCommand::AssetSnapshot { library_id } => {
+            let summary = asset_snapshot_for_library(
                 &repositories,
                 &repositories,
                 &repositories,
@@ -314,4 +337,8 @@ fn workspace_root() -> PathBuf {
         .parent()
         .map(PathBuf::from)
         .expect("workspace root should be available")
+}
+
+fn env_path_or_default(name: &str, default: PathBuf) -> PathBuf {
+    env::var_os(name).map(PathBuf::from).unwrap_or(default)
 }

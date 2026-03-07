@@ -42,6 +42,9 @@ pub enum BackendCommand {
     AssetEnsure {
         library_id: String,
     },
+    AssetSnapshot {
+        library_id: String,
+    },
     AssetResolve {
         asset_id: String,
     },
@@ -141,6 +144,9 @@ pub fn parse_command(args: &[String]) -> BackendCommand {
             (Some("ensure"), Some(library_id)) => BackendCommand::AssetEnsure {
                 library_id: library_id.clone(),
             },
+            (Some("snapshot"), Some(library_id)) => BackendCommand::AssetSnapshot {
+                library_id: library_id.clone(),
+            },
             (Some("resolve"), Some(asset_id)) => BackendCommand::AssetResolve {
                 asset_id: asset_id.clone(),
             },
@@ -216,6 +222,7 @@ pub fn run_command(
         BackendCommand::ArchiveNormalizeStatus { .. } => "archive.normalize-status",
         BackendCommand::ArchiveReadEntry { .. } => "archive.read-entry",
         BackendCommand::AssetEnsure { .. } => "asset.ensure",
+        BackendCommand::AssetSnapshot { .. } => "asset.snapshot",
         BackendCommand::AssetResolve { .. } => "asset.resolve",
         BackendCommand::ThumbnailEnsure { .. } => "thumbnail.ensure",
         BackendCommand::ThumbnailShow { .. } => "thumbnail.show",
@@ -256,6 +263,7 @@ pub fn help_payload() -> Value {
             "cargo run --bin backend_harness -- archive normalize-status <task-id>",
             "cargo run --bin backend_harness -- archive read-entry <source-id> <entry-path>",
             "cargo run --bin backend_harness -- asset ensure <library-id>",
+            "cargo run --bin backend_harness -- asset snapshot <library-id>",
             "cargo run --bin backend_harness -- asset resolve <asset-id>",
             "cargo run --bin backend_harness -- thumbnail ensure <asset-id> <profile>",
             "cargo run --bin backend_harness -- thumbnail show <thumbnail-key>",

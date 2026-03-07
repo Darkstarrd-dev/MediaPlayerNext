@@ -13,11 +13,12 @@
 - `playback-validation-20260307.md`
 - `sidecar-validation-20260307.md`
 - `backend-regression-20260307.md`
+- `p6-performance-baseline-20260307.md`
 
 说明：
 
 - 当前多数记录仍以 validation / regression 为主，优先固定链路闭环、协议边界与回归口径
-- 更细的真实性能 benchmark（真实大样本、冷/热命中耗时、工具级毫秒统计）可在后续 `P6` 持续补强
+- `P6-0` 已补首轮真实性能基线，后续可继续扩成更大样本与多机对照
 
 后续最低基线项：
 

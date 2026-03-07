@@ -6,6 +6,7 @@ use shared_model::{
     AssetId, SubtitleHealthSummary, SubtitleHostSummary, SubtitlePingSummary,
     SubtitleProgressEvent, SubtitleSessionId, SubtitleSessionSummary,
 };
+use std::env;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -72,18 +73,24 @@ struct WireError {
 pub fn development_subtitle_host() -> Result<StdioSubtitleHost> {
     let workspace_root = workspace_root();
     let config_path = workspace_root.join("config").join("local.paths.json");
-    let node_path = load_node_path(&config_path)?;
-    let entry_path = workspace_root
-        .join("apps")
-        .join("subtitle-sidecar")
-        .join("dist")
-        .join("src")
-        .join("index.js");
-    let sessions_root = workspace_root
-        .join("data")
-        .join("cache")
-        .join("subtitle")
-        .join("sessions");
+    let node_path = env_path_or_else("MPNEXT_SUBTITLE_NODE_PATH", || load_node_path(&config_path))?;
+    let entry_path = env_path_or_default(
+        "MPNEXT_SUBTITLE_ENTRY_PATH",
+        workspace_root
+            .join("apps")
+            .join("subtitle-sidecar")
+            .join("dist")
+            .join("src")
+            .join("index.js"),
+    );
+    let sessions_root = env_path_or_default(
+        "MPNEXT_SUBTITLE_SESSIONS_ROOT",
+        workspace_root
+            .join("data")
+            .join("cache")
+            .join("subtitle")
+            .join("sessions"),
+    );
 
     Ok(StdioSubtitleHost::new(SubtitleSidecarRuntime {
         node_path,
@@ -362,6 +369,20 @@ fn next_request_id(message_type: &str) -> String {
         .unwrap_or_default()
         .as_millis();
     format!("req-{message_type}-{millis}")
+}
+
+fn env_path_or_default(name: &str, default: PathBuf) -> PathBuf {
+    env::var_os(name).map(PathBuf::from).unwrap_or(default)
+}
+
+fn env_path_or_else<F>(name: &str, fallback: F) -> Result<PathBuf>
+where
+    F: FnOnce() -> Result<PathBuf>,
+{
+    match env::var_os(name) {
+        Some(value) => Ok(PathBuf::from(value)),
+        None => fallback(),
+    }
 }
 
 #[cfg(test)]
