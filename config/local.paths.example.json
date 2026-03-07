@@ -1,6 +1,7 @@
 {
   "ffmpeg": "C:\\Tools\\ffmpeg-7.1.1-essentials_build\\bin\\ffmpeg.exe",
   "ffprobe": "C:\\Tools\\ffmpeg-7.1.1-essentials_build\\bin\\ffprobe.exe",
+  "sevenz": "C:\\Program Files\\7-Zip\\7z.exe",
   "mpv": "Z:\\Playground\\CurrentWorking\\mpv\\mpv.exe",
   "currentElectronRepo": "Z:\\Playground\\CurrentWorking\\MediaPlayer"
 }

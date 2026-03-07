@@ -52,6 +52,25 @@ pub enum BackendCommand {
     ThumbnailShow {
         thumbnail_key: String,
     },
+    PlaybackProbe {
+        asset_id: String,
+    },
+    PlaybackOpen {
+        asset_id: String,
+    },
+    PlaybackStatus {
+        session_id: String,
+    },
+    PlaybackPause {
+        session_id: String,
+    },
+    PlaybackSeek {
+        session_id: String,
+        position_ms: String,
+    },
+    PlaybackStop {
+        session_id: String,
+    },
 }
 
 #[derive(Debug, Serialize)]
@@ -126,6 +145,28 @@ pub fn parse_command(args: &[String]) -> BackendCommand {
             },
             _ => BackendCommand::Help,
         },
+        Some("playback") => match (args.get(1).map(String::as_str), args.get(2), args.get(3)) {
+            (Some("probe"), Some(asset_id), _) => BackendCommand::PlaybackProbe {
+                asset_id: asset_id.clone(),
+            },
+            (Some("open"), Some(asset_id), _) => BackendCommand::PlaybackOpen {
+                asset_id: asset_id.clone(),
+            },
+            (Some("status"), Some(session_id), _) => BackendCommand::PlaybackStatus {
+                session_id: session_id.clone(),
+            },
+            (Some("pause"), Some(session_id), _) => BackendCommand::PlaybackPause {
+                session_id: session_id.clone(),
+            },
+            (Some("seek"), Some(session_id), Some(position_ms)) => BackendCommand::PlaybackSeek {
+                session_id: session_id.clone(),
+                position_ms: position_ms.clone(),
+            },
+            (Some("stop"), Some(session_id), _) => BackendCommand::PlaybackStop {
+                session_id: session_id.clone(),
+            },
+            _ => BackendCommand::Help,
+        },
         _ => BackendCommand::Help,
     }
 }
@@ -153,6 +194,12 @@ pub fn run_command(
         BackendCommand::AssetResolve { .. } => "asset.resolve",
         BackendCommand::ThumbnailEnsure { .. } => "thumbnail.ensure",
         BackendCommand::ThumbnailShow { .. } => "thumbnail.show",
+        BackendCommand::PlaybackProbe { .. } => "playback.probe",
+        BackendCommand::PlaybackOpen { .. } => "playback.open",
+        BackendCommand::PlaybackStatus { .. } => "playback.status",
+        BackendCommand::PlaybackPause { .. } => "playback.pause",
+        BackendCommand::PlaybackSeek { .. } => "playback.seek",
+        BackendCommand::PlaybackStop { .. } => "playback.stop",
     };
 
     Ok(CliExecutionOutput {
@@ -181,7 +228,13 @@ pub fn help_payload() -> Value {
             "cargo run --bin backend_harness -- asset ensure <library-id>",
             "cargo run --bin backend_harness -- asset resolve <asset-id>",
             "cargo run --bin backend_harness -- thumbnail ensure <asset-id> <profile>",
-            "cargo run --bin backend_harness -- thumbnail show <thumbnail-key>"
+            "cargo run --bin backend_harness -- thumbnail show <thumbnail-key>",
+            "cargo run --bin backend_harness -- playback probe <asset-id>",
+            "cargo run --bin backend_harness -- playback open <asset-id>",
+            "cargo run --bin backend_harness -- playback status <session-id>",
+            "cargo run --bin backend_harness -- playback pause <session-id>",
+            "cargo run --bin backend_harness -- playback seek <session-id> <position-ms>",
+            "cargo run --bin backend_harness -- playback stop <session-id>"
         ]
     })
 }

@@ -10,7 +10,10 @@ pub use ids::{
     ArchiveEntryId, ArchiveId, AssetId, LibraryId, PlaybackSessionId, SourceId, SubtitleSessionId,
     TaskId, ThumbnailKey,
 };
-pub use media::{MediaAssetSummary, MediaSourceKind};
+pub use media::{
+    FfmpegProgressEvent, MediaAssetSummary, MediaProbeSummary, MediaSourceKind, MediaUrlSummary,
+    PlaybackSessionState, PlaybackSessionSummary,
+};
 pub use pagination::{PageRequest, PageResponse};
 pub use records::{
     ArchiveEntryRecord, ArchiveRecord, LibraryRecord, MediaAssetRecord, SourceKind, SourceRecord,

@@ -72,6 +72,7 @@ dependencies = [
  "anyhow",
  "image",
  "media-io",
+ "media-playback",
  "media-thumb",
  "serde",
  "serde_json",
@@ -2150,6 +2151,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "media-playback"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "shared-model",
+ "tempfile",
+]
+
+[[package]]
 name = "media-thumb"
 version = "0.1.0"
 dependencies = [
@@ -2181,6 +2193,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "zip",
 ]
 
 [[package]]

@@ -3,7 +3,12 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { appErrorSchema, taskProgressSchema } from "../src/index.js";
+import {
+  appErrorSchema,
+  mediaProbeSchema,
+  playbackSessionSchema,
+  taskProgressSchema,
+} from "../src/index.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const fixturesDir = join(__dirname, "..", "fixtures");
@@ -22,4 +27,20 @@ test("app error fixture passes zod parse", async () => {
 
   assert.equal(parsed.code, "DB_ERROR");
   assert.equal(parsed.retriable, true);
+});
+
+test("media probe fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "media-probe.sample.json"), "utf8");
+  const parsed = mediaProbeSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.mime, "video/mp4");
+  assert.equal(parsed.videoCodec, "h264");
+});
+
+test("playback session fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "playback-session.sample.json"), "utf8");
+  const parsed = playbackSessionSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.sessionId, "playback_001");
+  assert.equal(parsed.state, "paused");
 });

@@ -1,0 +1,9 @@
+{
+  "scheme": "archive",
+  "successPath": "archive://entry/<archive_entry_id>",
+  "protocolSemantics": {
+    "input": "archive_entry_id",
+    "output": "raw archive entry bytes",
+    "transport": "custom protocol"
+  }
+}

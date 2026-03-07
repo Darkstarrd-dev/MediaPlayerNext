@@ -47,9 +47,9 @@
 
 ### 2.2 当前进度判断
 
-- `B5`：进行中（`B5-0` 已接通资产输入面；`B5-1` 已完成 `media-thumb` crate 首版；`B5-2` 已补 `thumbnail.ensure/show`、`thumbnails` 表写回与 `thumb://` 协议；当前只剩 thumbnail golden 细化与真实样本 benchmark）
-- `B6`：未开始（未接入 `7z` 运行时、未实现归一化流程，当前仅完成 zip 主链路）
-- `B7`：未开始（`crates/media-playback` 仍是目录占位，`ffprobe`/`ffmpeg`/`mpv` 只停留在运行时校验层）
+- `B5`：已完成（资产输入面、`media-thumb`、`thumbnail.ensure/show`、`thumbnails` 表、`thumb://` 与最小 golden / validation 文档已具备）
+- `B6`：已完成（`7z` wrapper、归一化输出布局、任务状态、`archive.normalize/status`、重试语义与 fixture / validation 文档已具备）
+- `B7`：已完成（`media-playback`、`ffprobe/ffmpeg/mpv` 最小适配、`media://` / `archive://`、runtime smoke 与 fixture / validation 文档已具备）
 - `B8`：未开始（`apps/subtitle-sidecar` 仍是 placeholder，尚无真实 stdio 协议与宿主管理器）
 
 ### 2.3 当前最自然的下一步
@@ -638,7 +638,7 @@ cargo run --bin backend_harness -- archive normalize-status <task-id>
 
 ## 9. B7：播放后端适配与媒体协议输入面
 
-当前状态：已完成（真实 crate、缩略图生成、`thumbnails` 表、磁盘缓存、`thumb://`、fixture / golden / validation 文档已具备）
+当前状态：已完成（`media-playback`、`ffprobe/ffmpeg/mpv` 最小适配、`media://` / `archive://`、runtime smoke 与 fixture / validation 文档已具备）
 
 ## 9.1 阶段目标
 
@@ -1125,7 +1125,7 @@ docs/fixtures/
 - `thumbnails` 表与磁盘缓存可工作
 - `thumb://` 输入面可用
 
-当前状态：未开始
+当前状态：已完成（真实 crate、缩略图生成、`thumbnails` 表、磁盘缓存、`thumb://`、fixture / golden / validation 文档已具备）
 
 ## `B6` 完成定义
 
@@ -1143,7 +1143,7 @@ docs/fixtures/
 - `media://` / `archive://` 输入面可用
 - 视频元数据与抽帧链路可验证
 
-当前状态：未开始
+当前状态：已完成（crate、probe/ffmpeg/mpv 首版、协议输入面、runtime smoke、fixture / validation 文档已具备）
 
 ## `B8` 完成定义
 

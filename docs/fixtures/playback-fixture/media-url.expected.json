@@ -1,0 +1,9 @@
+{
+  "scheme": "media",
+  "successPath": "media://asset/<asset_id>",
+  "protocolSemantics": {
+    "input": "asset_id",
+    "output": "raw media bytes",
+    "transport": "custom protocol"
+  }
+}

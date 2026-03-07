@@ -9,22 +9,28 @@ pub struct RuntimeSmokeCheckResult {
     pub sqlite_version: String,
     pub ffmpeg_path: String,
     pub ffmpeg_first_line: String,
+    pub ffprobe_path: String,
+    pub ffprobe_first_line: String,
     pub mpv_path: String,
     pub mpv_first_line: String,
 }
 
 pub fn run_runtime_smoke_check(
     ffmpeg_path: &str,
+    ffprobe_path: &str,
     mpv_path: &str,
 ) -> Result<RuntimeSmokeCheckResult> {
     let sqlite_version = read_sqlite_version()?;
     let ffmpeg_first_line = read_process_first_line(ffmpeg_path, &["-version"])?;
+    let ffprobe_first_line = read_process_first_line(ffprobe_path, &["-version"])?;
     let mpv_first_line = read_process_first_line(mpv_path, &["--version"])?;
 
     Ok(RuntimeSmokeCheckResult {
         sqlite_version,
         ffmpeg_path: ffmpeg_path.to_string(),
         ffmpeg_first_line,
+        ffprobe_path: ffprobe_path.to_string(),
+        ffprobe_first_line,
         mpv_path: mpv_path.to_string(),
         mpv_first_line,
     })

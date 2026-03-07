@@ -1,0 +1,9 @@
+{
+  "mime": "video/mp4",
+  "containerFormat": "mp4",
+  "durationMs": 125000,
+  "width": 1920,
+  "height": 1080,
+  "videoCodec": "h264",
+  "audioCodec": "aac"
+}

@@ -8,6 +8,7 @@
 - `medium-fixture/`：扫描回归与性能回归
 - `archive-fixture/`：zip、rar、7z 与损坏包样本
 - `thumbnail-fixture/`：缩略图 profile、cache key、协议与 golden 说明
+- `playback-fixture/`：probe、session、`media://` / `archive://` 协议与 golden 说明
 
 `B1` 仅先落目录约定与说明，真实样本在 `B2-B4` 逐步补齐。
 

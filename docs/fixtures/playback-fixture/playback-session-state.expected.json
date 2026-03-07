@@ -1,0 +1,14 @@
+{
+  "states": [
+    "opening",
+    "paused",
+    "playing",
+    "stopped",
+    "failed"
+  ],
+  "notes": [
+    "open defaults to paused after successful mpv launch",
+    "pause/play/seek/stop currently update persisted session state",
+    "full mpv IPC remains future work"
+  ]
+}

@@ -4,12 +4,16 @@ use app_core::archive::{
 };
 use app_core::asset::{ensure_media_assets_for_library, resolve_asset};
 use app_core::cli::{help_payload, parse_command, run_command, BackendCommand};
+use app_core::playback::{
+    open_playback_session, playback_pause, playback_probe, playback_seek, playback_status,
+    playback_stop,
+};
 use app_core::scan::{register_library, resume_scan, run_scan, scan_snapshot, scan_stats};
 use app_core::thumbnail::{ensure_thumbnail_for_asset, get_thumbnail, parse_thumbnail_profile};
 use media_db::{DatabaseLocation, MediaDatabase};
 use serde::Deserialize;
 use serde_json::json;
-use shared_model::{AssetId, LibraryId, SourceId, TaskId, ThumbnailKey};
+use shared_model::{AssetId, LibraryId, PlaybackSessionId, SourceId, TaskId, ThumbnailKey};
 use std::env;
 use std::path::PathBuf;
 
@@ -26,6 +30,11 @@ fn try_main() -> anyhow::Result<()> {
     let config_path = workspace_root().join("config").join("local.paths.json");
     let db_path = workspace_root().join("data").join("mediaplayernext-dev.db");
     let thumbnail_cache_root = workspace_root().join("data").join("cache").join("thumbs");
+    let playback_sessions_root = workspace_root()
+        .join("data")
+        .join("cache")
+        .join("playback")
+        .join("sessions");
     let normalize_root = workspace_root()
         .join("data")
         .join("cache")
@@ -161,6 +170,63 @@ fn try_main() -> anyhow::Result<()> {
             let summary = get_thumbnail(&repositories, &ThumbnailKey(thumbnail_key.clone()))?;
             Some(serde_json::to_value(summary)?)
         }
+        BackendCommand::PlaybackProbe { asset_id } => {
+            let summary = playback_probe(
+                &repositories,
+                &repositories,
+                &repositories,
+                &repositories,
+                &repositories,
+                &runtime_paths.ffprobe_path,
+                &AssetId(asset_id.clone()),
+            )?;
+            Some(serde_json::to_value(summary)?)
+        }
+        BackendCommand::PlaybackOpen { asset_id } => {
+            let summary = open_playback_session(
+                &repositories,
+                &repositories,
+                &repositories,
+                &repositories,
+                &repositories,
+                &playback_sessions_root,
+                &runtime_paths.mpv_path,
+                &AssetId(asset_id.clone()),
+            )?;
+            Some(serde_json::to_value(summary)?)
+        }
+        BackendCommand::PlaybackStatus { session_id } => {
+            let summary = playback_status(
+                &playback_sessions_root,
+                &PlaybackSessionId(session_id.clone()),
+            )?;
+            Some(serde_json::to_value(summary)?)
+        }
+        BackendCommand::PlaybackPause { session_id } => {
+            let summary = playback_pause(
+                &playback_sessions_root,
+                &PlaybackSessionId(session_id.clone()),
+            )?;
+            Some(serde_json::to_value(summary)?)
+        }
+        BackendCommand::PlaybackSeek {
+            session_id,
+            position_ms,
+        } => {
+            let summary = playback_seek(
+                &playback_sessions_root,
+                &PlaybackSessionId(session_id.clone()),
+                position_ms.parse::<i64>()?,
+            )?;
+            Some(serde_json::to_value(summary)?)
+        }
+        BackendCommand::PlaybackStop { session_id } => {
+            let summary = playback_stop(
+                &playback_sessions_root,
+                &PlaybackSessionId(session_id.clone()),
+            )?;
+            Some(serde_json::to_value(summary)?)
+        }
     };
 
     let output = run_command(command, config_path, payload)?;
@@ -172,11 +238,15 @@ fn try_main() -> anyhow::Result<()> {
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct RuntimePathsConfig {
+    ffprobe: Option<String>,
+    mpv: Option<String>,
     sevenz: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 struct RuntimePaths {
+    ffprobe_path: PathBuf,
+    mpv_path: PathBuf,
     sevenz_path: PathBuf,
 }
 
@@ -188,6 +258,12 @@ fn load_runtime_paths(config_path: &PathBuf) -> anyhow::Result<RuntimePaths> {
     };
 
     Ok(RuntimePaths {
+        ffprobe_path: PathBuf::from(
+            config
+                .ffprobe
+                .unwrap_or_else(|| "C:/Tools/ffmpeg/bin/ffprobe.exe".to_string()),
+        ),
+        mpv_path: PathBuf::from(config.mpv.unwrap_or_else(|| "C:/mpv/mpv.exe".to_string())),
         sevenz_path: PathBuf::from(
             config
                 .sevenz

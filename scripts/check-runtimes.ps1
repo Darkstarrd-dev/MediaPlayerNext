@@ -16,4 +16,4 @@ if (-not (Test-Path $cargoRunner)) {
 
 $cargoManifestPath = Join-Path $projectRoot "src-tauri\Cargo.toml"
 
-& $cargoRunner run --manifest-path $cargoManifestPath --bin runtime-smoke-check -- --ffmpeg-path $config.ffmpeg --mpv-path $config.mpv
+& $cargoRunner run --manifest-path $cargoManifestPath --bin runtime-smoke-check -- --ffmpeg-path $config.ffmpeg --ffprobe-path $config.ffprobe --mpv-path $config.mpv

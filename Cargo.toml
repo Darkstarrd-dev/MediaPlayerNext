@@ -6,6 +6,7 @@ members = [
   "crates/media-db",
   "crates/media-io",
   "crates/media-thumb",
+  "crates/media-playback",
 ]
 resolver = "2"
 

@@ -1,0 +1,9 @@
+{
+  "sessionId": "playback_001",
+  "assetId": "asset_video_001",
+  "mediaUrl": "media://asset/asset_video_001",
+  "state": "paused",
+  "positionMs": 0,
+  "createdAt": "1710000000000",
+  "updatedAt": "1710000000000"
+}
