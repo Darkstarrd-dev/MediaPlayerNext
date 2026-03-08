@@ -96,7 +96,7 @@ Useful commands:
 
 ### 资源路径策略
 
-`P6-4` starts to freeze runtime path lookup order and subtitle sidecar bundle layout.
+`P6-4` freezes the current runtime path lookup order and subtitle sidecar bundle layout.
 
 - strategy document
   - `docs/runtime/resource-path-strategy.md`
@@ -107,7 +107,7 @@ Useful commands:
 - output artifact
   - `data/resource-paths/<timestamp>/resource-paths-summary.json`
 
-Current first-round override variables:
+Current override variables:
 
 - `MPNEXT_RUNTIME_FFMPEG_PATH`
 - `MPNEXT_RUNTIME_FFPROBE_PATH`
@@ -122,6 +122,14 @@ Current first-round override variables:
 - `MPNEXT_BACKEND_NORMALIZE_ROOT`
 
 Use env override first when you need to validate an alternate local or packaged-like layout without editing `config/local.paths.json`.
+
+Current packaged runtime policy:
+
+- Node
+  - `env override -> PATH node -> explicit failure`
+- `ffmpeg/ffprobe/mpv/7z`
+  - `env override -> explicit failure`
+- this stage does not promise bundled Node or bundled external runtime binaries yet
 
 Current sidecar package rule:
 

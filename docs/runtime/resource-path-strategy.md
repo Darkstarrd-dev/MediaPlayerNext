@@ -6,9 +6,9 @@
 
 ## 当前目标
 
-- 先固定首轮查找顺序
-- 先为开发态与“打包前模拟验证”提供统一脚本
-- 不在当前阶段承诺最终生产包内资源布局已经全部落地
+- 固定开发态 / 打包态 / 本地 override 的查找顺序
+- 提供统一脚本验证当前发布前口径
+- 明确哪些资源当前选择“不随包内置”，并保证失败行为可预期
 
 ## 总原则
 
@@ -86,7 +86,7 @@
 
 说明：
 
-- 当前仓库还没有把 Node runtime 打进发布包，因此打包态首轮策略仍以 override 或系统 Node 为主
+- 当前仓库还没有把 Node runtime 打进发布包，因此打包态策略固定为 override 或系统 Node，不再隐式猜测 bundle 内置 Node
 
 ### 4. subtitle sidecar entry
 
@@ -106,7 +106,7 @@
 
 当前说明：
 
-- `src-tauri/tauri.conf.json` 已声明把 `apps/subtitle-sidecar/dist/**/*` 打进 bundle 资源目录
+- `src-tauri/tauri.conf.json` 已声明把 `apps/subtitle-sidecar/dist/src/**/*` 打进 bundle 资源目录
 - Tauri command 链路现在会在非 dev 模式下解析 `sidecar/index.js`
 
 ### 5. subtitle sessions root
@@ -183,9 +183,9 @@ Tauri protocol host 当前顺序：
 - sidecar 入口与缓存目录默认值是否可解析
 - 当前策略说明是否已形成结构化 summary
 
-## 当前已知未完成项
+## 当前发布策略边界
 
-- bundle 内置 `ffmpeg/ffprobe/mpv/7z` 路径尚未形成最终发布布局
-- 还没有把 Node runtime 一并打进发布包，当前仍依赖 env override 或系统 `node`
+- bundle 内置 `ffmpeg/ffprobe/mpv/7z` 的最终随包布局尚未启动，本阶段固定策略为 `env override -> 明确失败`
+- Node runtime 当前不随包内置，本阶段固定策略为 `env override -> PATH node -> 明确失败`
 
-因此 `P6-4` 当前状态应理解为：subtitle sidecar 的 bundle 入口已开始进入打包态闭环，但 runtimes 与 bundled Node 仍未最终收口。
+因此 `P6-4` 的完成含义不是“所有运行时都已随包内置”，而是：这些路径策略已经被明文化、代码已按该策略执行、脚本已能验证成功与缺失两类结果。

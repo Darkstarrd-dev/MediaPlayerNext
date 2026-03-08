@@ -57,13 +57,13 @@
 - `P6-1`：已完成首轮（统一脚本、结果产物与首轮 gate run 已落地；`duplicate deps` 已按 baseline-delta 进入 P2 治理）
 - `P6-2`：已完成首轮（runtimes / DB fixture replay / protocol / sidecar / command AppError 已完成首轮收口，可正式切入 `P6-3`）
 - `P6-3`：进行中（后端边界版文档已落，`library/scan/items/archive/thumbnail` 首批 contracts 已开始实现）
-- `P6-4`：进行中（首轮资源路径策略文档与 `verify-resource-paths.ps1` 已开始落地，打包态 bundle 资源路径仍待继续收口）
+- `P6-4`：已完成（开发态 / 打包态 / 本地 override 的查找顺序、sidecar bundle 资源路径、protocol DB 打包态路径与校验脚本已收口）
 - `P6-5`：未开始（日志字段贯穿、外部进程统一日志格式与缺失域 contracts 仍待补齐）
 
 ### 2.3 当前最自然的下一步
 
-1. 继续推进 `P6-4` 资源路径策略，把开发态 / 打包态 / 本地 override 的查找顺序固定成文档与脚本
-2. 再进入 `P6-5`，补日志字段与剩余 contracts 收口
+1. 进入 `P6-5`，补日志字段与剩余 contracts 收口
+2. 若后续开始打包发布试运行，再把 bundled Node 与 `ffmpeg/ffprobe/mpv/7z` 的最终随包布局作为 `I7` / 发布准备补充项继续推进
 
 ---
 
@@ -270,7 +270,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\bench\run-sidecar-
 
 ## 8. P6-1：质量门禁自动化
 
-当前状态：进行中
+当前状态：已完成
 
 ## 8.1 阶段目标
 
@@ -323,7 +323,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\bench\run-sidecar-
 - 至少一轮完整门禁执行结果已形成记录
 - 失败时能快速定位到是哪一类门禁失败
 
-当前首轮结果：
+当前收口结果：
 
 - `P0 / P1` 当前已全部可自动执行并形成 JSON / log 产物
 - `duplicate deps` 已从“绝对归零”改为 baseline-delta 治理，当前基线已收敛到 `21` 个多版本 crate family
@@ -586,6 +586,13 @@ scripts/run-cargo-with-msvc.cmd test --workspace
 - Tauri subtitle command 链路已开始区分 dev 路径与 bundle resource `sidecar/index.js`
 - `npm run check:release` 已验证当前打包态产物中存在 `target/release/sidecar/index.js`
 - `thumb://` / `media://` / `archive://` 已开始区分 dev 数据库路径与打包态 `app local data dir/mediaplayernext.db`
+- `verify-resource-paths.ps1` 已验证 runtime 缺失时会把缺失项稳定落到 `requiredMissing`，例如 `subtitleNode` 缺失可在产物中明确定位
+
+当前阶段明确策略：
+
+- bundled Node 仍未进入发布包，打包态按“env override -> PATH node -> 明确失败”执行
+- `ffmpeg/ffprobe/mpv/7z` 当前仍未随包内置，打包态按“env override -> 明确失败”执行
+- 这两项在当前阶段属于**已文档化的发布策略**，不是继续悬空的隐式缺口
 
 ## 11.6 本阶段必须补的测试/验证
 
