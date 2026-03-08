@@ -57,13 +57,13 @@
 - `P6-1`：已完成首轮（统一脚本、结果产物与首轮 gate run 已落地；`duplicate deps` 已按 baseline-delta 进入 P2 治理）
 - `P6-2`：已完成首轮（runtimes / DB fixture replay / protocol / sidecar / command AppError 已完成首轮收口，可正式切入 `P6-3`）
 - `P6-3`：进行中（后端边界版文档已落，`library/scan/items/archive/thumbnail` 首批 contracts 已开始实现）
-- `P6-4`：未开始（开发态 / 打包态资源查找顺序仍未被单独收口为策略文档与校验脚本）
+- `P6-4`：进行中（首轮资源路径策略文档与 `verify-resource-paths.ps1` 已开始落地，打包态 bundle 资源路径仍待继续收口）
 - `P6-5`：未开始（日志字段贯穿、外部进程统一日志格式与缺失域 contracts 仍待补齐）
 
 ### 2.3 当前最自然的下一步
 
-1. 继续进入 `P6-2` 错误场景补强，把 runtimes / DB / protocol / sidecar 的坏路径提前固定成测试与文档
-2. 再补接口收口文档、资源路径策略与 contracts，避免 UI 接线时仍靠猜测和临场判断
+1. 继续推进 `P6-4` 资源路径策略，把开发态 / 打包态 / 本地 override 的查找顺序固定成文档与脚本
+2. 再进入 `P6-5`，补日志字段与剩余 contracts 收口
 
 ---
 
@@ -528,7 +528,7 @@ scripts/run-cargo-with-msvc.cmd test --workspace
 
 ## 11. P6-4：发布前资源路径策略收口
 
-当前状态：未开始
+当前状态：进行中
 
 ## 11.1 阶段目标
 
@@ -576,6 +576,12 @@ scripts/run-cargo-with-msvc.cmd test --workspace
 - 开发态 / 打包态 / 本地 override 的查找顺序清晰可查
 - sidecar、runtimes、migrations 的路径策略不再散落在多个文件里靠隐式约定维护
 - 至少一轮打包态校验或模拟验证已形成记录
+
+当前首轮结果：
+
+- `docs/runtime/resource-path-strategy.md` 已形成首轮策略文档
+- `scripts/release/verify-resource-paths.ps1` 已形成首轮校验脚本
+- `check-runtimes.ps1` 与 backend harness 已开始支持 env override 优先于本地 config
 
 ## 11.6 本阶段必须补的测试/验证
 
@@ -792,26 +798,27 @@ docs/fixtures/
 - 关键质量门禁已落成统一脚本 / 流程
 - 至少一轮完整门禁记录已形成
 
-当前状态：未开始
+当前状态：已完成首轮
 
 ## `P6-2` 完成定义
 
 - 关键 runtimes / DB / protocol / sidecar bad path 已有测试与文档
 
-当前状态：未开始
+当前状态：已完成首轮
 
 ## `P6-3` 完成定义
 
-- 已形成 `window.*` 映射表、`MediaRepository` 方法清单、DTO 依赖矩阵与传输边界文档
+- 已形成 `window.*` 映射表、`MediaRepository` 方法清单、传输边界文档与 `I1` 首批 contracts
+- 页面级 DTO 依赖矩阵作为后补件，等待旧 UI 定义收口后再补
 
-当前状态：未开始
+当前状态：进行中
 
 ## `P6-4` 完成定义
 
 - 资源路径策略文档与校验脚本已具备
 - 开发态 / 打包态查找顺序已明确
 
-当前状态：未开始
+当前状态：进行中
 
 ## `P6-5` 完成定义
 

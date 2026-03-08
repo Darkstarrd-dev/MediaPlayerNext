@@ -89,8 +89,36 @@ Useful commands:
 - `npm run build:web`
 - `npm run tauri:dev`
 - `npm run check`
+- `npm run check:paths`
 - `npm run check:quality`
 - `npm run check:release`
+
+### 资源路径策略
+
+`P6-4` starts to freeze runtime path lookup order.
+
+- strategy document
+  - `docs/runtime/resource-path-strategy.md`
+- verification script
+  - `npm run check:paths`
+- output artifact
+  - `data/resource-paths/<timestamp>/resource-paths-summary.json`
+
+Current first-round override variables:
+
+- `MPNEXT_RUNTIME_FFMPEG_PATH`
+- `MPNEXT_RUNTIME_FFPROBE_PATH`
+- `MPNEXT_RUNTIME_MPV_PATH`
+- `MPNEXT_RUNTIME_SEVENVZ_PATH`
+- `MPNEXT_SUBTITLE_NODE_PATH`
+- `MPNEXT_SUBTITLE_ENTRY_PATH`
+- `MPNEXT_SUBTITLE_SESSIONS_ROOT`
+- `MPNEXT_BACKEND_DB_PATH`
+- `MPNEXT_BACKEND_THUMB_CACHE_ROOT`
+- `MPNEXT_BACKEND_PLAYBACK_SESSIONS_ROOT`
+- `MPNEXT_BACKEND_NORMALIZE_ROOT`
+
+Use env override first when you need to validate an alternate local or packaged-like layout without editing `config/local.paths.json`.
 
 ### Quality Gates
 

@@ -318,16 +318,20 @@ fn load_runtime_paths(config_path: &PathBuf) -> anyhow::Result<RuntimePaths> {
     };
 
     Ok(RuntimePaths {
-        ffprobe_path: PathBuf::from(
-            config
-                .ffprobe
-                .unwrap_or_else(|| "C:/Tools/ffmpeg/bin/ffprobe.exe".to_string()),
+        ffprobe_path: env_path_or_config_or_default(
+            "MPNEXT_RUNTIME_FFPROBE_PATH",
+            config.ffprobe,
+            PathBuf::from("C:/Tools/ffmpeg/bin/ffprobe.exe"),
         ),
-        mpv_path: PathBuf::from(config.mpv.unwrap_or_else(|| "C:/mpv/mpv.exe".to_string())),
-        sevenz_path: PathBuf::from(
-            config
-                .sevenz
-                .unwrap_or_else(|| "C:/Program Files/7-Zip/7z.exe".to_string()),
+        mpv_path: env_path_or_config_or_default(
+            "MPNEXT_RUNTIME_MPV_PATH",
+            config.mpv,
+            PathBuf::from("C:/mpv/mpv.exe"),
+        ),
+        sevenz_path: env_path_or_config_or_default(
+            "MPNEXT_RUNTIME_SEVENVZ_PATH",
+            config.sevenz,
+            PathBuf::from("C:/Program Files/7-Zip/7z.exe"),
         ),
     })
 }
@@ -341,4 +345,15 @@ fn workspace_root() -> PathBuf {
 
 fn env_path_or_default(name: &str, default: PathBuf) -> PathBuf {
     env::var_os(name).map(PathBuf::from).unwrap_or(default)
+}
+
+fn env_path_or_config_or_default(
+    env_name: &str,
+    config_value: Option<String>,
+    default: PathBuf,
+) -> PathBuf {
+    match env::var_os(env_name) {
+        Some(value) => PathBuf::from(value),
+        None => config_value.map(PathBuf::from).unwrap_or(default),
+    }
 }
