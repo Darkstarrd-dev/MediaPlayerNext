@@ -38,7 +38,7 @@
 
 ## 2. 已完成内容与当前进度
 
-截至目前，后端先行阶段 `B1-B8` 已完成首版闭环，`P6` 也已开始做统一回归收口；`I1-I4` 仍未开始，但其关键前置条件已具备。
+截至目前，后端先行阶段 `B1-B8` 已完成首版闭环，`P6` 也已完成首轮收口；`I1` 已进入 repository / adapter 与宿主接线阶段，`I2-I4` 仍未开始。
 
 ### 2.1 已完成内容（承接 `B1-B8`）
 
@@ -54,15 +54,15 @@
 
 ### 2.2 当前进度判断
 
-- `I1`：进行中（`MediaRepository`、`tauriMediaRepository` 与最小 app shell 已开始落地，library/scan/items/archive/thumbnail 宿主接线仍待补齐）
+- `I1`：进行中（`MediaRepository`、`tauriMediaRepository`、最小 app shell 与 `library/scan/items/archive/thumbnail` 首轮宿主命令已接通，thumbnail progress 与真实页面迁移继续后补）
 - `I2`：未开始（尚无真实媒体库选择、扫描入口、缩略图列表页）
 - `I3`：未开始（尚无 archive entries UI 浏览页）
 - `I4`：未开始（尚无媒体库全链路 UI，仍停留在最小宿主桥接演示）
 
 ### 2.3 当前最自然的下一步
 
-1. 先冻结 UI 接入所需的 repository / adapter 边界，不让 React 组件直接依赖 `invoke`
-2. 再补齐 library / scan / items / archive / thumbnail 的 contracts 与 Tauri command 面
+1. 继续沿现有 `MediaRepository` 边界推进，不让 React 组件直接依赖 `invoke`
+2. 在已接通 `library / scan / items / archive / thumbnail.ensure` 的基础上，开始进入真实页面与 channel 补齐前的 UI 数据流验证
 
 补充约束：
 
@@ -77,13 +77,18 @@
 截至当前更新时，仓库实际状态如下：
 
 - `apps/desktop/src/App.tsx` 仍是最小 `greet` command 演示，不承载真实媒体库 UI
-- `packages/contracts` 当前已具备 `playback` / `subtitle` 相关 `commands/channels/events`，但 library / scan / items / archive / thumbnail 的 UI 接入合同仍待补齐
-- `src-tauri/src/lib.rs` 当前只注册了：
+- `packages/contracts` 已具备 `library / scan / items / archive / thumbnail / playback / subtitle` 的首轮 command model；channel/event 仍以扫描、缩略图、播放、字幕为主
+- `src-tauri/src/lib.rs` 已注册：
   - `greet`
   - `runtime_smoke_check`
-  - `subtitle.*` 最小命令
+  - `subtitle.*`
+  - `library.*`
+  - `scan.*`
+  - `items.*`
+  - `archive.*`
+  - `thumbnail.ensure`
   - `thumb://` / `media://` / `archive://` 协议
-- `crates/app-core` 已具备后端 use case，但尚未形成面向前端稳定暴露的完整 Tauri command 集合
+- `crates/app-core` 已形成可由前端首轮消费的 Tauri command 集合，宿主层仍保持薄接线
 - `docs/benchmarks/` 已有 scan / archive / thumbnail / normalize / playback / sidecar / backend regression 记录
 
 因此接下来的首要目标，不再是继续补后端骨架，而是把“后端已具备的能力”收口成前端可直接依赖的 repository / adapter 与页面级 UI 链路。

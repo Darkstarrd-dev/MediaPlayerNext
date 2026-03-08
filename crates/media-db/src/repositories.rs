@@ -84,6 +84,85 @@ impl LibraryRepository for SqliteRepositories<'_> {
 
         Ok(record)
     }
+
+    fn list(&self) -> Result<Vec<LibraryRecord>> {
+        let mut statement = self.connection.prepare(
+            "
+            select id, root_path, library_type, scan_mode, created_at, updated_at
+            from libraries
+            order by updated_at desc, id asc
+            ",
+        )?;
+        let rows = statement.query_map([], |row| {
+            Ok(LibraryRecord {
+                id: LibraryId(row.get::<_, String>(0)?),
+                root_path: row.get(1)?,
+                library_type: row.get(2)?,
+                scan_mode: row.get(3)?,
+                created_at: row.get(4)?,
+                updated_at: row.get(5)?,
+            })
+        })?;
+
+        rows.collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(Into::into)
+    }
+
+    fn delete(&self, library_id: &LibraryId) -> Result<()> {
+        self.connection.execute(
+            "
+            delete from thumbnails
+            where asset_id in (
+              select id from media_assets
+              where (source_kind = 'file' and source_ref_id in (
+                select id from sources where library_id = :library_id
+              ))
+              or (source_kind = 'archive_entry' and source_ref_id in (
+                select id from archive_entries where archive_id in (
+                  select id from archives where source_id in (
+                    select id from sources where library_id = :library_id
+                  )
+                )
+              ))
+            )
+            ",
+            named_params! { ":library_id": library_id.0 },
+        )?;
+        self.connection.execute(
+            "
+            delete from media_assets
+            where (source_kind = 'file' and source_ref_id in (
+              select id from sources where library_id = :library_id
+            ))
+            or (source_kind = 'archive_entry' and source_ref_id in (
+              select id from archive_entries where archive_id in (
+                select id from archives where source_id in (
+                  select id from sources where library_id = :library_id
+                )
+              )
+            ))
+            ",
+            named_params! { ":library_id": library_id.0 },
+        )?;
+        self.connection.execute(
+            "delete from archive_entries where archive_id in (select id from archives where source_id in (select id from sources where library_id = :library_id))",
+            named_params! { ":library_id": library_id.0 },
+        )?;
+        self.connection.execute(
+            "delete from archives where source_id in (select id from sources where library_id = :library_id)",
+            named_params! { ":library_id": library_id.0 },
+        )?;
+        self.connection.execute(
+            "delete from sources where library_id = :library_id",
+            named_params! { ":library_id": library_id.0 },
+        )?;
+        self.connection.execute(
+            "delete from libraries where id = :library_id",
+            named_params! { ":library_id": library_id.0 },
+        )?;
+
+        Ok(())
+    }
 }
 
 impl SourceRepository for SqliteRepositories<'_> {

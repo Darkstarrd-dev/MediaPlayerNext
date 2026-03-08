@@ -60,6 +60,10 @@ pub fn register_library<L: LibraryRepository>(
     Ok(library_id)
 }
 
+pub fn scan_task_id_for_library(library_id: &LibraryId) -> TaskId {
+    TaskId(format!("task_scan_{:016x}", stable_hash(&library_id.0)))
+}
+
 pub fn run_scan<L, S, T>(
     library_repository: &L,
     source_repository: &S,
@@ -75,7 +79,7 @@ where
         .get(library_id)?
         .ok_or_else(|| anyhow!("library not found: {}", library_id.0))?;
 
-    let task_id = TaskId(format!("task_scan_{:016x}", stable_hash(&library.id.0)));
+    let task_id = scan_task_id_for_library(&library.id);
     let started_at = now_string();
 
     task_repository.upsert(&TaskRecord {

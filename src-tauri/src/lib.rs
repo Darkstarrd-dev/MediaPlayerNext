@@ -2,18 +2,32 @@ mod runtime_check;
 pub mod subtitle_sidecar;
 
 use anyhow::{Context, Error};
-use app_core::archive::{read_archive_entry, resolve_archive_entry_location};
+use app_core::archive::read_archive_entry;
+use app_core::archive::{
+    archive_snapshot, index_library_archives, normalize_archive_source, normalize_archive_status,
+    resolve_archive_entry_location, ArchiveNormalizeSummary,
+};
+use app_core::asset::{
+    asset_snapshot_for_library, ensure_media_assets_for_library, resolve_asset, AssetResolution,
+};
+use app_core::library::{get_library, list_libraries, remove_library};
 use app_core::playback::resolve_media_asset_path;
+use app_core::scan::{
+    register_library, resume_scan, run_scan, scan_stats, scan_task_id_for_library, ScanRunSummary,
+    ScanStatsSummary,
+};
 use app_core::subtitle_host::{
     subtitle_get_progress, subtitle_health, subtitle_ping, subtitle_start_session,
     subtitle_stop_session,
 };
-use app_core::thumbnail::get_thumbnail;
+use app_core::thumbnail::{ensure_thumbnail_for_asset, get_thumbnail, parse_thumbnail_profile};
 use media_db::{DatabaseLocation, MediaDatabase};
 use runtime_check::{run_runtime_smoke_check, RuntimeSmokeCheckResult};
+use serde::Deserialize;
 use serde_json::json;
 use shared_model::{
-    AppError, AppErrorCode, ArchiveEntryId, AssetId, SubtitleSessionId, ThumbnailKey,
+    AppError, AppErrorCode, ArchiveEntryId, AssetId, LibraryId, LibraryRecord, SourceId,
+    SubtitleSessionId, TaskProgress, TaskRecord, ThumbnailKey,
 };
 use std::env;
 use std::path::{Path, PathBuf};
@@ -23,6 +37,24 @@ use tauri::{AppHandle, Manager};
 const ERROR_CODE_HEADER: &str = "x-mediaplayernext-error-code";
 const ERROR_RETRIABLE_HEADER: &str = "x-mediaplayernext-error-retriable";
 type CommandResult<T> = Result<T, AppError>;
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RuntimePathsConfig {
+    sevenz: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+struct RuntimePaths {
+    sevenz_path: PathBuf,
+}
+
+struct CommandEnvironment {
+    database: MediaDatabase,
+    runtime_paths: RuntimePaths,
+    thumbnail_cache_root: PathBuf,
+    normalize_root: PathBuf,
+}
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -92,6 +124,327 @@ fn subtitle_get_progress_command(
         .map_err(|error| map_subtitle_command_error("subtitle_get_progress_command", error))
 }
 
+#[tauri::command]
+fn library_list_command(app: tauri::AppHandle) -> CommandResult<Vec<LibraryRecord>> {
+    with_command_environment(&app, |environment| {
+        let repositories = environment.database.repositories();
+        list_libraries(&repositories)
+    })
+    .map_err(|error| map_backend_command_error("library_list_command", "library", error))
+}
+
+#[tauri::command]
+fn library_add_command(app: tauri::AppHandle, root_path: String) -> CommandResult<LibraryRecord> {
+    with_command_environment(&app, |environment| {
+        let repositories = environment.database.repositories();
+        let library_id = register_library(&repositories, Path::new(&root_path))?;
+        get_library(&repositories, &library_id)
+    })
+    .map_err(|error| map_backend_command_error("library_add_command", "library", error))
+}
+
+#[tauri::command]
+fn library_get_command(app: tauri::AppHandle, library_id: String) -> CommandResult<LibraryRecord> {
+    with_command_environment(&app, |environment| {
+        let repositories = environment.database.repositories();
+        get_library(&repositories, &LibraryId(library_id))
+    })
+    .map_err(|error| map_backend_command_error("library_get_command", "library", error))
+}
+
+#[tauri::command]
+fn library_remove_command(app: tauri::AppHandle, library_id: String) -> CommandResult<()> {
+    with_command_environment(&app, |environment| {
+        let repositories = environment.database.repositories();
+        remove_library(&repositories, &LibraryId(library_id))
+    })
+    .map_err(|error| map_backend_command_error("library_remove_command", "library", error))
+}
+
+#[tauri::command]
+fn scan_start_command(app: tauri::AppHandle, library_id: String) -> CommandResult<ScanRunSummary> {
+    with_command_environment(&app, |environment| {
+        let repositories = environment.database.repositories();
+        run_scan(
+            &repositories,
+            &repositories,
+            &repositories,
+            &LibraryId(library_id),
+        )
+    })
+    .map_err(|error| map_backend_command_error("scan_start_command", "scan", error))
+}
+
+#[tauri::command]
+fn scan_resume_command(app: tauri::AppHandle, library_id: String) -> CommandResult<ScanRunSummary> {
+    with_command_environment(&app, |environment| {
+        let repositories = environment.database.repositories();
+        resume_scan(
+            &repositories,
+            &repositories,
+            &repositories,
+            &LibraryId(library_id),
+        )
+    })
+    .map_err(|error| map_backend_command_error("scan_resume_command", "scan", error))
+}
+
+#[tauri::command]
+fn scan_stats_command(
+    app: tauri::AppHandle,
+    library_id: String,
+) -> CommandResult<ScanStatsSummary> {
+    with_command_environment(&app, |environment| {
+        let repositories = environment.database.repositories();
+        scan_stats(&repositories, &repositories, &LibraryId(library_id))
+    })
+    .map_err(|error| map_backend_command_error("scan_stats_command", "scan", error))
+}
+
+#[tauri::command]
+fn scan_snapshot_command(app: tauri::AppHandle, library_id: String) -> CommandResult<TaskProgress> {
+    with_command_environment(&app, |environment| {
+        let repositories = environment.database.repositories();
+        let task_id = scan_task_id_for_library(&LibraryId(library_id));
+        let task = app_core::ports::TaskRepository::get(&repositories, &task_id)?
+            .ok_or_else(|| anyhow::anyhow!("task not found: {}", task_id.0))?;
+        Ok(task_progress_from_record(task))
+    })
+    .map_err(|error| map_backend_command_error("scan_snapshot_command", "scan", error))
+}
+
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ItemListEntryPayload {
+    asset_id: String,
+    source_kind: String,
+    source_ref_id: String,
+    library_id: String,
+    source_id: String,
+    archive_id: Option<String>,
+    entry_path: Option<String>,
+    mime: String,
+    thumbnail_key: Option<String>,
+}
+
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ItemDetailPayload {
+    asset_id: String,
+    source_kind: String,
+    mime: String,
+    library_id: String,
+    source_id: String,
+    file_path: Option<String>,
+    archive_id: Option<String>,
+    archive_entry_id: Option<String>,
+    archive_path: Option<String>,
+    entry_path: Option<String>,
+}
+
+#[tauri::command]
+fn items_list_command(
+    app: tauri::AppHandle,
+    library_id: String,
+    page: Option<u32>,
+    page_size: Option<u32>,
+) -> CommandResult<Vec<ItemListEntryPayload>> {
+    with_command_environment(&app, |environment| {
+        let repositories = environment.database.repositories();
+        let library_id = LibraryId(library_id);
+        let _ = index_library_archives(
+            &repositories,
+            &repositories,
+            &repositories,
+            &repositories,
+            &library_id,
+        )?;
+        let _ = ensure_media_assets_for_library(
+            &repositories,
+            &repositories,
+            &repositories,
+            &repositories,
+            &repositories,
+            &library_id,
+        )?;
+
+        let snapshot = asset_snapshot_for_library(
+            &repositories,
+            &repositories,
+            &repositories,
+            &repositories,
+            &library_id,
+        )?;
+        let offset = page
+            .zip(page_size)
+            .map(|(page_value, page_size_value)| {
+                page_value.saturating_sub(1) as usize * page_size_value as usize
+            })
+            .unwrap_or(0);
+        let limit = page_size
+            .map(|value| value as usize)
+            .unwrap_or(snapshot.len());
+
+        Ok(snapshot
+            .into_iter()
+            .skip(offset)
+            .take(limit)
+            .map(|item| ItemListEntryPayload {
+                asset_id: item.asset_id,
+                source_kind: item.source_kind,
+                source_ref_id: item.source_ref_id,
+                library_id: item.library_id,
+                source_id: item.source_id,
+                archive_id: item.archive_id,
+                entry_path: item.entry_path,
+                mime: item.mime,
+                thumbnail_key: None,
+            })
+            .collect())
+    })
+    .map_err(|error| map_backend_command_error("items_list_command", "items", error))
+}
+
+#[tauri::command]
+fn item_detail_command(
+    app: tauri::AppHandle,
+    asset_id: String,
+) -> CommandResult<ItemDetailPayload> {
+    with_command_environment(&app, |environment| {
+        let repositories = environment.database.repositories();
+        let asset_id = AssetId(asset_id);
+        let asset = app_core::ports::AssetRepository::get(&repositories, &asset_id)?
+            .ok_or_else(|| anyhow::anyhow!("asset not found: {}", asset_id.0))?;
+        let resolution = resolve_asset(
+            &repositories,
+            &repositories,
+            &repositories,
+            &repositories,
+            &repositories,
+            &asset_id,
+        )?;
+
+        Ok(match resolution {
+            AssetResolution::File(item) => ItemDetailPayload {
+                asset_id: item.asset_id,
+                source_kind: "file".to_string(),
+                mime: asset.mime,
+                library_id: item.library_id,
+                source_id: item.source_id,
+                file_path: Some(item.file_path),
+                archive_id: None,
+                archive_entry_id: None,
+                archive_path: None,
+                entry_path: None,
+            },
+            AssetResolution::ArchiveEntry(item) => ItemDetailPayload {
+                asset_id: item.asset_id,
+                source_kind: "archive_entry".to_string(),
+                mime: asset.mime,
+                library_id: item.library_id,
+                source_id: item.source_id,
+                file_path: None,
+                archive_id: Some(item.archive_id),
+                archive_entry_id: Some(item.archive_entry_id),
+                archive_path: Some(item.archive_path),
+                entry_path: Some(item.entry_path),
+            },
+        })
+    })
+    .map_err(|error| map_backend_command_error("item_detail_command", "items", error))
+}
+
+#[tauri::command]
+fn archive_entries_command(
+    app: tauri::AppHandle,
+    source_id: String,
+) -> CommandResult<Vec<shared_model::ArchiveEntryRecord>> {
+    with_command_environment(&app, |environment| {
+        let repositories = environment.database.repositories();
+        let source_id = SourceId(source_id);
+        let snapshot = archive_snapshot(&repositories, &repositories, &source_id)?;
+        Ok(snapshot.entries)
+    })
+    .map_err(|error| map_backend_command_error("archive_entries_command", "archive", error))
+}
+
+#[tauri::command]
+fn archive_entry_detail_command(
+    app: tauri::AppHandle,
+    archive_entry_id: String,
+) -> CommandResult<app_core::archive::ResolvedArchiveEntryLocation> {
+    with_command_environment(&app, |environment| {
+        let repositories = environment.database.repositories();
+        resolve_archive_entry_location(
+            &repositories,
+            &repositories,
+            &repositories,
+            &repositories,
+            &ArchiveEntryId(archive_entry_id),
+        )
+    })
+    .map_err(|error| map_backend_command_error("archive_entry_detail_command", "archive", error))
+}
+
+#[tauri::command]
+fn archive_normalize_command(
+    app: tauri::AppHandle,
+    source_id: String,
+) -> CommandResult<ArchiveNormalizeSummary> {
+    with_command_environment(&app, |environment| {
+        let repositories = environment.database.repositories();
+        normalize_archive_source(
+            &repositories,
+            &repositories,
+            &repositories,
+            &repositories,
+            &repositories,
+            &environment.runtime_paths.sevenz_path,
+            &environment.normalize_root,
+            &SourceId(source_id),
+        )
+    })
+    .map_err(|error| map_backend_command_error("archive_normalize_command", "archive", error))
+}
+
+#[tauri::command]
+fn archive_normalize_status_command(
+    app: tauri::AppHandle,
+    task_id: String,
+) -> CommandResult<TaskProgress> {
+    with_command_environment(&app, |environment| {
+        let repositories = environment.database.repositories();
+        let task = normalize_archive_status(&repositories, &shared_model::TaskId(task_id))?;
+        Ok(task_progress_from_record(task))
+    })
+    .map_err(|error| {
+        map_backend_command_error("archive_normalize_status_command", "archive", error)
+    })
+}
+
+#[tauri::command]
+fn thumbnail_ensure_command(
+    app: tauri::AppHandle,
+    asset_id: String,
+    profile: String,
+) -> CommandResult<app_core::thumbnail::ThumbnailEnsureSummary> {
+    with_command_environment(&app, |environment| {
+        let repositories = environment.database.repositories();
+        ensure_thumbnail_for_asset(
+            &repositories,
+            &repositories,
+            &repositories,
+            &repositories,
+            &repositories,
+            &repositories,
+            &environment.thumbnail_cache_root,
+            &AssetId(asset_id),
+            parse_thumbnail_profile(&profile)?,
+        )
+    })
+    .map_err(|error| map_backend_command_error("thumbnail_ensure_command", "thumbnail", error))
+}
+
 pub fn runtime_smoke_check_entry() -> anyhow::Result<()> {
     let mut ffmpeg_path: Option<String> = None;
     let mut ffprobe_path: Option<String> = None;
@@ -131,7 +484,22 @@ pub fn run() {
             subtitle_health_command,
             subtitle_start_session_command,
             subtitle_stop_session_command,
-            subtitle_get_progress_command
+            subtitle_get_progress_command,
+            library_list_command,
+            library_add_command,
+            library_get_command,
+            library_remove_command,
+            scan_start_command,
+            scan_resume_command,
+            scan_stats_command,
+            scan_snapshot_command,
+            items_list_command,
+            item_detail_command,
+            archive_entries_command,
+            archive_entry_detail_command,
+            archive_normalize_command,
+            archive_normalize_status_command,
+            thumbnail_ensure_command
         ])
         .register_uri_scheme_protocol("thumb", |app, request| {
             match protocol_database_path(app.app_handle())
@@ -555,11 +923,132 @@ fn parse_embedded_app_error_code(message: &str) -> Option<AppErrorCode> {
     .find_map(|(needle, code)| message.contains(needle).then_some(code))
 }
 
+fn with_command_environment<T, F>(app: &AppHandle, run: F) -> anyhow::Result<T>
+where
+    F: FnOnce(&CommandEnvironment) -> anyhow::Result<T>,
+{
+    let environment = command_environment(app)?;
+    run(&environment)
+}
+
+fn command_environment(app: &AppHandle) -> anyhow::Result<CommandEnvironment> {
+    let config_path = workspace_root().join("config").join("local.paths.json");
+    let db_path = command_database_path(app)?;
+    let thumbnail_cache_root = command_cache_path(
+        app,
+        "MPNEXT_BACKEND_THUMB_CACHE_ROOT",
+        development_thumbnail_cache_root(),
+        "thumbs",
+    )?;
+    let normalize_root = command_cache_path(
+        app,
+        "MPNEXT_BACKEND_NORMALIZE_ROOT",
+        development_normalize_root(),
+        "normalized",
+    )?;
+
+    if let Some(parent) = db_path.parent() {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("create command database parent dir: {}", parent.display()))?;
+    }
+    std::fs::create_dir_all(&thumbnail_cache_root).with_context(|| {
+        format!(
+            "create thumbnail cache root for commands: {}",
+            thumbnail_cache_root.display()
+        )
+    })?;
+    std::fs::create_dir_all(&normalize_root).with_context(|| {
+        format!(
+            "create archive normalize root for commands: {}",
+            normalize_root.display()
+        )
+    })?;
+
+    Ok(CommandEnvironment {
+        database: MediaDatabase::open(DatabaseLocation::File(&db_path))?,
+        runtime_paths: load_runtime_paths(&config_path),
+        thumbnail_cache_root,
+        normalize_root,
+    })
+}
+
+fn map_backend_command_error(command: &str, domain: &str, error: Error) -> AppError {
+    let message = error.to_string();
+    let lower = message.to_ascii_lowercase();
+    let retriable = lower.contains("timed out") || lower.contains("timeout");
+    let code = if let Some(code) = parse_embedded_app_error_code(&message) {
+        code
+    } else if lower.contains("already exists") {
+        AppErrorCode::AlreadyExists
+    } else if lower.contains("not found") || lower.contains("missing") {
+        AppErrorCode::NotFound
+    } else if lower.contains("permission denied") || lower.contains("access is denied") {
+        AppErrorCode::PermissionDenied
+    } else if lower.contains("unsupported") || lower.contains("invalid") {
+        AppErrorCode::InvalidArgument
+    } else if lower.contains("sqlite") || lower.contains("database") || lower.contains("db") {
+        AppErrorCode::DbError
+    } else if lower.contains("spawn ")
+        || lower.contains("7z")
+        || lower.contains("sevenz")
+        || lower.contains("ffmpeg")
+        || lower.contains("ffprobe")
+        || lower.contains("mpv")
+    {
+        AppErrorCode::ExternalToolError
+    } else if lower.contains("io error")
+        || lower.contains("failed to read")
+        || lower.contains("failed to write")
+        || lower.contains("open ")
+        || lower.contains("create ")
+    {
+        AppErrorCode::IoError
+    } else if retriable {
+        AppErrorCode::Timeout
+    } else {
+        AppErrorCode::InternalError
+    };
+
+    AppError {
+        code,
+        message,
+        retriable,
+        details: Some(json!({
+            "surface": "tauri-command",
+            "command": command,
+            "domain": domain,
+        })),
+    }
+}
+
+fn task_progress_from_record(task: TaskRecord) -> TaskProgress {
+    TaskProgress {
+        task_id: task.id,
+        task_type: task.task_type,
+        state: task.state,
+        current: task.current,
+        total: task.total,
+        message: task.message,
+        error_code: task.error_code,
+    }
+}
+
 fn development_database_path() -> PathBuf {
     workspace_root().join("data").join("mediaplayernext-dev.db")
 }
 
-fn protocol_database_path(app: &AppHandle) -> anyhow::Result<PathBuf> {
+fn development_thumbnail_cache_root() -> PathBuf {
+    workspace_root().join("data").join("cache").join("thumbs")
+}
+
+fn development_normalize_root() -> PathBuf {
+    workspace_root()
+        .join("data")
+        .join("cache")
+        .join("normalized")
+}
+
+fn command_database_path(app: &AppHandle) -> anyhow::Result<PathBuf> {
     if let Some(path) = env::var_os("MPNEXT_BACKEND_DB_PATH") {
         return Ok(PathBuf::from(path));
     }
@@ -571,8 +1060,63 @@ fn protocol_database_path(app: &AppHandle) -> anyhow::Result<PathBuf> {
     Ok(app
         .path()
         .app_local_data_dir()
-        .context("resolve application local data dir")?
+        .context("resolve command app local data dir")?
         .join("mediaplayernext.db"))
+}
+
+fn command_cache_path(
+    app: &AppHandle,
+    env_name: &str,
+    development_default: PathBuf,
+    packaged_segment: &str,
+) -> anyhow::Result<PathBuf> {
+    if let Some(path) = env::var_os(env_name) {
+        return Ok(PathBuf::from(path));
+    }
+
+    if tauri::is_dev() {
+        return Ok(development_default);
+    }
+
+    Ok(app
+        .path()
+        .app_cache_dir()
+        .context("resolve command app cache dir")?
+        .join(packaged_segment))
+}
+
+fn load_runtime_paths(config_path: &Path) -> RuntimePaths {
+    let config = if config_path.exists() {
+        std::fs::read(config_path)
+            .ok()
+            .and_then(|raw| serde_json::from_slice::<RuntimePathsConfig>(&raw).ok())
+            .unwrap_or_default()
+    } else {
+        RuntimePathsConfig::default()
+    };
+
+    RuntimePaths {
+        sevenz_path: env_path_or_config_or_default(
+            "MPNEXT_RUNTIME_SEVENVZ_PATH",
+            config.sevenz,
+            PathBuf::from("C:/Program Files/7-Zip/7z.exe"),
+        ),
+    }
+}
+
+fn env_path_or_config_or_default(
+    env_name: &str,
+    config_value: Option<String>,
+    default: PathBuf,
+) -> PathBuf {
+    match env::var_os(env_name) {
+        Some(value) => PathBuf::from(value),
+        None => config_value.map(PathBuf::from).unwrap_or(default),
+    }
+}
+
+fn protocol_database_path(app: &AppHandle) -> anyhow::Result<PathBuf> {
+    command_database_path(app)
 }
 
 fn open_protocol_database(db_path: &Path) -> anyhow::Result<MediaDatabase> {

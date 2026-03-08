@@ -9,6 +9,12 @@ pub trait LibraryRepository {
     fn exists(&self, library_id: &LibraryId) -> anyhow::Result<bool>;
     fn upsert(&self, library: &LibraryRecord) -> anyhow::Result<()>;
     fn get(&self, library_id: &LibraryId) -> anyhow::Result<Option<LibraryRecord>>;
+    fn list(&self) -> anyhow::Result<Vec<LibraryRecord>> {
+        Err(anyhow::anyhow!("library list is not implemented"))
+    }
+    fn delete(&self, _library_id: &LibraryId) -> anyhow::Result<()> {
+        Err(anyhow::anyhow!("library delete is not implemented"))
+    }
 }
 
 pub trait SourceRepository {
