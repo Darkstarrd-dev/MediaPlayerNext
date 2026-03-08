@@ -58,11 +58,11 @@
 - `P6-2`：已完成首轮（runtimes / DB fixture replay / protocol / sidecar / command AppError 已完成首轮收口，可正式切入 `P6-3`）
 - `P6-3`：进行中（后端边界版文档已落，`library/scan/items/archive/thumbnail` 首批 contracts 已开始实现）
 - `P6-4`：已完成（开发态 / 打包态 / 本地 override 的查找顺序、sidecar bundle 资源路径、protocol DB 打包态路径与校验脚本已收口）
-- `P6-5`：进行中（外部进程统一日志模型、contracts fixture 与首轮验证记录已落地）
+- `P6-5`：已完成首轮（统一日志模型、关键链路 context、contracts fixtures 与验证记录已收口）
 
 ### 2.3 当前最自然的下一步
 
-1. 继续推进 `P6-5`，把 `task/source/asset/session` 日志字段扩到更多后端链路并补剩余 contracts
+1. 回到 `P6-3` / `I1` 边界，准备让后续 repository / adapter 直接消费已收口 contracts
 2. 若后续开始打包发布试运行，再把 bundled Node 与 `ffmpeg/ffprobe/mpv/7z` 的最终随包布局作为 `I7` / 发布准备补充项继续推进
 
 ---
@@ -449,7 +449,7 @@ npm run check
 
 ## 10. P6-3：接口收口文档（为 I1 做准备）
 
-当前状态：进行中
+当前状态：已完成首轮
 
 ## 10.1 阶段目标
 
@@ -687,6 +687,7 @@ scripts/run-cargo-with-msvc.cmd tauri build
 - `library.removed / scan.failed / ffmpeg-progress / playback.* request / subtitle.* request` 已补 fixture 与 schema test
 - `library.* / scan.* / items.* / archive.* / thumbnail.*` 现有 command request 已全部补 fixture 与 schema test
 - `docs/benchmarks/p6-observability-validation-20260308.md` 已记录首轮验证结果
+- `npm run test --workspace @mediaplayernext/contracts`、`scripts/run-cargo-with-msvc.cmd test --workspace`、`npm run check` 已完成收口验证
 
 ## 12.6 本阶段必须补的测试/验证
 

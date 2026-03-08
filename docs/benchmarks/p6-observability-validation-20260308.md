@@ -71,12 +71,12 @@ npm run check
 
 ## 当前判断
 
-- `P6-5` 已开始进入真实代码收口，不再只是文档口头约定。
+- `P6-5` 首轮已完成，不再只是文档口头约定。
 - 外部进程日志字段已形成跨 Rust crate 与 contracts 的统一模型。
 - 当前仍属于首轮，不代表所有业务链路都已经把 `task/source/asset/session` 全量贯穿。
 - 但 `asset/session` 与 `task/source` 两组主键已经开始进入真实外部进程日志，而不是只存在于文档约定中。
 
 ## 下一步
 
-- 继续把 `task/source/asset/session` 扩到更多后端链路
-- 再收紧剩余 contracts 与事件模型
+- 后续若进入 `I1` 接线，可直接复用当前 contracts fixtures 作为 repository / adapter 输入输出基线
+- 如果后面还要继续增强可观测性，重点应转向更细的业务事件与 UI 消费链路，而不是重新定义外部进程日志格式
