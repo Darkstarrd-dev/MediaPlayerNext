@@ -1,0 +1,10 @@
+{
+  "type": "scan.failed",
+  "libraryId": "library_001",
+  "taskId": "task_scan_fixture_001",
+  "error": {
+    "code": "EXTERNAL_TOOL_ERROR",
+    "message": "scan root disappeared during walk",
+    "retriable": true
+  }
+}

@@ -8,18 +8,31 @@ import {
   archiveEntryDetailSchema,
   archiveEntrySummarySchema,
   archiveNormalizeResultSchema,
+  ffmpegProgressEventSchema,
   itemDetailSchema,
   itemListEntrySchema,
   libraryChangedEventSchema,
+  libraryRemovedEventSchema,
   librarySummarySchema,
   externalProcessLogSchema,
   mediaProbeSchema,
+  playbackOpenRequestSchema,
   playbackOpenedEventSchema,
+  playbackProbeRequestSchema,
+  playbackSeekRequestSchema,
+  playbackStatusRequestSchema,
   playbackStoppedEventSchema,
   playbackSessionSchema,
+  scanFailedEventSchema,
   scanFinishedEventSchema,
   scanProgressEventSchema,
   scanRunResultSchema,
+  subtitleGetProgressRequestSchema,
+  subtitleHealthRequestSchema,
+  subtitlePingRequestSchema,
+  subtitleShutdownRequestSchema,
+  subtitleStartSessionRequestSchema,
+  subtitleStopSessionRequestSchema,
   subtitleSessionUpdatedEventSchema,
   subtitleSidecarCrashedEventSchema,
   subtitleHealthSchema,
@@ -113,12 +126,28 @@ test("library changed event fixture passes zod parse", async () => {
   assert.equal(parsed.library.id, "library_001");
 });
 
+test("library removed event fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "library-removed.event.sample.json"), "utf8");
+  const parsed = libraryRemovedEventSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.type, "library.removed");
+  assert.equal(parsed.libraryId, "library_001");
+});
+
 test("scan finished event fixture passes zod parse", async () => {
   const raw = await readFile(join(fixturesDir, "scan-finished.event.sample.json"), "utf8");
   const parsed = scanFinishedEventSchema.parse(JSON.parse(raw));
 
   assert.equal(parsed.type, "scan.finished");
   assert.equal(parsed.libraryId, "library_001");
+});
+
+test("scan failed event fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "scan-failed.event.sample.json"), "utf8");
+  const parsed = scanFailedEventSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.type, "scan.failed");
+  assert.equal(parsed.error.code, "EXTERNAL_TOOL_ERROR");
 });
 
 test("item list entry fixture passes zod parse", async () => {
@@ -194,6 +223,42 @@ test("media probe fixture passes zod parse", async () => {
   assert.equal(parsed.videoCodec, "h264");
 });
 
+test("ffmpeg progress fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "ffmpeg-progress.sample.json"), "utf8");
+  const parsed = ffmpegProgressEventSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.frame, 42);
+  assert.equal(parsed.progress, "continue");
+});
+
+test("playback probe request fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "playback-probe.request.sample.json"), "utf8");
+  const parsed = playbackProbeRequestSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.assetId, "asset_001");
+});
+
+test("playback open request fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "playback-open.request.sample.json"), "utf8");
+  const parsed = playbackOpenRequestSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.assetId, "asset_001");
+});
+
+test("playback status request fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "playback-status.request.sample.json"), "utf8");
+  const parsed = playbackStatusRequestSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.sessionId, "playback_001");
+});
+
+test("playback seek request fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "playback-seek.request.sample.json"), "utf8");
+  const parsed = playbackSeekRequestSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.positionMs, 9000);
+});
+
 test("playback session fixture passes zod parse", async () => {
   const raw = await readFile(join(fixturesDir, "playback-session.sample.json"), "utf8");
   const parsed = playbackSessionSchema.parse(JSON.parse(raw));
@@ -240,6 +305,48 @@ test("subtitle progress fixture passes zod parse", async () => {
 
   assert.equal(parsed.sessionId, "subtitle_001");
   assert.equal(parsed.message, "waiting");
+});
+
+test("subtitle ping request fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "subtitle-ping.request.sample.json"), "utf8");
+  const parsed = subtitlePingRequestSchema.parse(JSON.parse(raw));
+
+  assert.deepEqual(parsed, {});
+});
+
+test("subtitle health request fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "subtitle-health.request.sample.json"), "utf8");
+  const parsed = subtitleHealthRequestSchema.parse(JSON.parse(raw));
+
+  assert.deepEqual(parsed, {});
+});
+
+test("subtitle start session request fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "subtitle-start-session.request.sample.json"), "utf8");
+  const parsed = subtitleStartSessionRequestSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.assetId, "asset_001");
+});
+
+test("subtitle stop session request fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "subtitle-stop-session.request.sample.json"), "utf8");
+  const parsed = subtitleStopSessionRequestSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.sessionId, "subtitle_001");
+});
+
+test("subtitle get progress request fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "subtitle-get-progress.request.sample.json"), "utf8");
+  const parsed = subtitleGetProgressRequestSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.sessionId, "subtitle_001");
+});
+
+test("subtitle shutdown request fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "subtitle-shutdown.request.sample.json"), "utf8");
+  const parsed = subtitleShutdownRequestSchema.parse(JSON.parse(raw));
+
+  assert.deepEqual(parsed, {});
 });
 
 test("subtitle sidecar crashed event fixture passes zod parse", async () => {
