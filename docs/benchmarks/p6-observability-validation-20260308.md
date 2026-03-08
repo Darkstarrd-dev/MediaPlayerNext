@@ -33,10 +33,17 @@
 - `mpv`
 - `sevenz`
 
-其中当前最先把业务上下文字段真正带进日志的是 subtitle sidecar：
+其中当前已接入的业务上下文字段包括：
 
-- `assetId`
-- `sessionId`
+- subtitle sidecar
+  - `assetId`
+  - `sessionId`
+- playback probe / mpv
+  - `assetId`
+  - `sessionId`（mpv 会话启动）
+- archive normalize / sevenz
+  - `taskId`
+  - `sourceId`
 
 ## 本轮验证命令
 
@@ -64,6 +71,7 @@ npm run check
 - `P6-5` 已开始进入真实代码收口，不再只是文档口头约定。
 - 外部进程日志字段已形成跨 Rust crate 与 contracts 的统一模型。
 - 当前仍属于首轮，不代表所有业务链路都已经把 `task/source/asset/session` 全量贯穿。
+- 但 `asset/session` 与 `task/source` 两组主键已经开始进入真实外部进程日志，而不是只存在于文档约定中。
 
 ## 下一步
 

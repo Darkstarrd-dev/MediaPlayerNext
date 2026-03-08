@@ -4,11 +4,12 @@ use crate::ports::{
 };
 use anyhow::{anyhow, Result};
 use media_playback::{
-    probe_media_file, MpvLauncher, MpvProcessLauncher, PlaybackSessionStore, SessionCommand,
+    probe_media_file_with_context, MpvLauncher, MpvProcessLauncher, PlaybackSessionStore,
+    SessionCommand,
 };
 use serde::Serialize;
 use shared_model::{
-    AssetId, MediaAssetRecord, MediaProbeSummary, MediaUrlSummary, PlaybackSessionId,
+    AssetId, LogContext, MediaAssetRecord, MediaProbeSummary, MediaUrlSummary, PlaybackSessionId,
     PlaybackSessionSummary,
 };
 use std::path::{Path, PathBuf};
@@ -45,7 +46,16 @@ where
         archive_entry_repository,
         asset_repository,
         asset_id,
-        |input_path| probe_media_file(ffprobe_path, input_path),
+        |input_path| {
+            probe_media_file_with_context(
+                ffprobe_path,
+                input_path,
+                LogContext {
+                    asset_id: Some(asset_id.clone()),
+                    ..LogContext::default()
+                },
+            )
+        },
     )
 }
 

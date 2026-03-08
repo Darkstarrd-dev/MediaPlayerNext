@@ -16,18 +16,26 @@ pub struct SevenZipInvocation {
     pub archive_path: PathBuf,
     pub output_dir: PathBuf,
     pub arguments: Vec<String>,
+    pub context: LogContext,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SevenZipExtractor {
     pub executable_path: PathBuf,
+    pub context: LogContext,
 }
 
 impl SevenZipExtractor {
     pub fn new(executable_path: impl AsRef<Path>) -> Self {
         Self {
             executable_path: executable_path.as_ref().to_path_buf(),
+            context: LogContext::default(),
         }
+    }
+
+    pub fn with_context(mut self, context: LogContext) -> Self {
+        self.context = context;
+        self
     }
 
     pub fn invocation(&self, archive_path: &Path, output_dir: &Path) -> SevenZipInvocation {
@@ -43,6 +51,7 @@ impl SevenZipExtractor {
                 format!("-o{}", output_dir.display()),
                 archive_path.display().to_string(),
             ],
+            context: self.context.clone(),
         }
     }
 }
@@ -71,7 +80,7 @@ impl ArchiveExtractor for SevenZipExtractor {
                     exit_code: None,
                     duration_ms: Some(started_at.elapsed().as_millis() as u64),
                     ok: false,
-                    context: LogContext::default(),
+                    context: invocation.context.clone(),
                     stderr_excerpt: Some(error.to_string()),
                 });
                 return Err(error).with_context(|| {
@@ -96,7 +105,7 @@ impl ArchiveExtractor for SevenZipExtractor {
             exit_code: output.status.code(),
             duration_ms: Some(started_at.elapsed().as_millis() as u64),
             ok: output.status.success(),
-            context: LogContext::default(),
+            context: invocation.context.clone(),
             stderr_excerpt: stderr_excerpt(&output.stderr),
         });
 
@@ -128,11 +137,17 @@ fn stderr_excerpt(raw: &[u8]) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::SevenZipExtractor;
+    use shared_model::{LogContext, SourceId, TaskId};
     use std::path::Path;
 
     #[test]
     fn builds_expected_extract_arguments() {
-        let extractor = SevenZipExtractor::new("C:/Program Files/7-Zip/7z.exe");
+        let extractor =
+            SevenZipExtractor::new("C:/Program Files/7-Zip/7z.exe").with_context(LogContext {
+                task_id: Some(TaskId("task_norm_001".to_string())),
+                source_id: Some(SourceId("source_norm_001".to_string())),
+                ..LogContext::default()
+            });
         let invocation = extractor.invocation(
             Path::new("Z:/fixtures/archive/sample.7z"),
             Path::new("Z:/cache/normalized/source/extract"),
@@ -142,5 +157,13 @@ mod tests {
         assert_eq!(invocation.arguments[1], "-y");
         assert!(invocation.arguments[4].starts_with("-oZ:/cache/normalized/source/extract"));
         assert_eq!(invocation.arguments[5], "Z:/fixtures/archive/sample.7z");
+        assert_eq!(
+            invocation.context.task_id.expect("task id").0,
+            "task_norm_001"
+        );
+        assert_eq!(
+            invocation.context.source_id.expect("source id").0,
+            "source_norm_001"
+        );
     }
 }

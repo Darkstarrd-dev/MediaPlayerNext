@@ -9,6 +9,7 @@ pub struct MpvOpenRequest {
     pub media_url: String,
     pub start_paused: bool,
     pub title: Option<String>,
+    pub context: LogContext,
 }
 
 pub fn build_mpv_open_args(request: &MpvOpenRequest) -> Vec<String> {
@@ -53,7 +54,7 @@ impl MpvLauncher for MpvProcessLauncher {
                     exit_code: None,
                     duration_ms: Some(started_at.elapsed().as_millis() as u64),
                     ok: true,
-                    context: LogContext::default(),
+                    context: request.context.clone(),
                     stderr_excerpt: None,
                 });
             }
@@ -68,7 +69,7 @@ impl MpvLauncher for MpvProcessLauncher {
                     exit_code: None,
                     duration_ms: Some(started_at.elapsed().as_millis() as u64),
                     ok: false,
-                    context: LogContext::default(),
+                    context: request.context.clone(),
                     stderr_excerpt: Some(error.to_string()),
                 });
                 return Err(error).with_context(|| format!("spawn mpv: {}", mpv_path.display()));
@@ -81,6 +82,7 @@ impl MpvLauncher for MpvProcessLauncher {
 #[cfg(test)]
 mod tests {
     use super::{build_mpv_open_args, MpvOpenRequest};
+    use shared_model::LogContext;
 
     #[test]
     fn builds_mpv_open_args() {
@@ -88,6 +90,7 @@ mod tests {
             media_url: "media://asset/asset_video_001".to_string(),
             start_paused: true,
             title: Some("Asset Video".to_string()),
+            context: LogContext::default(),
         });
 
         assert_eq!(args[0], "--idle=yes");

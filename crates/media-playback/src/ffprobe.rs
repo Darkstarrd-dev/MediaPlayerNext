@@ -21,6 +21,14 @@ pub fn build_ffprobe_args(input_path: &Path) -> Vec<String> {
 }
 
 pub fn probe_media_file(ffprobe_path: &Path, input_path: &Path) -> Result<MediaProbeSummary> {
+    probe_media_file_with_context(ffprobe_path, input_path, LogContext::default())
+}
+
+pub fn probe_media_file_with_context(
+    ffprobe_path: &Path,
+    input_path: &Path,
+    context: LogContext,
+) -> Result<MediaProbeSummary> {
     let arguments = build_ffprobe_args(input_path);
     let command_line = build_command_line(&ffprobe_path.display().to_string(), &arguments);
     let started_at = Instant::now();
@@ -37,7 +45,7 @@ pub fn probe_media_file(ffprobe_path: &Path, input_path: &Path) -> Result<MediaP
                 exit_code: None,
                 duration_ms: Some(started_at.elapsed().as_millis() as u64),
                 ok: false,
-                context: LogContext::default(),
+                context: context.clone(),
                 stderr_excerpt: Some(error.to_string()),
             });
             return Err(error)
@@ -58,7 +66,7 @@ pub fn probe_media_file(ffprobe_path: &Path, input_path: &Path) -> Result<MediaP
         exit_code: output.status.code(),
         duration_ms: Some(started_at.elapsed().as_millis() as u64),
         ok: output.status.success(),
-        context: LogContext::default(),
+        context,
         stderr_excerpt: stderr_excerpt(&output.stderr),
     });
 

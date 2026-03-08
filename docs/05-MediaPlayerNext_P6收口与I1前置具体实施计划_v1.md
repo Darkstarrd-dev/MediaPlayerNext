@@ -681,7 +681,8 @@ scripts/run-cargo-with-msvc.cmd tauri build
 - `crates/shared-model/src/observability.rs` 已形成统一 `ExternalProcessLog / LogContext` 模型
 - `packages/contracts/src/models/observability.ts` 与 `external-process-log.sample.json` 已接入 contracts 校验
 - `runtime-check` / `subtitle-sidecar` / `ffprobe` / `ffmpeg` / `mpv` / `sevenz` 已开始输出统一 JSON 日志
-- subtitle sidecar 首轮已把 `assetId / sessionId` 贯穿到外部进程日志 context
+- subtitle sidecar 与 playback/mpv 已把 `assetId / sessionId` 贯穿到外部进程日志 context
+- archive normalize / `sevenz` 已把 `taskId / sourceId` 贯穿到外部进程日志 context
 - `docs/benchmarks/p6-observability-validation-20260308.md` 已记录首轮验证结果
 
 ## 12.6 本阶段必须补的测试/验证

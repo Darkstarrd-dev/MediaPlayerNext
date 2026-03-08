@@ -9,8 +9,8 @@ use media_io::normalize::{
 use media_io::{is_normalizable_archive_extension, is_primary_archive_extension, normalize_path};
 use serde::Serialize;
 use shared_model::{
-    ArchiveEntryId, ArchiveEntryRecord, ArchiveId, ArchiveRecord, LibraryId, SourceId, SourceKind,
-    TaskId, TaskKind, TaskRecord, TaskState,
+    ArchiveEntryId, ArchiveEntryRecord, ArchiveId, ArchiveRecord, LibraryId, LogContext, SourceId,
+    SourceKind, TaskId, TaskKind, TaskRecord, TaskState,
 };
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -275,7 +275,12 @@ where
     E: ArchiveEntryRepository,
     T: TaskRepository,
 {
-    let extractor = SevenZipExtractor::new(sevenz_path);
+    let task_id = normalize_task_id(source_id);
+    let extractor = SevenZipExtractor::new(sevenz_path).with_context(LogContext {
+        task_id: Some(task_id.clone()),
+        source_id: Some(source_id.clone()),
+        ..LogContext::default()
+    });
     normalize_archive_source_with_extractor(
         library_repository,
         source_repository,
@@ -284,6 +289,7 @@ where
         task_repository,
         normalize_root,
         source_id,
+        &task_id,
         &extractor,
     )
 }
@@ -306,6 +312,7 @@ fn normalize_archive_source_with_extractor<L, S, A, E, T, X>(
     task_repository: &T,
     normalize_root: &Path,
     source_id: &SourceId,
+    task_id: &TaskId,
     extractor: &X,
 ) -> Result<ArchiveNormalizeSummary>
 where
@@ -343,8 +350,6 @@ where
         .map(|item| item.id)
         .unwrap_or_else(|| archive_id_from_source(&source.id));
     let archive_path = archive_path_from_source(&library.root_path, &source.normalized_path);
-    let task_id = normalize_task_id(source_id);
-
     task_repository.upsert(&TaskRecord {
         id: task_id.clone(),
         task_type: TaskKind::Normalize,
@@ -561,7 +566,7 @@ fn now_string() -> String {
 mod tests {
     use super::{
         archive_snapshot, index_library_archives, normalize_archive_source_with_extractor,
-        normalize_archive_status, read_archive_entry_by_source,
+        normalize_archive_status, normalize_task_id, read_archive_entry_by_source,
     };
     use crate::ports::{
         ArchiveEntryRepository, ArchiveRepository, LibraryRepository, SourceRepository,
@@ -986,6 +991,7 @@ mod tests {
 
         LibraryRepository::upsert(&repos, &library).expect("library should be stored");
         SourceRepository::upsert(&repos, &source).expect("source should be stored");
+        let task_id = normalize_task_id(&source.id);
 
         let summary = normalize_archive_source_with_extractor(
             &repos,
@@ -995,6 +1001,7 @@ mod tests {
             &repos,
             temp.path(),
             &source.id,
+            &task_id,
             &extractor,
         )
         .expect("normalize should succeed");
@@ -1047,6 +1054,7 @@ mod tests {
 
         LibraryRepository::upsert(&repos, &library).expect("library should be stored");
         SourceRepository::upsert(&repos, &source).expect("source should be stored");
+        let task_id = normalize_task_id(&source.id);
 
         let failing_extractor = MockExtractor {
             fail_first: Mutex::new(true),
@@ -1060,6 +1068,7 @@ mod tests {
             &repos,
             temp.path(),
             &source.id,
+            &task_id,
             &failing_extractor,
         );
         assert!(first.is_err());
@@ -1095,6 +1104,7 @@ mod tests {
             &repos,
             temp.path(),
             &source.id,
+            &task_id,
             &success_extractor,
         )
         .expect("retry normalize should succeed");

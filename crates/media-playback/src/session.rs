@@ -1,6 +1,8 @@
 use crate::mpv::{MpvLauncher, MpvOpenRequest};
 use anyhow::{Context, Result};
-use shared_model::{AssetId, PlaybackSessionId, PlaybackSessionState, PlaybackSessionSummary};
+use shared_model::{
+    AssetId, LogContext, PlaybackSessionId, PlaybackSessionState, PlaybackSessionSummary,
+};
 use std::collections::hash_map::DefaultHasher;
 use std::fs;
 use std::hash::{Hash, Hasher};
@@ -53,6 +55,11 @@ impl PlaybackSessionStore {
             media_url: media_url.to_string(),
             start_paused: true,
             title,
+            context: LogContext {
+                asset_id: Some(asset_id.clone()),
+                session_id: Some(session.session_id.0.clone()),
+                ..LogContext::default()
+            },
         };
 
         match launcher.launch(mpv_path, &request) {
@@ -142,15 +149,18 @@ mod tests {
     use anyhow::{anyhow, Result};
     use shared_model::{AssetId, PlaybackSessionState};
     use std::path::Path;
+    use std::sync::Mutex;
     use tempfile::tempdir;
 
-    #[derive(Debug)]
+    #[derive(Debug, Default)]
     struct MockLauncher {
         should_fail: bool,
+        last_request: Mutex<Option<MpvOpenRequest>>,
     }
 
     impl MpvLauncher for MockLauncher {
-        fn launch(&self, _mpv_path: &Path, _request: &MpvOpenRequest) -> Result<()> {
+        fn launch(&self, _mpv_path: &Path, request: &MpvOpenRequest) -> Result<()> {
+            *self.last_request.lock().expect("lock") = Some(request.clone());
             if self.should_fail {
                 return Err(anyhow!("mock mpv launch failure"));
             }
@@ -162,9 +172,10 @@ mod tests {
     fn persists_and_updates_session_state() {
         let temp = tempdir().expect("tempdir should exist");
         let store = PlaybackSessionStore::new(temp.path());
+        let launcher = MockLauncher::default();
         let summary = store
             .open_with_launcher(
-                &MockLauncher { should_fail: false },
+                &launcher,
                 Path::new("C:/mpv.exe"),
                 &AssetId("asset_video_primary".to_string()),
                 "media://asset/asset_video_primary",
@@ -180,6 +191,21 @@ mod tests {
             )
             .expect("seek should persist");
         assert_eq!(updated.position_ms, 9000);
+
+        let request = launcher
+            .last_request
+            .lock()
+            .expect("lock")
+            .clone()
+            .expect("request should be captured");
+        assert_eq!(
+            request.context.asset_id.expect("asset id").0,
+            "asset_video_primary"
+        );
+        assert_eq!(
+            request.context.session_id.expect("session id"),
+            summary.session_id.0
+        );
     }
 
     #[test]
@@ -187,7 +213,10 @@ mod tests {
         let temp = tempdir().expect("tempdir should exist");
         let store = PlaybackSessionStore::new(temp.path());
         let result = store.open_with_launcher(
-            &MockLauncher { should_fail: true },
+            &MockLauncher {
+                should_fail: true,
+                ..MockLauncher::default()
+            },
             Path::new("C:/mpv.exe"),
             &AssetId("asset_video_fail".to_string()),
             "media://asset/asset_video_fail",
