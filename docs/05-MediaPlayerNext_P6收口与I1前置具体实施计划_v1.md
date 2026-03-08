@@ -418,7 +418,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\quality\run-rust-g
 当前首轮结果：
 
 - runtimes 缺失 / 非零退出 / 空输出 bad path 已有单元测试
-- DB 非法 fixture 打开失败已固定为可回放测试
+- DB 非法 fixture / 伪装最新 schema / future schema version / 缺列 replay fixture / 缺索引 replay fixture / 缺 foreign key replay fixture / orphan row replay fixture 已固定为可回放测试
 - `thumb://` / `media://` / `archive://` 缺失资源场景已覆盖稳定 `404`
 - sidecar 缺失入口 / malformed payload / missing payload / timeout / retry crash 已有测试
 - `packages/contracts` 与 sidecar 协议已补一轮 `AppError` bad path fixture 对齐

@@ -42,6 +42,19 @@ fn rerunning_migrations_is_stable() {
 }
 
 #[test]
+fn enables_foreign_key_enforcement_for_opened_connections() {
+    let database = MediaDatabase::open(DatabaseLocation::InMemory)
+        .expect("in-memory database should open with migrations");
+
+    let foreign_keys_enabled: i64 = database
+        .connection()
+        .pragma_query_value(None, "foreign_keys", |row| row.get(0))
+        .expect("foreign_keys pragma should be readable");
+
+    assert_eq!(foreign_keys_enabled, 1);
+}
+
+#[test]
 fn upgrades_fixture_database_from_n_minus_1() {
     let temp_file = NamedTempFile::new().expect("temporary file should be created");
     let fixture_sql = include_str!("fixtures/schema_v1_fixture.sql");
@@ -84,6 +97,154 @@ fn fails_to_open_invalid_sqlite_fixture_file() {
     };
 
     assert!(error.to_string().contains("not a database"));
+}
+
+#[test]
+fn fails_when_fixture_claims_latest_version_without_required_tables() {
+    let temp_file = NamedTempFile::new().expect("temporary file should be created");
+    let fixture_sql = include_str!("fixtures/schema_v1_fixture.sql");
+
+    {
+        let connection = rusqlite::Connection::open(temp_file.path())
+            .expect("fixture database should open before upgrade");
+        connection
+            .execute_batch(fixture_sql)
+            .expect("fixture sql should be applied");
+        connection
+            .pragma_update(None, "user_version", latest_schema_version())
+            .expect("user_version should be overwritten");
+    }
+
+    let error = match MediaDatabase::open(DatabaseLocation::File(temp_file.path())) {
+        Ok(_) => panic!("broken latest-version fixture should fail to open"),
+        Err(error) => error,
+    };
+
+    assert!(error
+        .to_string()
+        .contains("required table missing for current schema"));
+}
+
+#[test]
+fn fails_when_upgrade_fixture_is_missing_required_v1_column() {
+    let temp_file = NamedTempFile::new().expect("temporary file should be created");
+    let fixture_sql = include_str!("fixtures/schema_v1_missing_exists_flag_fixture.sql");
+
+    {
+        let connection = rusqlite::Connection::open(temp_file.path())
+            .expect("fixture database should open before upgrade");
+        connection
+            .execute_batch(fixture_sql)
+            .expect("fixture sql should be applied");
+    }
+
+    let error = match MediaDatabase::open(DatabaseLocation::File(temp_file.path())) {
+        Ok(_) => panic!("fixture with missing source column should fail to open"),
+        Err(error) => error,
+    };
+
+    assert!(error
+        .to_string()
+        .contains("required column missing for current schema: sources.exists_flag"));
+}
+
+#[test]
+fn fails_when_replay_fixture_is_missing_required_v2_index() {
+    let temp_file = NamedTempFile::new().expect("temporary file should be created");
+    let fixture_sql = include_str!("fixtures/schema_v2_missing_archive_entry_index_fixture.sql");
+
+    {
+        let connection = rusqlite::Connection::open(temp_file.path())
+            .expect("fixture database should open before replay check");
+        connection
+            .pragma_update(None, "foreign_keys", "OFF")
+            .expect("foreign keys should be disabled while seeding broken fixture");
+        connection
+            .execute_batch(fixture_sql)
+            .expect("fixture sql should be applied");
+    }
+
+    let error = match MediaDatabase::open(DatabaseLocation::File(temp_file.path())) {
+        Ok(_) => panic!("fixture with missing archive entry index should fail to open"),
+        Err(error) => error,
+    };
+
+    assert!(error
+        .to_string()
+        .contains("required index missing for current schema: idx_archive_entries_archive_path"));
+}
+
+#[test]
+fn fails_when_replay_fixture_is_missing_required_v2_foreign_key() {
+    let temp_file = NamedTempFile::new().expect("temporary file should be created");
+    let fixture_sql = include_str!("fixtures/schema_v2_missing_thumbnail_foreign_key_fixture.sql");
+
+    {
+        let connection = rusqlite::Connection::open(temp_file.path())
+            .expect("fixture database should open before replay check");
+        connection
+            .execute_batch(fixture_sql)
+            .expect("fixture sql should be applied");
+    }
+
+    let error = match MediaDatabase::open(DatabaseLocation::File(temp_file.path())) {
+        Ok(_) => panic!("fixture with missing thumbnail foreign key should fail to open"),
+        Err(error) => error,
+    };
+
+    assert!(error.to_string().contains(
+        "required foreign key missing for current schema: thumbnails.asset_id -> media_assets.id"
+    ));
+}
+
+#[test]
+fn fails_when_replay_fixture_contains_orphan_foreign_key_rows() {
+    let temp_file = NamedTempFile::new().expect("temporary file should be created");
+    let fixture_sql = include_str!("fixtures/schema_v2_orphan_thumbnail_asset_fixture.sql");
+
+    let database = MediaDatabase::open(DatabaseLocation::File(temp_file.path()))
+        .expect("database should initialize before corrupt replay seeding");
+    drop(database);
+
+    {
+        let connection = rusqlite::Connection::open(temp_file.path())
+            .expect("fixture database should open before replay check");
+        connection
+            .pragma_update(None, "foreign_keys", "OFF")
+            .expect("foreign keys should be disabled while seeding orphan rows");
+        connection
+            .execute_batch(fixture_sql)
+            .expect("fixture sql should be applied");
+    }
+
+    let error = match MediaDatabase::open(DatabaseLocation::File(temp_file.path())) {
+        Ok(_) => panic!("fixture with orphan thumbnail asset should fail to open"),
+        Err(error) => error,
+    };
+
+    assert!(error
+        .to_string()
+        .contains("foreign key integrity violation for current schema: thumbnails"));
+}
+
+#[test]
+fn fails_when_database_schema_version_is_newer_than_supported() {
+    let temp_file = NamedTempFile::new().expect("temporary file should be created");
+
+    {
+        let connection = rusqlite::Connection::open(temp_file.path())
+            .expect("fixture database should open before version check");
+        connection
+            .pragma_update(None, "user_version", latest_schema_version() + 1)
+            .expect("future user_version should be written");
+    }
+
+    let error = match MediaDatabase::open(DatabaseLocation::File(temp_file.path())) {
+        Ok(_) => panic!("future schema version should fail to open"),
+        Err(error) => error,
+    };
+
+    assert!(error.to_string().contains("is newer than supported"));
 }
 
 #[test]

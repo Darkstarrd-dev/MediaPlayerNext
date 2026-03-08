@@ -20,6 +20,8 @@ impl MediaDatabase {
             DatabaseLocation::File(path) => Connection::open(path)?,
         };
 
+        connection.pragma_update(None, "foreign_keys", "ON")?;
+
         run_migrations(&mut connection)?;
 
         Ok(Self { connection })
