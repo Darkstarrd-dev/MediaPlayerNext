@@ -12,6 +12,7 @@ import {
   itemListEntrySchema,
   libraryChangedEventSchema,
   librarySummarySchema,
+  externalProcessLogSchema,
   mediaProbeSchema,
   playbackSessionSchema,
   scanFinishedEventSchema,
@@ -130,6 +131,15 @@ test("item detail fixture passes zod parse", async () => {
 
   assert.equal(parsed.archiveEntryId, "archive_entry_001");
   assert.equal(parsed.archiveId, "archive_001");
+});
+
+test("external process log fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "external-process-log.sample.json"), "utf8");
+  const parsed = externalProcessLogSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.event, "external-process");
+  assert.equal(parsed.context.sessionId, "subtitle_001");
+  assert.equal(parsed.tool, "subtitle-sidecar");
 });
 
 test("archive entry summary fixture passes zod parse", async () => {

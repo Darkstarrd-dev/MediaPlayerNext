@@ -1,8 +1,10 @@
 use anyhow::{anyhow, Context, Result};
 use rusqlite::Connection;
 use serde::Serialize;
+use shared_model::{build_command_line, emit_external_process_log, ExternalProcessLog, LogContext};
 use std::path::Path;
 use std::process::Command;
+use std::time::Instant;
 
 #[derive(Debug, Serialize)]
 pub struct RuntimeSmokeCheckResult {
@@ -50,10 +52,52 @@ fn read_process_first_line(program: &str, args: &[&str]) -> Result<String> {
         return Err(anyhow!("runtime binary not found: {program}"));
     }
 
-    let output = Command::new(program)
-        .args(args)
-        .output()
-        .with_context(|| format!("spawn runtime binary: {program}"))?;
+    let arguments = args
+        .iter()
+        .map(|value| (*value).to_string())
+        .collect::<Vec<_>>();
+    let command_line = build_command_line(program, &arguments);
+    let started_at = Instant::now();
+
+    let output = match Command::new(program).args(args).output() {
+        Ok(output) => output,
+        Err(error) => {
+            emit_external_process_log(&ExternalProcessLog {
+                event: "external-process".to_string(),
+                phase: "spawn_failed".to_string(),
+                tool: "runtime-check".to_string(),
+                executable: program.to_string(),
+                arguments,
+                command_line,
+                exit_code: None,
+                duration_ms: Some(started_at.elapsed().as_millis() as u64),
+                ok: false,
+                context: LogContext::default(),
+                stderr_excerpt: Some(error.to_string()),
+            });
+            return Err(error).with_context(|| format!("spawn runtime binary: {program}"));
+        }
+    };
+
+    emit_external_process_log(&ExternalProcessLog {
+        event: "external-process".to_string(),
+        phase: "completed".to_string(),
+        tool: "runtime-check".to_string(),
+        executable: program.to_string(),
+        arguments: args.iter().map(|value| (*value).to_string()).collect(),
+        command_line: build_command_line(
+            program,
+            &args
+                .iter()
+                .map(|value| (*value).to_string())
+                .collect::<Vec<_>>(),
+        ),
+        exit_code: output.status.code(),
+        duration_ms: Some(started_at.elapsed().as_millis() as u64),
+        ok: output.status.success(),
+        context: LogContext::default(),
+        stderr_excerpt: stderr_excerpt(&output.stderr),
+    });
 
     if !output.status.success() {
         return Err(anyhow!(
@@ -68,6 +112,15 @@ fn read_process_first_line(program: &str, args: &[&str]) -> Result<String> {
     }
 
     Ok(first_line)
+}
+
+fn stderr_excerpt(raw: &[u8]) -> Option<String> {
+    let text = String::from_utf8_lossy(raw).trim().to_string();
+    if text.is_empty() {
+        None
+    } else {
+        Some(text.chars().take(240).collect())
+    }
 }
 
 #[cfg(test)]

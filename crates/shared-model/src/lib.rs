@@ -1,6 +1,7 @@
 pub mod errors;
 pub mod ids;
 pub mod media;
+pub mod observability;
 pub mod pagination;
 pub mod records;
 pub mod subtitle;
@@ -14,6 +15,9 @@ pub use ids::{
 pub use media::{
     FfmpegProgressEvent, MediaAssetSummary, MediaProbeSummary, MediaSourceKind, MediaUrlSummary,
     PlaybackSessionState, PlaybackSessionSummary,
+};
+pub use observability::{
+    build_command_line, emit_external_process_log, ExternalProcessLog, LogContext,
 };
 pub use pagination::{PageRequest, PageResponse};
 pub use records::{
@@ -38,6 +42,8 @@ mod tests {
         include_str!("../../../packages/contracts/fixtures/subtitle-health.sample.json");
     const SUBTITLE_SESSION_FIXTURE: &str =
         include_str!("../../../packages/contracts/fixtures/subtitle-session.sample.json");
+    const EXTERNAL_PROCESS_LOG_FIXTURE: &str =
+        include_str!("../../../packages/contracts/fixtures/external-process-log.sample.json");
 
     #[test]
     fn parses_task_progress_fixture() {
@@ -93,5 +99,19 @@ mod tests {
 
         assert_eq!(parsed_again.session_id, session.session_id);
         assert_eq!(parsed_again.state, session.state);
+    }
+
+    #[test]
+    fn parses_external_process_log_fixture() {
+        let log: super::ExternalProcessLog = serde_json::from_str(EXTERNAL_PROCESS_LOG_FIXTURE)
+            .expect("external process log fixture should deserialize");
+        let round_trip =
+            serde_json::to_string(&log).expect("external process log fixture should serialize");
+
+        let parsed_again: super::ExternalProcessLog = serde_json::from_str(&round_trip)
+            .expect("round-trip external process log should deserialize");
+
+        assert_eq!(parsed_again.tool, log.tool);
+        assert_eq!(parsed_again.phase, log.phase);
     }
 }

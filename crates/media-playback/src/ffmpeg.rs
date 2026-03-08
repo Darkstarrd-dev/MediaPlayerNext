@@ -1,7 +1,11 @@
 use anyhow::{anyhow, Context, Result};
-use shared_model::FfmpegProgressEvent;
+use shared_model::{
+    build_command_line, emit_external_process_log, ExternalProcessLog, FfmpegProgressEvent,
+    LogContext,
+};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::Instant;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FrameExtractRequest {
@@ -26,10 +30,45 @@ pub fn build_extract_frame_args(request: &FrameExtractRequest) -> Vec<String> {
 }
 
 pub fn extract_video_frame(ffmpeg_path: &Path, request: &FrameExtractRequest) -> Result<()> {
-    let output = Command::new(ffmpeg_path)
-        .args(build_extract_frame_args(request))
-        .output()
-        .with_context(|| format!("spawn ffmpeg: {}", ffmpeg_path.display()))?;
+    let arguments = build_extract_frame_args(request);
+    let command_line = build_command_line(&ffmpeg_path.display().to_string(), &arguments);
+    let started_at = Instant::now();
+    let output = match Command::new(ffmpeg_path).args(&arguments).output() {
+        Ok(output) => output,
+        Err(error) => {
+            emit_external_process_log(&ExternalProcessLog {
+                event: "external-process".to_string(),
+                phase: "spawn_failed".to_string(),
+                tool: "ffmpeg".to_string(),
+                executable: ffmpeg_path.display().to_string(),
+                arguments,
+                command_line,
+                exit_code: None,
+                duration_ms: Some(started_at.elapsed().as_millis() as u64),
+                ok: false,
+                context: LogContext::default(),
+                stderr_excerpt: Some(error.to_string()),
+            });
+            return Err(error).with_context(|| format!("spawn ffmpeg: {}", ffmpeg_path.display()));
+        }
+    };
+
+    emit_external_process_log(&ExternalProcessLog {
+        event: "external-process".to_string(),
+        phase: "completed".to_string(),
+        tool: "ffmpeg".to_string(),
+        executable: ffmpeg_path.display().to_string(),
+        arguments: build_extract_frame_args(request),
+        command_line: build_command_line(
+            &ffmpeg_path.display().to_string(),
+            &build_extract_frame_args(request),
+        ),
+        exit_code: output.status.code(),
+        duration_ms: Some(started_at.elapsed().as_millis() as u64),
+        ok: output.status.success(),
+        context: LogContext::default(),
+        stderr_excerpt: stderr_excerpt(&output.stderr),
+    });
 
     if output.status.success() {
         return Ok(());
@@ -39,6 +78,15 @@ pub fn extract_video_frame(ffmpeg_path: &Path, request: &FrameExtractRequest) ->
         "ffmpeg extract frame failed for {}",
         request.input_path.display()
     ))
+}
+
+fn stderr_excerpt(raw: &[u8]) -> Option<String> {
+    let text = String::from_utf8_lossy(raw).trim().to_string();
+    if text.is_empty() {
+        None
+    } else {
+        Some(text.chars().take(240).collect())
+    }
 }
 
 pub fn parse_ffmpeg_progress(raw: &str) -> FfmpegProgressEvent {

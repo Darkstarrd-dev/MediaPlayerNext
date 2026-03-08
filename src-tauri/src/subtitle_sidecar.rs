@@ -3,8 +3,9 @@ use app_core::ports::SubtitleHostPort;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use shared_model::{
-    AssetId, SubtitleHealthSummary, SubtitleHostSummary, SubtitlePingSummary,
-    SubtitleProgressEvent, SubtitleSessionId, SubtitleSessionSummary,
+    build_command_line, emit_external_process_log, AssetId, ExternalProcessLog, LogContext,
+    SubtitleHealthSummary, SubtitleHostSummary, SubtitlePingSummary, SubtitleProgressEvent,
+    SubtitleSessionId, SubtitleSessionSummary,
 };
 use std::env;
 use std::fs;
@@ -166,6 +167,7 @@ impl StdioSubtitleHost {
             payload,
         };
         let request_line = format!("{}\n", serde_json::to_string(&request)?);
+        let request_context = request_log_context(&request.payload);
 
         let mut command = Command::new(&self.runtime.node_path);
         command
@@ -179,13 +181,41 @@ impl StdioSubtitleHost {
             command.env(key, value);
         }
 
-        let mut child = command.spawn().with_context(|| {
-            format!(
-                "spawn subtitle sidecar: {} {}",
-                self.runtime.node_path.display(),
-                self.runtime.entry_path.display()
-            )
-        })?;
+        let command_arguments = vec![
+            self.runtime.entry_path.display().to_string(),
+            "--sessions-root".to_string(),
+            self.runtime.sessions_root.display().to_string(),
+        ];
+        let command_line = build_command_line(
+            &self.runtime.node_path.display().to_string(),
+            &command_arguments,
+        );
+
+        let mut child = match command.spawn() {
+            Ok(child) => child,
+            Err(error) => {
+                emit_external_process_log(&ExternalProcessLog {
+                    event: "external-process".to_string(),
+                    phase: "spawn_failed".to_string(),
+                    tool: "subtitle-sidecar".to_string(),
+                    executable: self.runtime.node_path.display().to_string(),
+                    arguments: command_arguments,
+                    command_line,
+                    exit_code: None,
+                    duration_ms: Some(0),
+                    ok: false,
+                    context: request_context,
+                    stderr_excerpt: Some(error.to_string()),
+                });
+                return Err(error).with_context(|| {
+                    format!(
+                        "spawn subtitle sidecar: {} {}",
+                        self.runtime.node_path.display(),
+                        self.runtime.entry_path.display()
+                    )
+                });
+            }
+        };
 
         {
             let stdin = child
@@ -208,6 +238,30 @@ impl StdioSubtitleHost {
                 child.kill().ok();
                 let output = child.wait_with_output()?;
                 let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+                emit_external_process_log(&ExternalProcessLog {
+                    event: "external-process".to_string(),
+                    phase: "timeout".to_string(),
+                    tool: "subtitle-sidecar".to_string(),
+                    executable: self.runtime.node_path.display().to_string(),
+                    arguments: vec![
+                        self.runtime.entry_path.display().to_string(),
+                        "--sessions-root".to_string(),
+                        self.runtime.sessions_root.display().to_string(),
+                    ],
+                    command_line: build_command_line(
+                        &self.runtime.node_path.display().to_string(),
+                        &[
+                            self.runtime.entry_path.display().to_string(),
+                            "--sessions-root".to_string(),
+                            self.runtime.sessions_root.display().to_string(),
+                        ],
+                    ),
+                    exit_code: output.status.code(),
+                    duration_ms: Some(started_at.elapsed().as_millis() as u64),
+                    ok: false,
+                    context: request_log_context(&request.payload),
+                    stderr_excerpt: stderr_excerpt_text(&stderr),
+                });
                 return Err(anyhow!(
                     "subtitle sidecar timed out after {} ms{}",
                     self.request_timeout.as_millis(),
@@ -226,6 +280,31 @@ impl StdioSubtitleHost {
         let stdout = String::from_utf8(output.stdout)
             .context("subtitle sidecar stdout is not valid utf-8")?;
         let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+
+        emit_external_process_log(&ExternalProcessLog {
+            event: "external-process".to_string(),
+            phase: "completed".to_string(),
+            tool: "subtitle-sidecar".to_string(),
+            executable: self.runtime.node_path.display().to_string(),
+            arguments: vec![
+                self.runtime.entry_path.display().to_string(),
+                "--sessions-root".to_string(),
+                self.runtime.sessions_root.display().to_string(),
+            ],
+            command_line: build_command_line(
+                &self.runtime.node_path.display().to_string(),
+                &[
+                    self.runtime.entry_path.display().to_string(),
+                    "--sessions-root".to_string(),
+                    self.runtime.sessions_root.display().to_string(),
+                ],
+            ),
+            exit_code: output.status.code(),
+            duration_ms: Some(started_at.elapsed().as_millis() as u64),
+            ok: output.status.success(),
+            context: request_log_context(&request.payload),
+            stderr_excerpt: stderr_excerpt_text(&stderr),
+        });
 
         if !output.status.success() {
             return Err(anyhow!(
@@ -442,6 +521,32 @@ where
     match env_path(name) {
         Some(value) => Ok(value),
         None => fallback(),
+    }
+}
+
+fn request_log_context(payload: &Option<Value>) -> LogContext {
+    let mut context = LogContext::default();
+
+    let Some(payload) = payload.as_ref() else {
+        return context;
+    };
+
+    if let Some(asset_id) = payload.get("assetId").and_then(Value::as_str) {
+        context.asset_id = Some(AssetId(asset_id.to_string()));
+    }
+    if let Some(session_id) = payload.get("sessionId").and_then(Value::as_str) {
+        context.session_id = Some(session_id.to_string());
+    }
+
+    context
+}
+
+fn stderr_excerpt_text(raw: &str) -> Option<String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.chars().take(240).collect())
     }
 }
 

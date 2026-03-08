@@ -1,0 +1,19 @@
+{
+  "event": "external-process",
+  "phase": "completed",
+  "tool": "subtitle-sidecar",
+  "executable": "C:\\Program Files\\nodejs\\node.exe",
+  "arguments": [
+    "sidecar/index.js",
+    "--sessions-root",
+    "C:\\Users\\Houpy\\AppData\\Local\\MediaPlayerNext\\cache\\subtitle\\sessions"
+  ],
+  "commandLine": "\"C:\\Program Files\\nodejs\\node.exe\" sidecar/index.js --sessions-root \"C:\\Users\\Houpy\\AppData\\Local\\MediaPlayerNext\\cache\\subtitle\\sessions\"",
+  "exitCode": 0,
+  "durationMs": 184,
+  "ok": true,
+  "context": {
+    "assetId": "asset_001",
+    "sessionId": "subtitle_001"
+  }
+}

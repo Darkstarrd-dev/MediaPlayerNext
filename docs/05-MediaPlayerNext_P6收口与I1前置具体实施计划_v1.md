@@ -58,11 +58,11 @@
 - `P6-2`：已完成首轮（runtimes / DB fixture replay / protocol / sidecar / command AppError 已完成首轮收口，可正式切入 `P6-3`）
 - `P6-3`：进行中（后端边界版文档已落，`library/scan/items/archive/thumbnail` 首批 contracts 已开始实现）
 - `P6-4`：已完成（开发态 / 打包态 / 本地 override 的查找顺序、sidecar bundle 资源路径、protocol DB 打包态路径与校验脚本已收口）
-- `P6-5`：未开始（日志字段贯穿、外部进程统一日志格式与缺失域 contracts 仍待补齐）
+- `P6-5`：进行中（外部进程统一日志模型、contracts fixture 与首轮验证记录已落地）
 
 ### 2.3 当前最自然的下一步
 
-1. 进入 `P6-5`，补日志字段与剩余 contracts 收口
+1. 继续推进 `P6-5`，把 `task/source/asset/session` 日志字段扩到更多后端链路并补剩余 contracts
 2. 若后续开始打包发布试运行，再把 bundled Node 与 `ffmpeg/ffprobe/mpv/7z` 的最终随包布局作为 `I7` / 发布准备补充项继续推进
 
 ---
@@ -619,7 +619,7 @@ scripts/run-cargo-with-msvc.cmd tauri build
 
 ## 12. P6-5：可观测性与 contracts 再收紧
 
-当前状态：未开始
+当前状态：进行中
 
 ## 12.1 阶段目标
 
@@ -675,6 +675,14 @@ scripts/run-cargo-with-msvc.cmd tauri build
 - 关键链路日志中能关联 `task/source/asset/session`
 - 外部进程日志具备统一字段，不再各模块各写各的
 - `packages/contracts` 已覆盖 `I1` 所需主域，不需要前端继续猜 DTO
+
+当前首轮结果：
+
+- `crates/shared-model/src/observability.rs` 已形成统一 `ExternalProcessLog / LogContext` 模型
+- `packages/contracts/src/models/observability.ts` 与 `external-process-log.sample.json` 已接入 contracts 校验
+- `runtime-check` / `subtitle-sidecar` / `ffprobe` / `ffmpeg` / `mpv` / `sevenz` 已开始输出统一 JSON 日志
+- subtitle sidecar 首轮已把 `assetId / sessionId` 贯穿到外部进程日志 context
+- `docs/benchmarks/p6-observability-validation-20260308.md` 已记录首轮验证结果
 
 ## 12.6 本阶段必须补的测试/验证
 

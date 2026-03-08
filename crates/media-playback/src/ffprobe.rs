@@ -1,8 +1,12 @@
 use anyhow::{anyhow, Context, Result};
 use serde::Deserialize;
-use shared_model::MediaProbeSummary;
+use shared_model::{
+    build_command_line, emit_external_process_log, ExternalProcessLog, LogContext,
+    MediaProbeSummary,
+};
 use std::path::Path;
 use std::process::Command;
+use std::time::Instant;
 
 pub fn build_ffprobe_args(input_path: &Path) -> Vec<String> {
     vec![
@@ -17,10 +21,46 @@ pub fn build_ffprobe_args(input_path: &Path) -> Vec<String> {
 }
 
 pub fn probe_media_file(ffprobe_path: &Path, input_path: &Path) -> Result<MediaProbeSummary> {
-    let output = Command::new(ffprobe_path)
-        .args(build_ffprobe_args(input_path))
-        .output()
-        .with_context(|| format!("spawn ffprobe: {}", ffprobe_path.display()))?;
+    let arguments = build_ffprobe_args(input_path);
+    let command_line = build_command_line(&ffprobe_path.display().to_string(), &arguments);
+    let started_at = Instant::now();
+    let output = match Command::new(ffprobe_path).args(&arguments).output() {
+        Ok(output) => output,
+        Err(error) => {
+            emit_external_process_log(&ExternalProcessLog {
+                event: "external-process".to_string(),
+                phase: "spawn_failed".to_string(),
+                tool: "ffprobe".to_string(),
+                executable: ffprobe_path.display().to_string(),
+                arguments,
+                command_line,
+                exit_code: None,
+                duration_ms: Some(started_at.elapsed().as_millis() as u64),
+                ok: false,
+                context: LogContext::default(),
+                stderr_excerpt: Some(error.to_string()),
+            });
+            return Err(error)
+                .with_context(|| format!("spawn ffprobe: {}", ffprobe_path.display()));
+        }
+    };
+
+    emit_external_process_log(&ExternalProcessLog {
+        event: "external-process".to_string(),
+        phase: "completed".to_string(),
+        tool: "ffprobe".to_string(),
+        executable: ffprobe_path.display().to_string(),
+        arguments: build_ffprobe_args(input_path),
+        command_line: build_command_line(
+            &ffprobe_path.display().to_string(),
+            &build_ffprobe_args(input_path),
+        ),
+        exit_code: output.status.code(),
+        duration_ms: Some(started_at.elapsed().as_millis() as u64),
+        ok: output.status.success(),
+        context: LogContext::default(),
+        stderr_excerpt: stderr_excerpt(&output.stderr),
+    });
 
     if !output.status.success() {
         return Err(anyhow!(
@@ -30,6 +70,15 @@ pub fn probe_media_file(ffprobe_path: &Path, input_path: &Path) -> Result<MediaP
     }
 
     parse_ffprobe_output(&String::from_utf8_lossy(&output.stdout))
+}
+
+fn stderr_excerpt(raw: &[u8]) -> Option<String> {
+    let text = String::from_utf8_lossy(raw).trim().to_string();
+    if text.is_empty() {
+        None
+    } else {
+        Some(text.chars().take(240).collect())
+    }
 }
 
 pub fn parse_ffprobe_output(raw: &str) -> Result<MediaProbeSummary> {

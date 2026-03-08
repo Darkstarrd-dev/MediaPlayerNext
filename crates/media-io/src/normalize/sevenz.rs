@@ -1,7 +1,9 @@
 use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
+use shared_model::{build_command_line, emit_external_process_log, ExternalProcessLog, LogContext};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::Instant;
 
 pub trait ArchiveExtractor {
     fn extract_archive(&self, archive_path: &Path, output_dir: &Path) -> Result<()>;
@@ -48,15 +50,55 @@ impl SevenZipExtractor {
 impl ArchiveExtractor for SevenZipExtractor {
     fn extract_archive(&self, archive_path: &Path, output_dir: &Path) -> Result<()> {
         let invocation = self.invocation(archive_path, output_dir);
-        let output = Command::new(&invocation.executable_path)
+        let command_line = build_command_line(
+            &invocation.executable_path.display().to_string(),
+            &invocation.arguments,
+        );
+        let started_at = Instant::now();
+        let output = match Command::new(&invocation.executable_path)
             .args(&invocation.arguments)
             .output()
-            .with_context(|| {
-                format!(
-                    "failed to launch sevenz executable: {}",
-                    invocation.executable_path.display()
-                )
-            })?;
+        {
+            Ok(output) => output,
+            Err(error) => {
+                emit_external_process_log(&ExternalProcessLog {
+                    event: "external-process".to_string(),
+                    phase: "spawn_failed".to_string(),
+                    tool: "sevenz".to_string(),
+                    executable: invocation.executable_path.display().to_string(),
+                    arguments: invocation.arguments.clone(),
+                    command_line,
+                    exit_code: None,
+                    duration_ms: Some(started_at.elapsed().as_millis() as u64),
+                    ok: false,
+                    context: LogContext::default(),
+                    stderr_excerpt: Some(error.to_string()),
+                });
+                return Err(error).with_context(|| {
+                    format!(
+                        "failed to launch sevenz executable: {}",
+                        invocation.executable_path.display()
+                    )
+                });
+            }
+        };
+
+        emit_external_process_log(&ExternalProcessLog {
+            event: "external-process".to_string(),
+            phase: "completed".to_string(),
+            tool: "sevenz".to_string(),
+            executable: invocation.executable_path.display().to_string(),
+            arguments: invocation.arguments.clone(),
+            command_line: build_command_line(
+                &invocation.executable_path.display().to_string(),
+                &invocation.arguments,
+            ),
+            exit_code: output.status.code(),
+            duration_ms: Some(started_at.elapsed().as_millis() as u64),
+            ok: output.status.success(),
+            context: LogContext::default(),
+            stderr_excerpt: stderr_excerpt(&output.stderr),
+        });
 
         if output.status.success() {
             return Ok(());
@@ -71,6 +113,15 @@ impl ArchiveExtractor for SevenZipExtractor {
             output.status.code(),
             message
         ))
+    }
+}
+
+fn stderr_excerpt(raw: &[u8]) -> Option<String> {
+    let text = String::from_utf8_lossy(raw).trim().to_string();
+    if text.is_empty() {
+        None
+    } else {
+        Some(text.chars().take(240).collect())
     }
 }
 

@@ -18,6 +18,7 @@ export * from "./models/archive.js";
 export * from "./models/ids.js";
 export * from "./models/items.js";
 export * from "./models/library.js";
+export * from "./models/observability.js";
 export * from "./models/playback.js";
 export * from "./models/scan.js";
 export * from "./models/subtitle.js";

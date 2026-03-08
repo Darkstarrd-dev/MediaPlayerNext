@@ -1,6 +1,8 @@
 use anyhow::{Context, Result};
+use shared_model::{build_command_line, emit_external_process_log, ExternalProcessLog, LogContext};
 use std::path::Path;
 use std::process::Command;
+use std::time::Instant;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MpvOpenRequest {
@@ -35,10 +37,43 @@ pub struct MpvProcessLauncher;
 
 impl MpvLauncher for MpvProcessLauncher {
     fn launch(&self, mpv_path: &Path, request: &MpvOpenRequest) -> Result<()> {
-        Command::new(mpv_path)
-            .args(build_mpv_open_args(request))
-            .spawn()
-            .with_context(|| format!("spawn mpv: {}", mpv_path.display()))?;
+        let arguments = build_mpv_open_args(request);
+        let command_line = build_command_line(&mpv_path.display().to_string(), &arguments);
+        let started_at = Instant::now();
+
+        match Command::new(mpv_path).args(&arguments).spawn() {
+            Ok(_) => {
+                emit_external_process_log(&ExternalProcessLog {
+                    event: "external-process".to_string(),
+                    phase: "spawned".to_string(),
+                    tool: "mpv".to_string(),
+                    executable: mpv_path.display().to_string(),
+                    arguments,
+                    command_line,
+                    exit_code: None,
+                    duration_ms: Some(started_at.elapsed().as_millis() as u64),
+                    ok: true,
+                    context: LogContext::default(),
+                    stderr_excerpt: None,
+                });
+            }
+            Err(error) => {
+                emit_external_process_log(&ExternalProcessLog {
+                    event: "external-process".to_string(),
+                    phase: "spawn_failed".to_string(),
+                    tool: "mpv".to_string(),
+                    executable: mpv_path.display().to_string(),
+                    arguments,
+                    command_line,
+                    exit_code: None,
+                    duration_ms: Some(started_at.elapsed().as_millis() as u64),
+                    ok: false,
+                    context: LogContext::default(),
+                    stderr_excerpt: Some(error.to_string()),
+                });
+                return Err(error).with_context(|| format!("spawn mpv: {}", mpv_path.display()));
+            }
+        }
         Ok(())
     }
 }
