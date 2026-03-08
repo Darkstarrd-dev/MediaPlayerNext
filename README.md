@@ -90,17 +90,20 @@ Useful commands:
 - `npm run tauri:dev`
 - `npm run check`
 - `npm run check:paths`
+- `npm run check:sidecar-package`
 - `npm run check:quality`
 - `npm run check:release`
 
 ### 资源路径策略
 
-`P6-4` starts to freeze runtime path lookup order.
+`P6-4` starts to freeze runtime path lookup order and subtitle sidecar bundle layout.
 
 - strategy document
   - `docs/runtime/resource-path-strategy.md`
 - verification script
   - `npm run check:paths`
+- sidecar package verify
+  - `npm run check:sidecar-package`
 - output artifact
   - `data/resource-paths/<timestamp>/resource-paths-summary.json`
 
@@ -120,6 +123,14 @@ Current first-round override variables:
 
 Use env override first when you need to validate an alternate local or packaged-like layout without editing `config/local.paths.json`.
 
+Current sidecar package rule:
+
+- `src-tauri/tauri.conf.json`
+  - bundles `apps/subtitle-sidecar/dist/src/**/*` to resource path `sidecar/`
+- Tauri subtitle commands
+  - dev mode reads repo `apps/subtitle-sidecar/dist/src/index.js`
+  - packaged mode reads bundled resource `sidecar/index.js`
+
 ### Quality Gates
 
 `P6-1` adds a unified quality gate entry under `scripts/quality/`.
@@ -127,7 +138,7 @@ Use env override first when you need to validate an alternate local or packaged-
 - `npm run check:quality`
   - runs Rust quality gates and writes logs/artifacts to `data/quality-gates/<timestamp>/rust-gates`
 - `npm run check:release`
-  - builds subtitle sidecar + Tauri bundle and verifies current release artifacts
+  - builds subtitle sidecar + Tauri bundle and verifies current release artifacts, including packaged sidecar resource presence
 
 Current `check:quality` gate includes:
 

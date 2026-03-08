@@ -33,6 +33,9 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "resources": {
+      "../apps/subtitle-sidecar/dist/src/**/*": "sidecar/"
+    },
     "targets": "all"
   }
 }

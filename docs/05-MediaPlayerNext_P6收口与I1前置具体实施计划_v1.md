@@ -582,6 +582,9 @@ scripts/run-cargo-with-msvc.cmd test --workspace
 - `docs/runtime/resource-path-strategy.md` 已形成首轮策略文档
 - `scripts/release/verify-resource-paths.ps1` 已形成首轮校验脚本
 - `check-runtimes.ps1` 与 backend harness 已开始支持 env override 优先于本地 config
+- `scripts/release/verify-sidecar-package.ps1` 已开始校验 sidecar bundle resource 声明与打包态产物
+- Tauri subtitle command 链路已开始区分 dev 路径与 bundle resource `sidecar/index.js`
+- `npm run check:release` 已验证当前打包态产物中存在 `target/release/sidecar/index.js`
 
 ## 11.6 本阶段必须补的测试/验证
 

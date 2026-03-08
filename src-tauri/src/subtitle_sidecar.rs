@@ -13,9 +13,11 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use tauri::{path::BaseDirectory, AppHandle, Manager};
 
 const DEFAULT_REQUEST_TIMEOUT_MS: u64 = 3_000;
 const DEFAULT_MAX_RESTARTS: u32 = 1;
+const BUNDLED_SUBTITLE_ENTRY_PATH: &str = "sidecar/index.js";
 
 #[derive(Debug, Clone)]
 pub struct SubtitleSidecarRuntime {
@@ -76,21 +78,27 @@ pub fn development_subtitle_host() -> Result<StdioSubtitleHost> {
     let node_path = env_path_or_else("MPNEXT_SUBTITLE_NODE_PATH", || load_node_path(&config_path))?;
     let entry_path = env_path_or_default(
         "MPNEXT_SUBTITLE_ENTRY_PATH",
-        workspace_root
-            .join("apps")
-            .join("subtitle-sidecar")
-            .join("dist")
-            .join("src")
-            .join("index.js"),
+        development_subtitle_entry_path(),
     );
     let sessions_root = env_path_or_default(
         "MPNEXT_SUBTITLE_SESSIONS_ROOT",
-        workspace_root
-            .join("data")
-            .join("cache")
-            .join("subtitle")
-            .join("sessions"),
+        development_subtitle_sessions_root(),
     );
+
+    Ok(StdioSubtitleHost::new(SubtitleSidecarRuntime {
+        node_path,
+        entry_path,
+        sessions_root,
+        extra_env: Vec::new(),
+    }))
+}
+
+pub fn tauri_subtitle_host(app: &AppHandle) -> Result<StdioSubtitleHost> {
+    let workspace_root = workspace_root();
+    let config_path = workspace_root.join("config").join("local.paths.json");
+    let node_path = env_path_or_else("MPNEXT_SUBTITLE_NODE_PATH", || load_node_path(&config_path))?;
+    let entry_path = resolve_tauri_subtitle_entry_path(app)?;
+    let sessions_root = resolve_tauri_subtitle_sessions_root(app)?;
 
     Ok(StdioSubtitleHost::new(SubtitleSidecarRuntime {
         node_path,
@@ -356,6 +364,37 @@ fn load_node_path(config_path: &Path) -> Result<PathBuf> {
     ))
 }
 
+fn resolve_tauri_subtitle_entry_path(app: &AppHandle) -> Result<PathBuf> {
+    if let Some(path) = env_path("MPNEXT_SUBTITLE_ENTRY_PATH") {
+        return Ok(path);
+    }
+
+    if tauri::is_dev() {
+        return Ok(development_subtitle_entry_path());
+    }
+
+    app.path()
+        .resolve(BUNDLED_SUBTITLE_ENTRY_PATH, BaseDirectory::Resource)
+        .context("resolve bundled subtitle sidecar entry")
+}
+
+fn resolve_tauri_subtitle_sessions_root(app: &AppHandle) -> Result<PathBuf> {
+    if let Some(path) = env_path("MPNEXT_SUBTITLE_SESSIONS_ROOT") {
+        return Ok(path);
+    }
+
+    if tauri::is_dev() {
+        return Ok(development_subtitle_sessions_root());
+    }
+
+    Ok(app
+        .path()
+        .app_cache_dir()
+        .context("resolve subtitle sidecar app cache dir")?
+        .join("subtitle")
+        .join("sessions"))
+}
+
 fn workspace_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
@@ -371,16 +410,37 @@ fn next_request_id(message_type: &str) -> String {
     format!("req-{message_type}-{millis}")
 }
 
+fn development_subtitle_entry_path() -> PathBuf {
+    workspace_root()
+        .join("apps")
+        .join("subtitle-sidecar")
+        .join("dist")
+        .join("src")
+        .join("index.js")
+}
+
+fn development_subtitle_sessions_root() -> PathBuf {
+    workspace_root()
+        .join("data")
+        .join("cache")
+        .join("subtitle")
+        .join("sessions")
+}
+
+fn env_path(name: &str) -> Option<PathBuf> {
+    env::var_os(name).map(PathBuf::from)
+}
+
 fn env_path_or_default(name: &str, default: PathBuf) -> PathBuf {
-    env::var_os(name).map(PathBuf::from).unwrap_or(default)
+    env_path(name).unwrap_or(default)
 }
 
 fn env_path_or_else<F>(name: &str, fallback: F) -> Result<PathBuf>
 where
     F: FnOnce() -> Result<PathBuf>,
 {
-    match env::var_os(name) {
-        Some(value) => Ok(PathBuf::from(value)),
+    match env_path(name) {
+        Some(value) => Ok(value),
         None => fallback(),
     }
 }

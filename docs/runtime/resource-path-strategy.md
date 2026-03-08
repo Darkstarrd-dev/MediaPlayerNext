@@ -102,19 +102,24 @@
 打包态目标策略：
 
 1. `MPNEXT_SUBTITLE_ENTRY_PATH`
-2. 后续 bundle 资源路径
+2. Tauri bundle resource `sidecar/index.js`
 
 当前说明：
 
-- 当前代码只稳定支持开发态默认路径与环境变量 override
-- bundle 资源路径仍属于后续收口项，但策略已经被单独列出，不再继续隐含在代码里
+- `src-tauri/tauri.conf.json` 已声明把 `apps/subtitle-sidecar/dist/**/*` 打进 bundle 资源目录
+- Tauri command 链路现在会在非 dev 模式下解析 `sidecar/index.js`
 
 ### 5. subtitle sessions root
 
-开发态 / 打包态统一顺序：
+开发态顺序：
 
 1. `MPNEXT_SUBTITLE_SESSIONS_ROOT`
 2. 默认 `data/cache/subtitle/sessions`
+
+打包态顺序：
+
+1. `MPNEXT_SUBTITLE_SESSIONS_ROOT`
+2. Tauri `app cache dir/subtitle/sessions`
 
 ### 6. backend cache / db roots
 
@@ -145,12 +150,20 @@
 - `scripts/check-runtimes.ps1`
 - `src-tauri/src/bin/backend_harness.rs`
 - `src-tauri/src/subtitle_sidecar.rs`
+- `src-tauri/tauri.conf.json`
 - `config/local.paths.example.json`
 
 ## 当前校验入口
 
 - `npm run check:paths`
+- `npm run check:sidecar-package`
 - 结果产物：`data/resource-paths/<timestamp>/resource-paths-summary.json`
+
+其中 `npm run check:sidecar-package` 会验证：
+
+- `src-tauri/tauri.conf.json` 是否声明 sidecar bundle resource
+- `apps/subtitle-sidecar/dist/src/index.js` 是否存在
+- `cargo tauri build` 产出的 `target/release` 下是否已出现 `sidecar/index.js` 的打包态产物
 
 该脚本当前会验证：
 
@@ -161,8 +174,7 @@
 
 ## 当前已知未完成项
 
-- bundle 内置 sidecar 入口路径尚未落实际接线
 - bundle 内置 `ffmpeg/ffprobe/mpv/7z` 路径尚未形成最终发布布局
-- 还没有独立的 `verify-sidecar-package.ps1`
+- 还没有把 Node runtime 一并打进发布包，当前仍依赖 env override 或系统 `node`
 
-因此 `P6-4` 当前状态应理解为：资源路径策略已开始收口，但仍未完成最终发布态闭环。
+因此 `P6-4` 当前状态应理解为：subtitle sidecar 的 bundle 入口已开始进入打包态闭环，但 runtimes 与 bundled Node 仍未最终收口。

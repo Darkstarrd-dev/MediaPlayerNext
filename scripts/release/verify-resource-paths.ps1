@@ -151,7 +151,8 @@ $summary = [pscustomobject]@{
   })
   packagedStrategy = [pscustomobject]@{
     node = "env override first, then PATH node; bundled node not landed yet"
-    sidecarEntry = "env override first, then future bundled resource path"
+    sidecarEntry = "env override first, then bundled resource sidecar/index.js"
+    subtitleSessionsRoot = "env override first; dev uses repo data/cache/subtitle/sessions, packaged uses Tauri app cache dir/subtitle/sessions"
     runtimes = "env override first; bundled ffmpeg/ffprobe/mpv/7z path still pending"
     migrations = "embedded in media-db crate; no external path lookup"
   }

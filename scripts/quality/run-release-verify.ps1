@@ -12,13 +12,14 @@ $projectRoot = $context.ProjectRoot
 $resolvedOutputRoot = $context.OutputRoot
 
 $sidecarBuildLogPath = Join-Path $resolvedOutputRoot "subtitle-sidecar-build.log"
+$sidecarPackageLogPath = Join-Path $resolvedOutputRoot "sidecar-package-verify.log"
 $tauriBuildLogPath = Join-Path $resolvedOutputRoot "tauri-build.log"
 $summaryPath = Join-Path $resolvedOutputRoot "release-verify-summary.json"
 
 $tauriConfigPath = Join-Path $projectRoot "src-tauri\tauri.conf.json"
 $capabilitiesRoot = Join-Path $projectRoot "src-tauri\capabilities"
 $sidecarEntryPath = Join-Path $projectRoot "apps\subtitle-sidecar\dist\src\index.js"
-$bundleRoot = Join-Path $projectRoot "src-tauri\target\release\bundle"
+$bundleRoot = Join-Path $projectRoot "target\release\bundle"
 
 $tauriConfig = Get-Content $tauriConfigPath -Raw | ConvertFrom-Json
 
@@ -47,6 +48,22 @@ $tauriBuildResult = Invoke-LoggedCommand `
   -Arguments @() `
   -WorkingDirectory $projectRoot `
   -LogPath $tauriBuildLogPath
+
+$sidecarPackageResult = Invoke-LoggedCommand `
+  -Executable "powershell.exe" `
+  -Arguments @(
+    "-NoProfile",
+    "-ExecutionPolicy",
+    "Bypass",
+    "-File",
+    (Join-Path $projectRoot "scripts\release\verify-sidecar-package.ps1"),
+    "-OutputRoot",
+    $resolvedOutputRoot,
+    "-ReleaseRoot",
+    (Join-Path $projectRoot "target\release")
+  ) `
+  -WorkingDirectory $projectRoot `
+  -LogPath $sidecarPackageLogPath
 
 $capabilityFiles = @()
 if (Test-Path $capabilitiesRoot) {
@@ -85,6 +102,7 @@ $summary = [pscustomobject]@{
   passed = (
     $sidecarBuildResult.ExitCode -eq 0 -and
     $tauriBuildResult.ExitCode -eq 0 -and
+    $sidecarPackageResult.ExitCode -eq 0 -and
     (Test-Path $sidecarEntryPath) -and
     $missingIcons.Count -eq 0 -and
     $capabilityFiles.Count -gt 0 -and
@@ -99,6 +117,12 @@ $summary = [pscustomobject]@{
     exitCode = $tauriBuildResult.ExitCode
     durationMs = $tauriBuildResult.DurationMs
     logPath = Get-RepoRelativePath $tauriBuildLogPath
+  }
+  sidecarPackage = [pscustomobject]@{
+    exitCode = $sidecarPackageResult.ExitCode
+    durationMs = $sidecarPackageResult.DurationMs
+    logPath = Get-RepoRelativePath $sidecarPackageLogPath
+    summaryPath = Get-RepoRelativePath (Join-Path $resolvedOutputRoot "sidecar-package-summary.json")
   }
   sidecarEntryPath = Get-RepoRelativePath $sidecarEntryPath
   sidecarEntryExists = (Test-Path $sidecarEntryPath)

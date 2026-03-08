@@ -39,15 +39,19 @@ fn runtime_smoke_check(
 }
 
 #[tauri::command]
-fn subtitle_ping_command() -> CommandResult<shared_model::SubtitleHostSummary> {
-    let host = subtitle_sidecar::development_subtitle_host()
+fn subtitle_ping_command(
+    app: tauri::AppHandle,
+) -> CommandResult<shared_model::SubtitleHostSummary> {
+    let host = subtitle_sidecar::tauri_subtitle_host(&app)
         .map_err(|error| map_subtitle_command_error("subtitle_ping_command", error))?;
     subtitle_ping(&host).map_err(|error| map_subtitle_command_error("subtitle_ping_command", error))
 }
 
 #[tauri::command]
-fn subtitle_health_command() -> CommandResult<shared_model::SubtitleHostSummary> {
-    let host = subtitle_sidecar::development_subtitle_host()
+fn subtitle_health_command(
+    app: tauri::AppHandle,
+) -> CommandResult<shared_model::SubtitleHostSummary> {
+    let host = subtitle_sidecar::tauri_subtitle_host(&app)
         .map_err(|error| map_subtitle_command_error("subtitle_health_command", error))?;
     subtitle_health(&host)
         .map_err(|error| map_subtitle_command_error("subtitle_health_command", error))
@@ -55,9 +59,10 @@ fn subtitle_health_command() -> CommandResult<shared_model::SubtitleHostSummary>
 
 #[tauri::command]
 fn subtitle_start_session_command(
+    app: tauri::AppHandle,
     asset_id: Option<String>,
 ) -> CommandResult<shared_model::SubtitleSessionSummary> {
-    let host = subtitle_sidecar::development_subtitle_host()
+    let host = subtitle_sidecar::tauri_subtitle_host(&app)
         .map_err(|error| map_subtitle_command_error("subtitle_start_session_command", error))?;
     let asset_id = asset_id.map(AssetId);
     subtitle_start_session(&host, asset_id.as_ref())
@@ -66,9 +71,10 @@ fn subtitle_start_session_command(
 
 #[tauri::command]
 fn subtitle_stop_session_command(
+    app: tauri::AppHandle,
     session_id: String,
 ) -> CommandResult<shared_model::SubtitleSessionSummary> {
-    let host = subtitle_sidecar::development_subtitle_host()
+    let host = subtitle_sidecar::tauri_subtitle_host(&app)
         .map_err(|error| map_subtitle_command_error("subtitle_stop_session_command", error))?;
     subtitle_stop_session(&host, &SubtitleSessionId(session_id))
         .map_err(|error| map_subtitle_command_error("subtitle_stop_session_command", error))
@@ -76,9 +82,10 @@ fn subtitle_stop_session_command(
 
 #[tauri::command]
 fn subtitle_get_progress_command(
+    app: tauri::AppHandle,
     session_id: String,
 ) -> CommandResult<shared_model::SubtitleProgressEvent> {
-    let host = subtitle_sidecar::development_subtitle_host()
+    let host = subtitle_sidecar::tauri_subtitle_host(&app)
         .map_err(|error| map_subtitle_command_error("subtitle_get_progress_command", error))?;
     subtitle_get_progress(&host, &SubtitleSessionId(session_id))
         .map_err(|error| map_subtitle_command_error("subtitle_get_progress_command", error))
