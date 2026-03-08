@@ -1,0 +1,11 @@
+{
+  "assetId": "asset_001",
+  "sourceKind": "archive_entry",
+  "mime": "image/png",
+  "libraryId": "library_001",
+  "sourceId": "source_001",
+  "archiveId": "archive_001",
+  "archiveEntryId": "archive_entry_001",
+  "archivePath": "Z:/Media/Comics/chapter01.cbz",
+  "entryPath": "001-cover.png"
+}

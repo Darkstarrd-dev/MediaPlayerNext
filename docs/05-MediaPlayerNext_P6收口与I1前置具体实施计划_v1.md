@@ -56,7 +56,7 @@
 - `P6-0`：已完成首轮（真实性能数字已补齐，见 `docs/benchmarks/p6-performance-baseline-20260307.md`）
 - `P6-1`：已完成首轮（统一脚本、结果产物与首轮 gate run 已落地；`duplicate deps` 已按 baseline-delta 进入 P2 治理）
 - `P6-2`：已完成首轮（runtimes / DB fixture replay / protocol / sidecar / command AppError 已完成首轮收口，可正式切入 `P6-3`）
-- `P6-3`：可开始（`P6-2` 首轮 bad path 与 command 错误语义已基本收口）
+- `P6-3`：进行中（后端边界版文档已落，`library/scan/items/archive/thumbnail` 首批 contracts 已开始实现）
 - `P6-4`：未开始（开发态 / 打包态资源查找顺序仍未被单独收口为策略文档与校验脚本）
 - `P6-5`：未开始（日志字段贯穿、外部进程统一日志格式与缺失域 contracts 仍待补齐）
 

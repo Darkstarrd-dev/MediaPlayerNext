@@ -1,0 +1,8 @@
+{
+  "libraryId": "library_001",
+  "discovered": 42,
+  "insertedOrUpdated": 30,
+  "skippedUnchanged": 10,
+  "tombstoned": 2,
+  "taskId": "task_scan_fixture_001"
+}

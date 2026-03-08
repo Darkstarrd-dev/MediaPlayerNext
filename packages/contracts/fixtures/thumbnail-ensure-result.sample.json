@@ -1,0 +1,12 @@
+{
+  "assetId": "asset_001",
+  "thumbnailKey": "thumb_001",
+  "profile": "grid-sm",
+  "width": 240,
+  "height": 180,
+  "format": "webp",
+  "diskPath": "Z:/Cache/thumb/thumb_001.webp",
+  "byteSize": 8192,
+  "state": "ready",
+  "cacheHit": true
+}

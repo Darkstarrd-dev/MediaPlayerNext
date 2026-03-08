@@ -1,0 +1,11 @@
+{
+  "type": "library.changed",
+  "library": {
+    "id": "library_001",
+    "rootPath": "Z:/Media/Comics",
+    "libraryType": "filesystem",
+    "scanMode": "full",
+    "createdAt": "1710000000000",
+    "updatedAt": "1710000000000"
+  }
+}

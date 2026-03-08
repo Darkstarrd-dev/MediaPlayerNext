@@ -1,0 +1,8 @@
+{
+  "taskId": "task_thumbnail_001",
+  "assetId": "asset_001",
+  "state": "running",
+  "profile": "grid-sm",
+  "thumbnailKey": "thumb_001",
+  "message": "Rendering thumbnail"
+}

@@ -1,0 +1,11 @@
+{
+  "assetId": "asset_001",
+  "sourceKind": "archive_entry",
+  "sourceRefId": "archive_entry_001",
+  "libraryId": "library_001",
+  "sourceId": "source_001",
+  "archiveId": "archive_001",
+  "entryPath": "001-cover.png",
+  "mime": "image/png",
+  "thumbnailKey": "thumb_001"
+}

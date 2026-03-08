@@ -1,0 +1,9 @@
+{
+  "taskId": "task_normalize_001",
+  "sourceId": "source_001",
+  "archiveId": "archive_001",
+  "normalizedZipPath": "Z:/Cache/normalize/archive_001/content.zip",
+  "extractedFileCount": 24,
+  "indexedEntries": 24,
+  "archiveStatus": "normalized"
+}
