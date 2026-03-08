@@ -56,6 +56,14 @@ test("invalid argument app error fixture passes zod parse", async () => {
   assert.equal(parsed.retriable, false);
 });
 
+test("external tool app error fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "app-error.external-tool.sample.json"), "utf8");
+  const parsed = appErrorSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.code, "EXTERNAL_TOOL_ERROR");
+  assert.equal(parsed.retriable, false);
+});
+
 test("media probe fixture passes zod parse", async () => {
   const raw = await readFile(join(fixturesDir, "media-probe.sample.json"), "utf8");
   const parsed = mediaProbeSchema.parse(JSON.parse(raw));

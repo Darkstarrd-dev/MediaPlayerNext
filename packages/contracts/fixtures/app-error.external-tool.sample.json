@@ -1,0 +1,10 @@
+{
+  "code": "EXTERNAL_TOOL_ERROR",
+  "message": "subtitle sidecar response payload missing",
+  "retriable": false,
+  "details": {
+    "surface": "tauri-command",
+    "command": "subtitle_ping_command",
+    "domain": "subtitle-sidecar"
+  }
+}

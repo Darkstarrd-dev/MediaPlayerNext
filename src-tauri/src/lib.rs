@@ -1,6 +1,7 @@
 mod runtime_check;
 pub mod subtitle_sidecar;
 
+use anyhow::Error;
 use app_core::archive::{read_archive_entry, resolve_archive_entry_location};
 use app_core::playback::resolve_media_asset_path;
 use app_core::subtitle_host::{
@@ -10,13 +11,17 @@ use app_core::subtitle_host::{
 use app_core::thumbnail::get_thumbnail;
 use media_db::{DatabaseLocation, MediaDatabase};
 use runtime_check::{run_runtime_smoke_check, RuntimeSmokeCheckResult};
-use shared_model::{AppErrorCode, ArchiveEntryId, AssetId, SubtitleSessionId, ThumbnailKey};
+use serde_json::json;
+use shared_model::{
+    AppError, AppErrorCode, ArchiveEntryId, AssetId, SubtitleSessionId, ThumbnailKey,
+};
 use std::env;
 use std::path::{Path, PathBuf};
 use tauri::http::{header::CONTENT_TYPE, Response, StatusCode, Uri};
 
 const ERROR_CODE_HEADER: &str = "x-mediaplayernext-error-code";
 const ERROR_RETRIABLE_HEADER: &str = "x-mediaplayernext-error-retriable";
+type CommandResult<T> = Result<T, AppError>;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -28,46 +33,55 @@ fn runtime_smoke_check(
     ffmpeg_path: String,
     ffprobe_path: String,
     mpv_path: String,
-) -> Result<RuntimeSmokeCheckResult, String> {
+) -> CommandResult<RuntimeSmokeCheckResult> {
     run_runtime_smoke_check(&ffmpeg_path, &ffprobe_path, &mpv_path)
-        .map_err(|error| error.to_string())
+        .map_err(|error| map_runtime_command_error("runtime_smoke_check", error))
 }
 
 #[tauri::command]
-fn subtitle_ping_command() -> Result<shared_model::SubtitleHostSummary, String> {
-    let host = subtitle_sidecar::development_subtitle_host().map_err(|error| error.to_string())?;
-    subtitle_ping(&host).map_err(|error| error.to_string())
+fn subtitle_ping_command() -> CommandResult<shared_model::SubtitleHostSummary> {
+    let host = subtitle_sidecar::development_subtitle_host()
+        .map_err(|error| map_subtitle_command_error("subtitle_ping_command", error))?;
+    subtitle_ping(&host).map_err(|error| map_subtitle_command_error("subtitle_ping_command", error))
 }
 
 #[tauri::command]
-fn subtitle_health_command() -> Result<shared_model::SubtitleHostSummary, String> {
-    let host = subtitle_sidecar::development_subtitle_host().map_err(|error| error.to_string())?;
-    subtitle_health(&host).map_err(|error| error.to_string())
+fn subtitle_health_command() -> CommandResult<shared_model::SubtitleHostSummary> {
+    let host = subtitle_sidecar::development_subtitle_host()
+        .map_err(|error| map_subtitle_command_error("subtitle_health_command", error))?;
+    subtitle_health(&host)
+        .map_err(|error| map_subtitle_command_error("subtitle_health_command", error))
 }
 
 #[tauri::command]
 fn subtitle_start_session_command(
     asset_id: Option<String>,
-) -> Result<shared_model::SubtitleSessionSummary, String> {
-    let host = subtitle_sidecar::development_subtitle_host().map_err(|error| error.to_string())?;
+) -> CommandResult<shared_model::SubtitleSessionSummary> {
+    let host = subtitle_sidecar::development_subtitle_host()
+        .map_err(|error| map_subtitle_command_error("subtitle_start_session_command", error))?;
     let asset_id = asset_id.map(AssetId);
-    subtitle_start_session(&host, asset_id.as_ref()).map_err(|error| error.to_string())
+    subtitle_start_session(&host, asset_id.as_ref())
+        .map_err(|error| map_subtitle_command_error("subtitle_start_session_command", error))
 }
 
 #[tauri::command]
 fn subtitle_stop_session_command(
     session_id: String,
-) -> Result<shared_model::SubtitleSessionSummary, String> {
-    let host = subtitle_sidecar::development_subtitle_host().map_err(|error| error.to_string())?;
-    subtitle_stop_session(&host, &SubtitleSessionId(session_id)).map_err(|error| error.to_string())
+) -> CommandResult<shared_model::SubtitleSessionSummary> {
+    let host = subtitle_sidecar::development_subtitle_host()
+        .map_err(|error| map_subtitle_command_error("subtitle_stop_session_command", error))?;
+    subtitle_stop_session(&host, &SubtitleSessionId(session_id))
+        .map_err(|error| map_subtitle_command_error("subtitle_stop_session_command", error))
 }
 
 #[tauri::command]
 fn subtitle_get_progress_command(
     session_id: String,
-) -> Result<shared_model::SubtitleProgressEvent, String> {
-    let host = subtitle_sidecar::development_subtitle_host().map_err(|error| error.to_string())?;
-    subtitle_get_progress(&host, &SubtitleSessionId(session_id)).map_err(|error| error.to_string())
+) -> CommandResult<shared_model::SubtitleProgressEvent> {
+    let host = subtitle_sidecar::development_subtitle_host()
+        .map_err(|error| map_subtitle_command_error("subtitle_get_progress_command", error))?;
+    subtitle_get_progress(&host, &SubtitleSessionId(session_id))
+        .map_err(|error| map_subtitle_command_error("subtitle_get_progress_command", error))
 }
 
 pub fn runtime_smoke_check_entry() -> anyhow::Result<()> {
@@ -443,6 +457,90 @@ fn app_error_code_name(code: &AppErrorCode) -> &'static str {
     }
 }
 
+fn map_runtime_command_error(command: &str, error: Error) -> AppError {
+    let message = error.to_string();
+    let code = if message.contains("runtime binary not found") {
+        AppErrorCode::NotFound
+    } else if message.contains("open sqlite") || message.contains("query sqlite version") {
+        AppErrorCode::DbError
+    } else if message.contains("runtime binary") || message.contains("spawn runtime binary") {
+        AppErrorCode::ExternalToolError
+    } else {
+        AppErrorCode::InternalError
+    };
+
+    AppError {
+        code,
+        message,
+        retriable: false,
+        details: Some(json!({
+            "surface": "tauri-command",
+            "command": command,
+            "domain": "runtime-smoke-check"
+        })),
+    }
+}
+
+fn map_subtitle_command_error(command: &str, error: Error) -> AppError {
+    let message = error.to_string();
+    let retriable = message.contains("timed out")
+        || message.contains(", retriable")
+        || message.contains("[TIMEOUT]");
+    let code = if let Some(code) = parse_embedded_app_error_code(&message) {
+        code
+    } else if message.contains("timed out") {
+        AppErrorCode::Timeout
+    } else if message.contains("response payload missing")
+        || message.contains("parse subtitle sidecar response")
+        || message.contains("returned empty stdout")
+        || message.contains("stdout is not valid utf-8")
+        || message.contains("response id mismatch")
+        || message.contains("subtitle sidecar exited with status")
+        || message.contains("spawn subtitle sidecar")
+    {
+        AppErrorCode::ExternalToolError
+    } else if message.contains("subtitle sidecar entry missing") {
+        AppErrorCode::NotFound
+    } else if message.contains("not found") || message.contains("missing") {
+        AppErrorCode::NotFound
+    } else if message.contains("unsupported") {
+        AppErrorCode::InvalidArgument
+    } else if message.contains("subtitle sidecar") || message.contains("spawn") {
+        AppErrorCode::ExternalToolError
+    } else {
+        AppErrorCode::InternalError
+    };
+
+    AppError {
+        code,
+        message,
+        retriable,
+        details: Some(json!({
+            "surface": "tauri-command",
+            "command": command,
+            "domain": "subtitle-sidecar"
+        })),
+    }
+}
+
+fn parse_embedded_app_error_code(message: &str) -> Option<AppErrorCode> {
+    [
+        ("[NOT_FOUND]", AppErrorCode::NotFound),
+        ("[ALREADY_EXISTS]", AppErrorCode::AlreadyExists),
+        ("[UNSUPPORTED_FORMAT]", AppErrorCode::UnsupportedFormat),
+        ("[PERMISSION_DENIED]", AppErrorCode::PermissionDenied),
+        ("[INVALID_ARGUMENT]", AppErrorCode::InvalidArgument),
+        ("[IO_ERROR]", AppErrorCode::IoError),
+        ("[DB_ERROR]", AppErrorCode::DbError),
+        ("[EXTERNAL_TOOL_ERROR]", AppErrorCode::ExternalToolError),
+        ("[CANCELLED]", AppErrorCode::Cancelled),
+        ("[TIMEOUT]", AppErrorCode::Timeout),
+        ("[INTERNAL_ERROR]", AppErrorCode::InternalError),
+    ]
+    .into_iter()
+    .find_map(|(needle, code)| message.contains(needle).then_some(code))
+}
+
 fn development_database_path() -> PathBuf {
     workspace_root().join("data").join("mediaplayernext-dev.db")
 }
@@ -457,19 +555,21 @@ fn workspace_root() -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::{
-        archive_protocol_response, media_protocol_response, parse_archive_entry_id_from_uri,
-        parse_media_asset_id_from_uri, parse_thumbnail_key_from_uri, thumbnail_protocol_response,
-        ERROR_CODE_HEADER, ERROR_RETRIABLE_HEADER,
+        archive_protocol_response, map_runtime_command_error, map_subtitle_command_error,
+        media_protocol_response, parse_archive_entry_id_from_uri, parse_media_asset_id_from_uri,
+        parse_thumbnail_key_from_uri, thumbnail_protocol_response, ERROR_CODE_HEADER,
+        ERROR_RETRIABLE_HEADER,
     };
+    use anyhow::anyhow;
     use app_core::ports::{
         ArchiveEntryRepository, ArchiveRepository, AssetRepository, LibraryRepository,
         SourceRepository, ThumbnailRepository,
     };
     use media_db::{DatabaseLocation, MediaDatabase};
     use shared_model::{
-        ArchiveEntryId, ArchiveEntryRecord, ArchiveId, ArchiveRecord, AssetId, LibraryId,
-        LibraryRecord, MediaAssetRecord, MediaSourceKind, SourceId, SourceKind, SourceRecord,
-        ThumbnailKey, ThumbnailRecord,
+        AppErrorCode, ArchiveEntryId, ArchiveEntryRecord, ArchiveId, ArchiveRecord, AssetId,
+        LibraryId, LibraryRecord, MediaAssetRecord, MediaSourceKind, SourceId, SourceKind,
+        SourceRecord, ThumbnailKey, ThumbnailRecord,
     };
     use tauri::http::{header::CONTENT_TYPE, StatusCode, Uri};
     use tempfile::{tempdir, NamedTempFile};
@@ -1028,5 +1128,53 @@ mod tests {
                 .expect("error code header"),
             "NOT_FOUND"
         );
+    }
+
+    #[test]
+    fn maps_runtime_command_errors_to_app_error() {
+        let error = map_runtime_command_error(
+            "runtime_smoke_check",
+            anyhow!("runtime binary not found: C:/missing/ffmpeg.exe"),
+        );
+
+        assert_eq!(error.code, AppErrorCode::NotFound);
+        assert!(!error.retriable);
+        assert_eq!(
+            error.details.expect("details")["command"],
+            serde_json::Value::String("runtime_smoke_check".to_string())
+        );
+    }
+
+    #[test]
+    fn maps_subtitle_command_timeout_to_app_error() {
+        let error = map_subtitle_command_error(
+            "subtitle_ping_command",
+            anyhow!("subtitle sidecar timed out after 150 ms"),
+        );
+
+        assert_eq!(error.code, AppErrorCode::Timeout);
+        assert!(error.retriable);
+    }
+
+    #[test]
+    fn maps_subtitle_command_embedded_error_code_to_app_error() {
+        let error = map_subtitle_command_error(
+            "subtitle_get_progress_command",
+            anyhow!("subtitle sidecar get_progress failed [NOT_FOUND]: session missing"),
+        );
+
+        assert_eq!(error.code, AppErrorCode::NotFound);
+        assert!(!error.retriable);
+    }
+
+    #[test]
+    fn maps_subtitle_command_payload_errors_to_external_tool_error() {
+        let error = map_subtitle_command_error(
+            "subtitle_ping_command",
+            anyhow!("subtitle sidecar response payload missing"),
+        );
+
+        assert_eq!(error.code, AppErrorCode::ExternalToolError);
+        assert!(!error.retriable);
     }
 }

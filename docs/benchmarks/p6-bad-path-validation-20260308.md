@@ -69,6 +69,8 @@
 - `apps/subtitle-sidecar/src/protocol.ts` 已把 `AppError.code` 从任意字符串收紧为稳定枚举
 - `AppError.details` 已与 `packages/contracts` 口径对齐为可选字段
 - `packages/contracts` 已补 `NOT_FOUND` / `TIMEOUT` / `INVALID_ARGUMENT` 三类 bad path fixture
+- Tauri command 层已把 `Result<_, String>` 收口成 `Result<_, AppError>`
+- command 错误当前按 `runtime-smoke-check` / `subtitle-sidecar` 两个 domain 输出统一 `details`
 
 ## 验证命令
 
