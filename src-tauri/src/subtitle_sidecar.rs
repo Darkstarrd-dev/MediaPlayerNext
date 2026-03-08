@@ -495,6 +495,26 @@ mod tests {
     }
 
     #[test]
+    fn reports_missing_sidecar_entry_before_spawn() {
+        let temp = tempdir().expect("tempdir should exist");
+
+        let host = StdioSubtitleHost::with_options(
+            SubtitleSidecarRuntime {
+                node_path: PathBuf::from("node"),
+                entry_path: temp.path().join("missing-sidecar.mjs"),
+                sessions_root: temp.path().join("sessions"),
+                extra_env: Vec::new(),
+            },
+            Duration::from_millis(150),
+            0,
+        );
+
+        let error = host.ping().expect_err("missing sidecar entry should fail");
+
+        assert!(error.to_string().contains("subtitle sidecar entry missing"));
+    }
+
+    #[test]
     fn times_out_when_sidecar_does_not_respond() {
         let temp = tempdir().expect("tempdir should exist");
         let script_path = temp.path().join("timeout-sidecar.mjs");
@@ -516,6 +536,58 @@ mod tests {
         let error = host.ping().expect_err("timed out sidecar should fail");
 
         assert!(error.to_string().contains("timed out"));
+    }
+
+    #[test]
+    fn fails_when_sidecar_returns_malformed_payload() {
+        let temp = tempdir().expect("tempdir should exist");
+        let script_path = temp.path().join("malformed-sidecar.mjs");
+        let sessions_root = temp.path().join("sessions");
+        fs::write(&script_path, malformed_sidecar_script())
+            .expect("malformed sidecar script should exist");
+
+        let host = StdioSubtitleHost::with_options(
+            SubtitleSidecarRuntime {
+                node_path: PathBuf::from("node"),
+                entry_path: script_path,
+                sessions_root,
+                extra_env: Vec::new(),
+            },
+            Duration::from_millis(1_500),
+            0,
+        );
+
+        let error = host
+            .ping()
+            .expect_err("malformed sidecar payload should fail");
+
+        assert!(error
+            .to_string()
+            .contains("parse subtitle sidecar response"));
+    }
+
+    #[test]
+    fn fails_when_sidecar_omits_success_payload() {
+        let temp = tempdir().expect("tempdir should exist");
+        let script_path = temp.path().join("missing-payload-sidecar.mjs");
+        let sessions_root = temp.path().join("sessions");
+        fs::write(&script_path, missing_payload_sidecar_script())
+            .expect("missing payload sidecar script should exist");
+
+        let host = StdioSubtitleHost::with_options(
+            SubtitleSidecarRuntime {
+                node_path: PathBuf::from("node"),
+                entry_path: script_path,
+                sessions_root,
+                extra_env: Vec::new(),
+            },
+            Duration::from_millis(1_500),
+            0,
+        );
+
+        let error = host.ping().expect_err("missing payload should fail");
+
+        assert!(error.to_string().contains("response payload missing"));
     }
 
     fn mock_sidecar_script() -> &'static str {
@@ -690,6 +762,31 @@ for await (const line of rl) {
   }
 
   await new Promise((resolve) => setTimeout(resolve, 5_000));
+}
+"#
+    }
+
+    fn malformed_sidecar_script() -> &'static str {
+        r#"process.stdin.resume();
+process.stdout.write('{bad json\n');
+"#
+    }
+
+    fn missing_payload_sidecar_script() -> &'static str {
+        r#"import { createInterface } from 'node:readline';
+
+const rl = createInterface({ input: process.stdin, crlfDelay: Infinity });
+for await (const line of rl) {
+  if (!line.trim()) {
+    continue;
+  }
+
+  const request = JSON.parse(line);
+  process.stdout.write(`${JSON.stringify({
+    id: request.id,
+    type: 'response',
+    ok: true,
+  })}\n`);
 }
 "#
     }

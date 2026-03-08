@@ -69,3 +69,40 @@ fn read_process_first_line(program: &str, args: &[&str]) -> Result<String> {
 
     Ok(first_line)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::read_process_first_line;
+
+    #[test]
+    fn reports_missing_runtime_binary() {
+        let error = read_process_first_line("Z:/missing-runtime-binary.exe", &["--version"])
+            .expect_err("missing runtime binary should fail");
+
+        assert!(error.to_string().contains("runtime binary not found"));
+    }
+
+    #[test]
+    fn reports_non_zero_runtime_status() {
+        let cmd_path = std::env::var("ComSpec").expect("ComSpec should exist on Windows");
+
+        let error = read_process_first_line(&cmd_path, &["/C", "exit", "9"])
+            .expect_err("non-zero runtime should fail");
+
+        assert!(error
+            .to_string()
+            .contains("runtime binary returned non-zero status"));
+    }
+
+    #[test]
+    fn reports_empty_runtime_output() {
+        let cmd_path = std::env::var("ComSpec").expect("ComSpec should exist on Windows");
+
+        let error = read_process_first_line(&cmd_path, &["/C", "exit", "0"])
+            .expect_err("empty runtime output should fail");
+
+        assert!(error
+            .to_string()
+            .contains("runtime binary produced empty output"));
+    }
+}

@@ -1,0 +1,9 @@
+{
+  "code": "INVALID_ARGUMENT",
+  "message": "unsupported thumb uri: thumb://cache",
+  "retriable": false,
+  "details": {
+    "surface": "thumb-protocol",
+    "uri": "thumb://cache"
+  }
+}

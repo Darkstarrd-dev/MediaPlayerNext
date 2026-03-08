@@ -32,6 +32,30 @@ test("app error fixture passes zod parse", async () => {
   assert.equal(parsed.retriable, true);
 });
 
+test("not found app error fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "app-error.not-found.sample.json"), "utf8");
+  const parsed = appErrorSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.code, "NOT_FOUND");
+  assert.equal(parsed.retriable, false);
+});
+
+test("timeout app error fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "app-error.timeout.sample.json"), "utf8");
+  const parsed = appErrorSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.code, "TIMEOUT");
+  assert.equal(parsed.retriable, true);
+});
+
+test("invalid argument app error fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "app-error.invalid-argument.sample.json"), "utf8");
+  const parsed = appErrorSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.code, "INVALID_ARGUMENT");
+  assert.equal(parsed.retriable, false);
+});
+
 test("media probe fixture passes zod parse", async () => {
   const raw = await readFile(join(fixturesDir, "media-probe.sample.json"), "utf8");
   const parsed = mediaProbeSchema.parse(JSON.parse(raw));

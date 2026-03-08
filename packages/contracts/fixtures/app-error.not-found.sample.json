@@ -1,0 +1,9 @@
+{
+  "code": "NOT_FOUND",
+  "message": "media asset not found: asset_missing",
+  "retriable": false,
+  "details": {
+    "surface": "media-protocol",
+    "assetId": "asset_missing"
+  }
+}

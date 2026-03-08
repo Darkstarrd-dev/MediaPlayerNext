@@ -1,0 +1,9 @@
+{
+  "code": "TIMEOUT",
+  "message": "subtitle sidecar timed out after 150 ms",
+  "retriable": true,
+  "details": {
+    "surface": "subtitle-sidecar",
+    "operation": "ping"
+  }
+}

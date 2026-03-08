@@ -16,6 +16,7 @@
 - `p6-performance-baseline-20260307.md`
 - `p6-quality-gates-20260307.md`
 - `p6-duplicate-deps-baseline-20260308.md`
+- `p6-bad-path-validation-20260308.md`
 
 说明：
 

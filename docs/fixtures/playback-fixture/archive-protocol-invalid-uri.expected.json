@@ -1,0 +1,8 @@
+{
+  "status": 400,
+  "headers": {
+    "x-mediaplayernext-error-code": "INVALID_ARGUMENT",
+    "x-mediaplayernext-error-retriable": "false"
+  },
+  "body": "unsupported archive uri: archive://entry"
+}

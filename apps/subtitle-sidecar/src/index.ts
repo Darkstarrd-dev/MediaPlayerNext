@@ -6,6 +6,7 @@ import { handlePing } from "./handlers/ping.js";
 import { handleStartSession } from "./handlers/start-session.js";
 import { handleStopSession } from "./handlers/stop-session.js";
 import {
+  type AppError,
   getProgressPayloadSchema,
   sidecarRequestSchema,
   sidecarResponseSchema,
@@ -104,7 +105,7 @@ function okResponse(id: string, payload: unknown) {
 
 function errorResponse(
   id: string,
-  error: { code: string; message: string; retriable: boolean },
+  error: AppError,
 ) {
   return {
     id,

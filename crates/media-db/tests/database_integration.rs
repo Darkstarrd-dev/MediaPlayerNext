@@ -8,6 +8,7 @@ use shared_model::{
     LibraryRecord, MediaAssetRecord, MediaSourceKind, SourceId, SourceKind, SourceRecord, TaskId,
     TaskKind, TaskRecord, TaskState, ThumbnailKey, ThumbnailRecord,
 };
+use std::fs;
 use tempfile::NamedTempFile;
 
 #[test]
@@ -69,6 +70,20 @@ fn upgrades_fixture_database_from_n_minus_1() {
 
     assert_eq!(version, latest_schema_version());
     assert_eq!(thumbnails_exists, "thumbnails");
+}
+
+#[test]
+fn fails_to_open_invalid_sqlite_fixture_file() {
+    let temp_file = NamedTempFile::new().expect("temporary file should be created");
+    fs::write(temp_file.path(), b"not-a-sqlite-database")
+        .expect("invalid fixture bytes should be written");
+
+    let error = match MediaDatabase::open(DatabaseLocation::File(temp_file.path())) {
+        Ok(_) => panic!("invalid sqlite fixture should fail to open"),
+        Err(error) => error,
+    };
+
+    assert!(error.to_string().contains("not a database"));
 }
 
 #[test]

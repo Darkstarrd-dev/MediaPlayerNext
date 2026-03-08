@@ -10,6 +10,7 @@
 - `thumbnail-fixture/`：缩略图 profile、cache key、协议与 golden 说明
 - `playback-fixture/`：probe、session、`media://` / `archive://` 协议与 golden 说明
 - `sidecar-fixture/`：subtitle sidecar transcript、health、restart 与错误语义说明
+- `runtime-fixture/`：runtime 缺失、非零退出、空输出与 DB 非法 fixture 说明
 
 `B1` 仅先落目录约定与说明，真实样本在 `B2-B4` 逐步补齐。
 

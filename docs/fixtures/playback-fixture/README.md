@@ -20,6 +20,10 @@
   - 固定 `archive://entry/<archive_entry_id>` 协议格式
 - `playback-session-state.expected.json`
   - 固定首版会话状态语义：`opening / paused / playing / stopped / failed`
+- `media-protocol-not-found.expected.json`
+  - 固定 `media://` 缺失资源时的 `404 + NOT_FOUND` 头部语义
+- `archive-protocol-invalid-uri.expected.json`
+  - 固定 `archive://` 非法 URI 时的 `400 + INVALID_ARGUMENT` 头部语义
 
 ## 当前验证方式
 
@@ -34,6 +38,8 @@
 - `src-tauri` 单元测试负责验证：
   - `media://asset/<asset_id>`
   - `archive://entry/<archive_entry_id>`
+  - 缺失资源时的 `x-mediaplayernext-error-code`
+  - 非法 URI 时的 `400 / INVALID_ARGUMENT`
   - 与既有 `thumb://cache/<thumbnail_key>` 共存
 
 ## 后续计划

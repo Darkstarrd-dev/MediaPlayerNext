@@ -13,10 +13,25 @@ export const requestTypeSchema = z.enum([
   "shutdown",
 ]);
 
+export const appErrorCodeSchema = z.enum([
+  "NOT_FOUND",
+  "ALREADY_EXISTS",
+  "UNSUPPORTED_FORMAT",
+  "PERMISSION_DENIED",
+  "INVALID_ARGUMENT",
+  "IO_ERROR",
+  "DB_ERROR",
+  "EXTERNAL_TOOL_ERROR",
+  "CANCELLED",
+  "TIMEOUT",
+  "INTERNAL_ERROR",
+]);
+
 export const appErrorSchema = z.object({
-  code: z.string().min(1),
+  code: appErrorCodeSchema,
   message: z.string().min(1),
   retriable: z.boolean(),
+  details: z.record(z.string(), z.unknown()).nullable().optional(),
 });
 
 export const sidecarRequestSchema = z.object({
@@ -70,6 +85,7 @@ export const stopSessionPayloadSchema = z.object({
 export const getProgressPayloadSchema = stopSessionPayloadSchema;
 
 export type AppError = z.infer<typeof appErrorSchema>;
+export type AppErrorCode = z.infer<typeof appErrorCodeSchema>;
 export type SidecarRequest = z.infer<typeof sidecarRequestSchema>;
 export type SidecarResponse = z.infer<typeof sidecarResponseSchema>;
 export type SubtitleSession = z.infer<typeof subtitleSessionSchema>;

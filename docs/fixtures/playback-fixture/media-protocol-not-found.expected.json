@@ -1,0 +1,8 @@
+{
+  "status": 404,
+  "headers": {
+    "x-mediaplayernext-error-code": "NOT_FOUND",
+    "x-mediaplayernext-error-retriable": "false"
+  },
+  "body": "media asset not found: asset_missing"
+}

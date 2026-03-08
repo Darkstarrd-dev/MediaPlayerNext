@@ -16,6 +16,7 @@
   - `thumbnail-profiles.expected.json`
   - `thumbnail-cache-layout.expected.json`
   - `thumbnail-protocol.expected.json`
+  - `thumbnail-protocol-invalid-uri.expected.json`
 
 - 输入源类型：
   - `ThumbnailSource::FilePath`
@@ -46,6 +47,7 @@
   - `thumb://cache/<thumbnail_key>` URI 解析
   - 协议成功返回图片字节
   - 缺失记录返回 `404`
+  - 非法 URI 返回 `400 + INVALID_ARGUMENT`
 
 ## 后续计划
 

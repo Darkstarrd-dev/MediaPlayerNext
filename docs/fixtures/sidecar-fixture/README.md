@@ -38,12 +38,16 @@
   - 固定一轮 `ping -> health -> shutdown` 对话样本
 - `timeout.transcript.md`
   - 固定 sidecar 无响应时的宿主超时语义
+- `malformed-payload.response.txt`
+  - 固定 sidecar 返回非法 JSON 时的坏路径样本
+- `missing-payload.response.json`
+  - 固定 sidecar `ok=true` 但缺失 payload 时的坏路径样本
 
 ## 当前验证方式
 
 - `apps/subtitle-sidecar/scripts/check.ts`
   - 启动真实 sidecar 进程，验证 `ping / health / start_session / get_progress / export_srt / stop_session / shutdown`
 - `src-tauri/src/subtitle_sidecar.rs`
-  - 验证宿主 request/response 解析、restart retry、timeout 与错误透传
+  - 验证宿主 request/response 解析、restart retry、timeout、bad payload 与错误透传
 - `crates/app-core/src/subtitle_host.rs`
   - 验证 `subtitle.*` use case 对宿主 port 的编排边界

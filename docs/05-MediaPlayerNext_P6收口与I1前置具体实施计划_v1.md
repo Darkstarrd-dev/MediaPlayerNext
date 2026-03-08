@@ -55,7 +55,7 @@
 
 - `P6-0`：已完成首轮（真实性能数字已补齐，见 `docs/benchmarks/p6-performance-baseline-20260307.md`）
 - `P6-1`：已完成首轮（统一脚本、结果产物与首轮 gate run 已落地；`duplicate deps` 已按 baseline-delta 进入 P2 治理）
-- `P6-2`：进行中（部分 sidecar bad path 已覆盖，但 runtimes、DB upgrade、protocol 404 等异常路径仍不完整）
+- `P6-2`：进行中（已补 runtimes / DB fixture / protocol 404 / sidecar bad payload 首轮 bad path tests，并补了一轮错误码 contract 对齐；但映射表与更复杂异常样本仍待继续收口）
 - `P6-3`：未开始（尚无旧仓 `window.* -> command/channel/protocol` 映射表与 `MediaRepository` 方法清单文档）
 - `P6-4`：未开始（开发态 / 打包态资源查找顺序仍未被单独收口为策略文档与校验脚本）
 - `P6-5`：未开始（日志字段贯穿、外部进程统一日志格式与缺失域 contracts 仍待补齐）
@@ -179,7 +179,7 @@ MediaPlayerNext/
 
 ## 7. P6-0：真实性能基线补齐
 
-当前状态：进行中
+当前状态：已完成首轮
 
 ## 7.1 阶段目标
 
@@ -270,7 +270,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\bench\run-sidecar-
 
 ## 8. P6-1：质量门禁自动化
 
-当前状态：已完成首轮
+当前状态：进行中
 
 ## 8.1 阶段目标
 
@@ -414,6 +414,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\quality\run-rust-g
 - 关键坏路径均有稳定错误码或稳定错误消息
 - 关键坏路径都有可回放测试或 fixture 样本
 - UI 在 `I1` 前已不需要再猜测这些异常应该怎样表现
+
+当前首轮结果：
+
+- runtimes 缺失 / 非零退出 / 空输出 bad path 已有单元测试
+- DB 非法 fixture 打开失败已固定为可回放测试
+- `thumb://` / `media://` / `archive://` 缺失资源场景已覆盖稳定 `404`
+- sidecar 缺失入口 / malformed payload / missing payload / timeout / retry crash 已有测试
+- `packages/contracts` 与 sidecar 协议已补一轮 `AppError` bad path fixture 对齐
 
 ## 9.6 本阶段必须补的测试/验证
 
