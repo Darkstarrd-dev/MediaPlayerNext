@@ -14,10 +14,14 @@ import {
   librarySummarySchema,
   externalProcessLogSchema,
   mediaProbeSchema,
+  playbackOpenedEventSchema,
+  playbackStoppedEventSchema,
   playbackSessionSchema,
   scanFinishedEventSchema,
   scanProgressEventSchema,
   scanRunResultSchema,
+  subtitleSessionUpdatedEventSchema,
+  subtitleSidecarCrashedEventSchema,
   subtitleHealthSchema,
   subtitleProgressEventSchema,
   subtitleSessionSchema,
@@ -198,6 +202,22 @@ test("playback session fixture passes zod parse", async () => {
   assert.equal(parsed.state, "paused");
 });
 
+test("playback opened event fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "playback-opened.event.sample.json"), "utf8");
+  const parsed = playbackOpenedEventSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.type, "playback.opened");
+  assert.equal(parsed.session.sessionId, "playback_001");
+});
+
+test("playback stopped event fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "playback-stopped.event.sample.json"), "utf8");
+  const parsed = playbackStoppedEventSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.type, "playback.stopped");
+  assert.equal(parsed.session.state, "stopped");
+});
+
 test("subtitle health fixture passes zod parse", async () => {
   const raw = await readFile(join(fixturesDir, "subtitle-health.sample.json"), "utf8");
   const parsed = subtitleHealthSchema.parse(JSON.parse(raw));
@@ -220,4 +240,20 @@ test("subtitle progress fixture passes zod parse", async () => {
 
   assert.equal(parsed.sessionId, "subtitle_001");
   assert.equal(parsed.message, "waiting");
+});
+
+test("subtitle sidecar crashed event fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "subtitle-sidecar-crashed.event.sample.json"), "utf8");
+  const parsed = subtitleSidecarCrashedEventSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.type, "subtitle.sidecar.crashed");
+  assert.equal(parsed.host.restartCount, 1);
+});
+
+test("subtitle session updated event fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "subtitle-session-updated.event.sample.json"), "utf8");
+  const parsed = subtitleSessionUpdatedEventSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.type, "subtitle.session.updated");
+  assert.equal(parsed.session.progress, 0.42);
 });

@@ -1,0 +1,12 @@
+{
+  "type": "subtitle.session.updated",
+  "session": {
+    "sessionId": "subtitle_001",
+    "assetId": "asset_001",
+    "state": "running",
+    "progress": 0.42,
+    "createdAt": "1710000000000",
+    "updatedAt": "1710000005000",
+    "outputPath": "C:\\Users\\Houpy\\AppData\\Local\\Temp\\subtitle_001.srt"
+  }
+}

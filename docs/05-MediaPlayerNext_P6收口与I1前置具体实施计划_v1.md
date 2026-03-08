@@ -683,6 +683,7 @@ scripts/run-cargo-with-msvc.cmd tauri build
 - `runtime-check` / `subtitle-sidecar` / `ffprobe` / `ffmpeg` / `mpv` / `sevenz` 已开始输出统一 JSON 日志
 - subtitle sidecar 与 playback/mpv 已把 `assetId / sessionId` 贯穿到外部进程日志 context
 - archive normalize / `sevenz` 已把 `taskId / sourceId` 贯穿到外部进程日志 context
+- `playback.opened / playback.stopped / subtitle.sidecar.crashed / subtitle.session.updated` 已补 fixture 与 schema test
 - `docs/benchmarks/p6-observability-validation-20260308.md` 已记录首轮验证结果
 
 ## 12.6 本阶段必须补的测试/验证

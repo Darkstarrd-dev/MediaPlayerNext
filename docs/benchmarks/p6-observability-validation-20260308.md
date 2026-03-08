@@ -59,6 +59,7 @@ npm run check
 - Rust workspace tests 通过
 - `npm run check` 通过
 - `runtime-smoke-check` 已实际输出统一 JSON 日志
+- playback / subtitle 事件样本已补到 fixtures，并进入 contracts test
 
 ## 样例日志
 

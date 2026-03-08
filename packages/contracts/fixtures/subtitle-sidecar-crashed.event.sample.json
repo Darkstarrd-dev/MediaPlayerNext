@@ -1,0 +1,20 @@
+{
+  "type": "subtitle.sidecar.crashed",
+  "host": {
+    "executable": "C:\\Program Files\\nodejs\\node.exe",
+    "entryPath": "sidecar/index.js",
+    "running": false,
+    "restartCount": 1,
+    "lastError": "subtitle sidecar exited with status 1: mock crash",
+    "health": {
+      "service": "subtitle-sidecar",
+      "protocolVersion": "b8-v1",
+      "transport": "stdio",
+      "nodeVersion": "v22.13.1",
+      "sharpVersion": "0.34.2",
+      "uptimeMs": 812,
+      "activeSessions": 0,
+      "sessionsRoot": "C:\\Users\\Houpy\\AppData\\Local\\Temp\\subtitle-sessions"
+    }
+  }
+}
