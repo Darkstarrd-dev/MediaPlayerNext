@@ -121,13 +121,13 @@ export const i1DomainStatuses: readonly RepositoryDomainStatus[] = [
   },
   {
     domain: 'thumbnail',
-    status: 'ready',
-    note: 'thumb:// 与 thumbnail.ensure 已可用，progress 继续后补',
+    status: 'planned',
+    note: 'thumb:// 与 thumbnail.ensure 已可用，但统一 progress 流仍未形成',
   },
   {
     domain: 'playback',
-    status: 'planned',
-    note: 'contracts 已有，当前仍未注册 playback command',
+    status: 'ready',
+    note: 'open/status/seek 已通过 repository 接入 Tauri command',
   },
 ] as const
 

@@ -8,6 +8,7 @@ import type {
   ItemsListQuery,
   LibraryDetail,
   LibrarySummary,
+  PlaybackSession,
   ScanRunResult,
   ScanStats,
   SubtitleHost,
@@ -151,4 +152,19 @@ export async function invokeThumbnailEnsure(
     'thumbnail_ensure_command',
     withArgAliases({ assetId, profile }),
   )
+}
+
+export async function invokePlaybackOpen(assetId: string): Promise<PlaybackSession> {
+  return invoke<PlaybackSession>('playback_open_command', withArgAliases({ assetId }))
+}
+
+export async function invokePlaybackStatus(sessionId: string): Promise<PlaybackSession> {
+  return invoke<PlaybackSession>('playback_status_command', withArgAliases({ sessionId }))
+}
+
+export async function invokePlaybackSeek(
+  sessionId: string,
+  positionMs: number,
+): Promise<PlaybackSession> {
+  return invoke<PlaybackSession>('playback_seek_command', withArgAliases({ sessionId, positionMs }))
 }

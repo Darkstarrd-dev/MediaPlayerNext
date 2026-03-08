@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import type {
+  PlaybackSession,
   SubtitleHost,
   SubtitleProgress,
   SubtitleSession,
@@ -29,11 +30,16 @@ export function AppShell() {
 
   const [assetId, setAssetId] = useState('asset_001')
   const [sessionId, setSessionId] = useState('')
+  const [playbackSessionId, setPlaybackSessionId] = useState('')
+  const [playbackPositionMs, setPlaybackPositionMs] = useState('0')
   const [subtitleHost, setSubtitleHost] = useState<SubtitleHost | null>(null)
   const [subtitleSession, setSubtitleSession] = useState<SubtitleSession | null>(null)
   const [subtitleProgress, setSubtitleProgress] = useState<SubtitleProgress | null>(null)
+  const [playbackSession, setPlaybackSession] = useState<PlaybackSession | null>(null)
   const [subtitleError, setSubtitleError] = useState('')
   const [subtitleLoading, setSubtitleLoading] = useState(false)
+  const [playbackError, setPlaybackError] = useState('')
+  const [playbackLoading, setPlaybackLoading] = useState(false)
 
   const protocolPreview = useMemo(
     () => ({
@@ -67,6 +73,18 @@ export function AppShell() {
       setSubtitleError(String(error))
     } finally {
       setSubtitleLoading(false)
+    }
+  }
+
+  async function runPlaybackAction(action: () => Promise<void>): Promise<void> {
+    setPlaybackLoading(true)
+    setPlaybackError('')
+    try {
+      await action()
+    } catch (error) {
+      setPlaybackError(String(error))
+    } finally {
+      setPlaybackLoading(false)
     }
   }
 
@@ -115,6 +133,46 @@ export function AppShell() {
       const nextSession = await repository.subtitle.stopSession(sessionId)
       setSubtitleSession(nextSession)
       setSessionId(nextSession.sessionId)
+    })
+  }
+
+  async function handlePlaybackOpen(): Promise<void> {
+    await runPlaybackAction(async () => {
+      const nextSession = await repository.playback.open(assetId)
+      setPlaybackSession(nextSession)
+      setPlaybackSessionId(nextSession.sessionId)
+    })
+  }
+
+  async function handlePlaybackStatus(): Promise<void> {
+    if (!playbackSessionId) {
+      setPlaybackError('请先输入 playback sessionId，或先打开 playback session')
+      return
+    }
+
+    await runPlaybackAction(async () => {
+      const nextSession = await repository.playback.status(playbackSessionId)
+      setPlaybackSession(nextSession)
+      setPlaybackSessionId(nextSession.sessionId)
+    })
+  }
+
+  async function handlePlaybackSeek(): Promise<void> {
+    if (!playbackSessionId) {
+      setPlaybackError('请先输入 playback sessionId，或先打开 playback session')
+      return
+    }
+
+    const positionMs = Number.parseInt(playbackPositionMs, 10)
+    if (!Number.isFinite(positionMs) || positionMs < 0) {
+      setPlaybackError('positionMs 必须是大于等于 0 的整数')
+      return
+    }
+
+    await runPlaybackAction(async () => {
+      const nextSession = await repository.playback.seek(playbackSessionId, positionMs)
+      setPlaybackSession(nextSession)
+      setPlaybackSessionId(nextSession.sessionId)
     })
   }
 
@@ -287,6 +345,50 @@ export function AppShell() {
               </article>
             </div>
           </section>
+
+          <section className="subpanel">
+            <h3>Playback Host</h3>
+            <label className="field" htmlFor="playback-asset-id">
+              <span>assetId</span>
+              <input
+                id="playback-asset-id"
+                value={assetId}
+                onChange={(event) => setAssetId(event.target.value)}
+              />
+            </label>
+            <label className="field" htmlFor="playback-session-id">
+              <span>sessionId</span>
+              <input
+                id="playback-session-id"
+                value={playbackSessionId}
+                onChange={(event) => setPlaybackSessionId(event.target.value)}
+              />
+            </label>
+            <label className="field" htmlFor="playback-position-ms">
+              <span>positionMs</span>
+              <input
+                id="playback-position-ms"
+                value={playbackPositionMs}
+                onChange={(event) => setPlaybackPositionMs(event.target.value)}
+              />
+            </label>
+            <div className="actions actions-wrap">
+              <button type="button" onClick={() => void handlePlaybackOpen()} disabled={playbackLoading}>
+                open
+              </button>
+              <button type="button" onClick={() => void handlePlaybackStatus()} disabled={playbackLoading}>
+                status
+              </button>
+              <button type="button" onClick={() => void handlePlaybackSeek()} disabled={playbackLoading}>
+                seek
+              </button>
+            </div>
+            {playbackError ? <p className="error-text">{playbackError}</p> : null}
+            <article className="result-card">
+              <span className="result-label">Playback</span>
+              <code>{formatPlaybackSession(playbackSession)}</code>
+            </article>
+          </section>
         </section>
 
         <section className="panel">
@@ -351,4 +453,12 @@ function formatSubtitleProgress(progress: SubtitleProgress | null): string {
   }
 
   return JSON.stringify(progress, null, 2)
+}
+
+function formatPlaybackSession(session: PlaybackSession | null): string {
+  if (session === null) {
+    return '尚未调用'
+  }
+
+  return JSON.stringify(session, null, 2)
 }

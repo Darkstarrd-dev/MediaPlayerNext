@@ -54,7 +54,7 @@
 
 ### 2.2 当前进度判断
 
-- `I1`：进行中（`MediaRepository`、`tauriMediaRepository`、最小 app shell 与 `library/scan/items/archive/thumbnail` 首轮宿主命令已接通，thumbnail progress 与真实页面迁移继续后补）
+- `I1`：进行中（`MediaRepository`、`tauriMediaRepository`、最小 app shell 与 `library/scan/items/archive/thumbnail.ensure/playback` 首轮宿主命令已接通，thumbnail progress 与真实页面迁移继续后补）
 - `I2`：未开始（尚无真实媒体库选择、扫描入口、缩略图列表页）
 - `I3`：未开始（尚无 archive entries UI 浏览页）
 - `I4`：未开始（尚无媒体库全链路 UI，仍停留在最小宿主桥接演示）
@@ -62,7 +62,7 @@
 ### 2.3 当前最自然的下一步
 
 1. 继续沿现有 `MediaRepository` 边界推进，不让 React 组件直接依赖 `invoke`
-2. 在已接通 `library / scan / items / archive / thumbnail.ensure` 的基础上，开始进入真实页面与 channel 补齐前的 UI 数据流验证
+2. 在已接通 `library / scan / items / archive / thumbnail.ensure / playback` 的基础上，开始进入真实页面与 channel 补齐前的 UI 数据流验证
 
 补充约束：
 

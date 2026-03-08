@@ -10,6 +10,9 @@ import {
   invokeLibraryGet,
   invokeLibraryList,
   invokeLibraryRemove,
+  invokePlaybackOpen,
+  invokePlaybackSeek,
+  invokePlaybackStatus,
   invokeRuntimeSmokeCheck,
   invokeScanResume,
   invokeScanSnapshot,
@@ -72,19 +75,9 @@ export function createTauriMediaRepository(): MediaRepository {
       },
     },
     playback: {
-      open: async (assetId) => {
-        void assetId
-        return plannedOperation('playback.open')
-      },
-      status: async (sessionId) => {
-        void sessionId
-        return plannedOperation('playback.status')
-      },
-      seek: async (sessionId, positionMs) => {
-        void sessionId
-        void positionMs
-        return plannedOperation('playback.seek')
-      },
+      open: invokePlaybackOpen,
+      status: invokePlaybackStatus,
+      seek: invokePlaybackSeek,
     },
     subtitle: {
       ping: invokeSubtitlePing,

@@ -60,12 +60,12 @@
 | `window.mediaPlayerBackend.thumbnail bytes` | `protocol` | `thumb://cache/<thumbnail_key>` | 已有首版 | UI 不应走 command 拉字节 |
 | `window.mediaPlayerBackend.media bytes` | `protocol` | `media://asset/<asset_id>` | 已有首版 | 供 `<video>` / 资源读取 |
 | `window.mediaPlayerBackend.archive entry bytes` | `protocol` | `archive://entry/<archive_entry_id>` | 已有首版 | 供 zip 浏览 / 图片查看 |
-| `window.mediaPlayerBackend.playback.*` | `command + channel + event` | 仅 contracts 已有 `playback.*` | 待接线 | `src-tauri` 尚未注册 playback command |
+| `window.mediaPlayerBackend.playback.*` | `command + channel + event` | `playback_*_command`（open/status/seek） | 首轮已接线 | progress channel / event 仍后补 |
 | `window.mediaPlayerBackend.library.*` | `command + channel + event` | 暂无 | 待补 | `I1` 前需补 contracts 与 command 面 |
 | `window.mediaPlayerBackend.scan.*` | `command + channel + event` | 暂无 | 待补 | 扫描进度更适合 channel |
 | `window.mediaPlayerBackend.items.*` | `command` | 暂无 | 待补 | 列表查询/详情 DTO 面仍待定义 |
 | `window.mediaPlayerBackend.archive list/meta.*` | `command` | 暂无 | 待补 | 当前只有 `archive://` 字节协议 |
-| `window.mediaPlayerBackend.thumbnail.ensure.*` | `command + channel` | 暂无 | 待补 | URL 已有，但 ensure/progress 还没暴露给前端 |
+| `window.mediaPlayerBackend.thumbnail.ensure.*` | `command + channel` | `thumbnail_ensure_command` | 部分已接线 | ensure 已可用，但统一 progress 流仍未形成 |
 | `window.mediaPlayerWindow.*` 窗口级 API | 待定 | 暂无 | 后补 | 依赖旧 UI/窗口行为收口后再判断是否需要保留 |
 
 ## 按成熟度分层
@@ -80,9 +80,9 @@
 
 ### B. contracts 已先行，但宿主接线未完成的能力
 
-- `playback.*`
 - `ffmpeg-progress`
 - `subtitle-progress`
+- `thumbnail-progress`
 
 ### C. `I1` 前必须补齐的能力空洞
 
@@ -90,7 +90,6 @@
 - `scan.*`
 - `items.*`
 - `archive meta/list.*`
-- `thumbnail.ensure.*`
 
 ### D. 等旧 UI 定义收口后再精确映射的能力
 

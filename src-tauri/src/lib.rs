@@ -11,7 +11,9 @@ use app_core::asset::{
     asset_snapshot_for_library, ensure_media_assets_for_library, resolve_asset, AssetResolution,
 };
 use app_core::library::{get_library, list_libraries, remove_library};
-use app_core::playback::resolve_media_asset_path;
+use app_core::playback::{
+    open_playback_session, playback_seek, playback_status, resolve_media_asset_path,
+};
 use app_core::scan::{
     register_library, resume_scan, run_scan, scan_stats, scan_task_id_for_library, ScanRunSummary,
     ScanStatsSummary,
@@ -26,8 +28,8 @@ use runtime_check::{run_runtime_smoke_check, RuntimeSmokeCheckResult};
 use serde::Deserialize;
 use serde_json::json;
 use shared_model::{
-    AppError, AppErrorCode, ArchiveEntryId, AssetId, LibraryId, LibraryRecord, SourceId,
-    SubtitleSessionId, TaskProgress, TaskRecord, ThumbnailKey,
+    AppError, AppErrorCode, ArchiveEntryId, AssetId, LibraryId, LibraryRecord, PlaybackSessionId,
+    PlaybackSessionSummary, SourceId, SubtitleSessionId, TaskProgress, TaskRecord, ThumbnailKey,
 };
 use std::env;
 use std::path::{Path, PathBuf};
@@ -41,11 +43,13 @@ type CommandResult<T> = Result<T, AppError>;
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct RuntimePathsConfig {
+    mpv: Option<String>,
     sevenz: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 struct RuntimePaths {
+    mpv_path: PathBuf,
     sevenz_path: PathBuf,
 }
 
@@ -54,6 +58,7 @@ struct CommandEnvironment {
     runtime_paths: RuntimePaths,
     thumbnail_cache_root: PathBuf,
     normalize_root: PathBuf,
+    playback_sessions_root: PathBuf,
 }
 
 #[tauri::command]
@@ -445,6 +450,57 @@ fn thumbnail_ensure_command(
     .map_err(|error| map_backend_command_error("thumbnail_ensure_command", "thumbnail", error))
 }
 
+#[tauri::command]
+fn playback_open_command(
+    app: tauri::AppHandle,
+    asset_id: String,
+) -> CommandResult<PlaybackSessionSummary> {
+    with_command_environment(&app, |environment| {
+        let repositories = environment.database.repositories();
+        open_playback_session(
+            &repositories,
+            &repositories,
+            &repositories,
+            &repositories,
+            &repositories,
+            &environment.playback_sessions_root,
+            &environment.runtime_paths.mpv_path,
+            &AssetId(asset_id),
+        )
+    })
+    .map_err(|error| map_backend_command_error("playback_open_command", "playback", error))
+}
+
+#[tauri::command]
+fn playback_status_command(
+    app: tauri::AppHandle,
+    session_id: String,
+) -> CommandResult<PlaybackSessionSummary> {
+    with_command_environment(&app, |environment| {
+        playback_status(
+            &environment.playback_sessions_root,
+            &PlaybackSessionId(session_id),
+        )
+    })
+    .map_err(|error| map_backend_command_error("playback_status_command", "playback", error))
+}
+
+#[tauri::command]
+fn playback_seek_command(
+    app: tauri::AppHandle,
+    session_id: String,
+    position_ms: i64,
+) -> CommandResult<PlaybackSessionSummary> {
+    with_command_environment(&app, |environment| {
+        playback_seek(
+            &environment.playback_sessions_root,
+            &PlaybackSessionId(session_id),
+            position_ms,
+        )
+    })
+    .map_err(|error| map_backend_command_error("playback_seek_command", "playback", error))
+}
+
 pub fn runtime_smoke_check_entry() -> anyhow::Result<()> {
     let mut ffmpeg_path: Option<String> = None;
     let mut ffprobe_path: Option<String> = None;
@@ -499,7 +555,10 @@ pub fn run() {
             archive_entry_detail_command,
             archive_normalize_command,
             archive_normalize_status_command,
-            thumbnail_ensure_command
+            thumbnail_ensure_command,
+            playback_open_command,
+            playback_status_command,
+            playback_seek_command
         ])
         .register_uri_scheme_protocol("thumb", |app, request| {
             match protocol_database_path(app.app_handle())
@@ -946,6 +1005,12 @@ fn command_environment(app: &AppHandle) -> anyhow::Result<CommandEnvironment> {
         development_normalize_root(),
         "normalized",
     )?;
+    let playback_sessions_root = command_cache_path(
+        app,
+        "MPNEXT_BACKEND_PLAYBACK_SESSIONS_ROOT",
+        development_playback_sessions_root(),
+        "playback/sessions",
+    )?;
 
     if let Some(parent) = db_path.parent() {
         std::fs::create_dir_all(parent)
@@ -963,12 +1028,19 @@ fn command_environment(app: &AppHandle) -> anyhow::Result<CommandEnvironment> {
             normalize_root.display()
         )
     })?;
+    std::fs::create_dir_all(&playback_sessions_root).with_context(|| {
+        format!(
+            "create playback sessions root for commands: {}",
+            playback_sessions_root.display()
+        )
+    })?;
 
     Ok(CommandEnvironment {
         database: MediaDatabase::open(DatabaseLocation::File(&db_path))?,
         runtime_paths: load_runtime_paths(&config_path),
         thumbnail_cache_root,
         normalize_root,
+        playback_sessions_root,
     })
 }
 
@@ -1048,6 +1120,14 @@ fn development_normalize_root() -> PathBuf {
         .join("normalized")
 }
 
+fn development_playback_sessions_root() -> PathBuf {
+    workspace_root()
+        .join("data")
+        .join("cache")
+        .join("playback")
+        .join("sessions")
+}
+
 fn command_database_path(app: &AppHandle) -> anyhow::Result<PathBuf> {
     if let Some(path) = env::var_os("MPNEXT_BACKEND_DB_PATH") {
         return Ok(PathBuf::from(path));
@@ -1096,6 +1176,11 @@ fn load_runtime_paths(config_path: &Path) -> RuntimePaths {
     };
 
     RuntimePaths {
+        mpv_path: env_path_or_config_or_default(
+            "MPNEXT_RUNTIME_MPV_PATH",
+            config.mpv,
+            PathBuf::from("C:/mpv/mpv.exe"),
+        ),
         sevenz_path: env_path_or_config_or_default(
             "MPNEXT_RUNTIME_SEVENVZ_PATH",
             config.sevenz,
