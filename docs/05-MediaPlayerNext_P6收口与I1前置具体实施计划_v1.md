@@ -56,13 +56,13 @@
 - `P6-0`：已完成首轮（真实性能数字已补齐，见 `docs/benchmarks/p6-performance-baseline-20260307.md`）
 - `P6-1`：已完成首轮（统一脚本、结果产物与首轮 gate run 已落地；`duplicate deps` 已按 baseline-delta 进入 P2 治理）
 - `P6-2`：已完成首轮（runtimes / DB fixture replay / protocol / sidecar / command AppError 已完成首轮收口，可正式切入 `P6-3`）
-- `P6-3`：进行中（后端边界版文档已落，`library/scan/items/archive/thumbnail` 首批 contracts 已开始实现）
+- `P6-3`：已完成（后端边界版文档、交互已收口版页面依赖矩阵与 repository surface 已形成首轮收口）
 - `P6-4`：已完成（开发态 / 打包态 / 本地 override 的查找顺序、sidecar bundle 资源路径、protocol DB 打包态路径与校验脚本已收口）
 - `P6-5`：已完成首轮（统一日志模型、关键链路 context、contracts fixtures 与验证记录已收口）
 
 ### 2.3 当前最自然的下一步
 
-1. 回到 `P6-3` / `I1` 边界，准备让后续 repository / adapter 直接消费已收口 contracts
+1. 进入 `I1`，继续补 `src-tauri` 的 library/scan/items/archive/thumbnail 接线，让 repository 从骨架走向真实可用
 2. 若后续开始打包发布试运行，再把 bundled Node 与 `ffmpeg/ffprobe/mpv/7z` 的最终随包布局作为 `I7` / 发布准备补充项继续推进
 
 ---
@@ -179,7 +179,7 @@ MediaPlayerNext/
 
 ## 7. P6-0：真实性能基线补齐
 
-当前状态：已完成首轮
+当前状态：已完成
 
 ## 7.1 阶段目标
 
@@ -462,13 +462,13 @@ npm run check
 1. 先建不依赖旧 UI 最终定义的 `window.* -> 新仓 command/channel/protocol` 后端边界版映射表
 2. 先建不依赖页面结构的 `MediaRepository` 方法清单骨架
 3. 先建 transport 边界文档：哪些能力走 `command`，哪些走 `channel`，哪些直接走协议 URL
-4. 把页面依赖的 DTO / URL / command 矩阵标记为 `P6-3` 补充件，等待旧仓 UI 定义收口后再补
+4. 在交互关系已收口前提下，补页面依赖的 `repository / URL / command / transport` 矩阵
 
 ### 本阶段不做
 
 - 不直接开始写 React 页面
 - 不补不存在的后端能力，只记录当前已具备与缺失能力
-- 不在旧仓 UI 定义尚未收口时，硬写页面级精确映射与页面 DTO 依赖矩阵
+- 不在 theme/CSS/页面内部调用链尚未收口时，硬写逐组件级精确映射
 
 ## 10.3 模块与文件计划
 
@@ -481,7 +481,7 @@ npm run check
 - `docs/contracts/i1-library-scan-contract-draft.md`
 - `docs/contracts/i1-items-archive-thumbnail-contract-draft.md`
 
-补充件（等待旧仓 UI 定义收口后再补）：
+- 补充件：
 
 - `docs/contracts/ui-dependency-matrix.md`
 
@@ -491,9 +491,7 @@ npm run check
 - `MediaRepository` 方法面文档
 - transport 边界文档
 
-补充件：
-
-- 页面依赖矩阵（后补）
+- 页面依赖矩阵
 
 ## 10.5 验收标准
 
@@ -501,15 +499,23 @@ npm run check
 - 能清楚区分 `command` / `channel` / `thumb://` / `media://` / `archive://` 的使用边界
 - 已形成首版 repository / adapter 边界文档，不再要求前端先读 Rust 代码猜接法
 
-补充验收（等待旧仓 UI 定义收口后再补）：
+- 补充验收：
 
-- 能清楚看到哪些页面依赖哪些 DTO / URL / command
+- 能清楚看到哪些页面依赖哪些 repository / URL / command / transport
 
 ## 10.6 本阶段必须补的测试/验证
 
 - 文档与现有 command / protocol 对照复核
 - 与 `packages/contracts/src/index.ts` 的导出项交叉检查
 - 与 `apps/desktop/src/App.tsx` 当前最小桥接状态交叉检查，避免文档提前假设不存在的 UI 能力
+
+当前完成结果：
+
+- `docs/contracts/window-to-tauri-mapping.md` 已固定 `window.* -> command/channel/protocol/sidecar` 后端边界版映射
+- `docs/contracts/media-repository-surface.md` 已固定 `MediaRepository` 首版能力骨架
+- `docs/contracts/transport-boundary.md` 已固定 transport 分工边界
+- `docs/contracts/ui-dependency-matrix.md` 已补基于既有交互关系的页面依赖矩阵
+- `apps/desktop` 已开始用 `MediaRepository` / `tauriMediaRepository` 替换 `greet` demo，形成最小 app shell
 
 ## 10.7 本阶段验证命令
 
@@ -528,7 +534,7 @@ scripts/run-cargo-with-msvc.cmd test --workspace
 
 ## 11. P6-4：发布前资源路径策略收口
 
-当前状态：进行中
+当前状态：已完成
 
 ## 11.1 阶段目标
 
@@ -619,7 +625,7 @@ scripts/run-cargo-with-msvc.cmd tauri build
 
 ## 12. P6-5：可观测性与 contracts 再收紧
 
-当前状态：进行中
+当前状态：已完成首轮
 
 ## 12.1 阶段目标
 

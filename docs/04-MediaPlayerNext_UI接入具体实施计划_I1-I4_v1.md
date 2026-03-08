@@ -54,7 +54,7 @@
 
 ### 2.2 当前进度判断
 
-- `I1`：未开始（`apps/desktop` 仍是最小 greet demo，前端尚无 `MediaRepository` 与 `tauriMediaRepository`）
+- `I1`：进行中（`MediaRepository`、`tauriMediaRepository` 与最小 app shell 已开始落地，library/scan/items/archive/thumbnail 宿主接线仍待补齐）
 - `I2`：未开始（尚无真实媒体库选择、扫描入口、缩略图列表页）
 - `I3`：未开始（尚无 archive entries UI 浏览页）
 - `I4`：未开始（尚无媒体库全链路 UI，仍停留在最小宿主桥接演示）
@@ -66,8 +66,9 @@
 
 补充约束：
 
-- 由于旧仓 Electron app 的 UI 定义尚未完全收口，`P6-3` 当前先只做后端边界版文档，不强写页面级 DTO / command 依赖矩阵
-- 页面依赖矩阵与旧仓 `window.*` 精确调用点映射，等待旧 UI 定义收口后作为 `P6-3` 补充件再补
+- 当前已确认“交互关系已收口，theme/CSS/页面内部调用链仍待收口”
+- 因此页面级 `repository / command / protocol / event` 依赖矩阵可以先冻结
+- 真实页面视觉、旧 theme 迁移与逐组件调用链复刻继续后补
 
 ---
 
@@ -182,7 +183,7 @@ MediaPlayerNext/
 
 ## 7. I1：repository / adapter 接上
 
-当前状态：未开始
+当前状态：进行中
 
 ## 7.1 阶段目标
 
@@ -203,6 +204,16 @@ MediaPlayerNext/
 4. 在 `src-tauri` 中补对应最小 command / channel 接线
 5. 把 `apps/desktop/src/App.tsx` 从 demo 改成最小 app shell
 6. 为后续页面建立统一状态入口、错误处理与 loading 约定
+
+当前已落地：
+
+- `apps/desktop/src/repositories/media-repository.ts`
+- `apps/desktop/src/repositories/tauri-media-repository.ts`
+- `apps/desktop/src/adapters/tauri/commands.ts`
+- `apps/desktop/src/adapters/tauri/protocols.ts`
+- `apps/desktop/src/app/AppShell.tsx`
+- `apps/desktop/src/app/MediaRepositoryProvider.tsx`
+- `docs/contracts/ui-dependency-matrix.md`
 
 ### 本阶段不做
 
@@ -277,6 +288,13 @@ MediaPlayerNext/
 - `thumb://` / `media://` / `archive://` URL 构造集中在 adapter / repository 层
 - `apps/desktop` 已可以通过 repository 获取库、扫描状态与列表数据
 - `src-tauri` 新增接线仍保持“薄宿主”，不承载业务实现
+
+当前首轮结果：
+
+- `apps/desktop/src/App.tsx` 已不再直接依赖 `invoke`
+- `AppShell` 已通过 repository 调用 `runtime_smoke_check` 与 `subtitle.*`
+- `docs/contracts/ui-dependency-matrix.md` 已补基于既有交互关系的页面依赖矩阵
+- `docs/benchmarks/i1-repository-shell-validation-20260308.md` 已记录 repository shell 首轮验证结果
 
 ## 7.6 本阶段必须补的测试
 

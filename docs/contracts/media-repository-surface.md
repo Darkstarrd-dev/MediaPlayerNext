@@ -135,14 +135,27 @@ export interface MediaRepository {
 
 ## 后补项
 
-等待旧仓 UI 定义收口后，再追加：
+当前已补：
 
-- 页面 -> repository 方法映射
-- 页面需要的 DTO / URL / command 矩阵
+- `docs/contracts/ui-dependency-matrix.md`
+  - 页面 -> repository -> transport 的交互依赖矩阵
+
+仍等待后补：
+
+- 逐组件调用链迁移清单
 - 每个方法的缓存/分页/预取策略
+- 与旧 theme/CSS 层级绑定的最终页面组织方式
 
 ## I1 实施前的最小落地建议
 
 1. 先在 `apps/desktop/src/repositories/media-repository.ts` 固定接口骨架
 2. 再在 `apps/desktop/src/adapters/tauri/` 封装 command/protocol 适配
 3. 最后把 `apps/desktop/src/App.tsx` demo 替换成最小 app shell + repository provider
+
+当前已开始落地：
+
+- `apps/desktop/src/repositories/media-repository.ts`
+- `apps/desktop/src/repositories/tauri-media-repository.ts`
+- `apps/desktop/src/adapters/tauri/commands.ts`
+- `apps/desktop/src/adapters/tauri/protocols.ts`
+- `apps/desktop/src/app/AppShell.tsx`

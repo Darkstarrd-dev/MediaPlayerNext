@@ -4,9 +4,9 @@
 
 当前阶段约束：
 
-- 旧仓 Electron app 的 UI 定义尚未完全收口
-- 因此本目录当前先维护“后端边界版”文档
-- 页面级 DTO / URL / command 矩阵等补充件，等待旧 UI 定义收口后再补
+- 旧仓 theme 系统、CSS 层级与页面内部调用链尚未完全收口
+- 但页面交互关系已可用于冻结 repository 依赖矩阵
+- 因此本目录当前同时维护“后端边界版”文档与“交互已收口版”页面依赖矩阵
 
 当前文件：
 
@@ -22,8 +22,10 @@
   - `library` / `scan` 首批 contracts 的细化草案
 - `docs/contracts/i1-items-archive-thumbnail-contract-draft.md`
   - `items` / `archive` / `thumbnail` 首批 contracts 的细化草案
+- `docs/contracts/ui-dependency-matrix.md`
+  - 基于已确认交互关系的页面 -> repository -> transport 依赖矩阵
 
 后补文件：
 
-- `docs/contracts/ui-dependency-matrix.md`
-  - 等旧 UI 定义收口后，再补页面依赖矩阵
+- 逐组件调用链迁移清单
+  - 等旧仓 theme/CSS/内部调用链收口后，再补更细粒度的实现顺序
