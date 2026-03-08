@@ -64,6 +64,11 @@
 1. 先冻结 UI 接入所需的 repository / adapter 边界，不让 React 组件直接依赖 `invoke`
 2. 再补齐 library / scan / items / archive / thumbnail 的 contracts 与 Tauri command 面
 
+补充约束：
+
+- 由于旧仓 Electron app 的 UI 定义尚未完全收口，`P6-3` 当前先只做后端边界版文档，不强写页面级 DTO / command 依赖矩阵
+- 页面依赖矩阵与旧仓 `window.*` 精确调用点映射，等待旧 UI 定义收口后作为 `P6-3` 补充件再补
+
 ---
 
 ## 3. 当前仓库基线

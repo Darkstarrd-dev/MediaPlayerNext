@@ -449,7 +449,7 @@ npm run check
 
 ## 10. P6-3：接口收口文档（为 I1 做准备）
 
-当前状态：可开始
+当前状态：进行中
 
 ## 10.1 阶段目标
 
@@ -459,15 +459,16 @@ npm run check
 
 ### 本阶段要做
 
-1. 建旧仓 `window.* -> 新仓 command/channel/protocol` 映射表
-2. 建 `MediaRepository` 方法清单
-3. 建页面依赖的 DTO / URL / command 矩阵
-4. 建 transport 边界文档：哪些能力走 `command`，哪些走 `channel`，哪些直接走协议 URL
+1. 先建不依赖旧 UI 最终定义的 `window.* -> 新仓 command/channel/protocol` 后端边界版映射表
+2. 先建不依赖页面结构的 `MediaRepository` 方法清单骨架
+3. 先建 transport 边界文档：哪些能力走 `command`，哪些走 `channel`，哪些直接走协议 URL
+4. 把页面依赖的 DTO / URL / command 矩阵标记为 `P6-3` 补充件，等待旧仓 UI 定义收口后再补
 
 ### 本阶段不做
 
 - 不直接开始写 React 页面
 - 不补不存在的后端能力，只记录当前已具备与缺失能力
+- 不在旧仓 UI 定义尚未收口时，硬写页面级精确映射与页面 DTO 依赖矩阵
 
 ## 10.3 模块与文件计划
 
@@ -475,26 +476,40 @@ npm run check
 
 - `docs/contracts/window-to-tauri-mapping.md`
 - `docs/contracts/media-repository-surface.md`
-- `docs/contracts/ui-dependency-matrix.md`
 - `docs/contracts/transport-boundary.md`
+- `docs/contracts/i1-contract-gap-checklist.md`
+- `docs/contracts/i1-library-scan-contract-draft.md`
+- `docs/contracts/i1-items-archive-thumbnail-contract-draft.md`
+
+补充件（等待旧仓 UI 定义收口后再补）：
+
+- `docs/contracts/ui-dependency-matrix.md`
 
 ## 10.4 交付物
 
 - 映射表
 - `MediaRepository` 方法面文档
-- 页面依赖矩阵
 - transport 边界文档
+
+补充件：
+
+- 页面依赖矩阵（后补）
 
 ## 10.5 验收标准
 
 - 前端在 `I1` 时已经可以只靠文档与 contracts 写 repository 抽象
 - 能清楚区分 `command` / `channel` / `thumb://` / `media://` / `archive://` 的使用边界
+- 已形成首版 repository / adapter 边界文档，不再要求前端先读 Rust 代码猜接法
+
+补充验收（等待旧仓 UI 定义收口后再补）：
+
 - 能清楚看到哪些页面依赖哪些 DTO / URL / command
 
 ## 10.6 本阶段必须补的测试/验证
 
 - 文档与现有 command / protocol 对照复核
 - 与 `packages/contracts/src/index.ts` 的导出项交叉检查
+- 与 `apps/desktop/src/App.tsx` 当前最小桥接状态交叉检查，避免文档提前假设不存在的 UI 能力
 
 ## 10.7 本阶段验证命令
 
