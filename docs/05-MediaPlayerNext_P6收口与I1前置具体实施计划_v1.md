@@ -585,6 +585,7 @@ scripts/run-cargo-with-msvc.cmd test --workspace
 - `scripts/release/verify-sidecar-package.ps1` 已开始校验 sidecar bundle resource 声明与打包态产物
 - Tauri subtitle command 链路已开始区分 dev 路径与 bundle resource `sidecar/index.js`
 - `npm run check:release` 已验证当前打包态产物中存在 `target/release/sidecar/index.js`
+- `thumb://` / `media://` / `archive://` 已开始区分 dev 数据库路径与打包态 `app local data dir/mediaplayernext.db`
 
 ## 11.6 本阶段必须补的测试/验证
 

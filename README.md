@@ -131,6 +131,15 @@ Current sidecar package rule:
   - dev mode reads repo `apps/subtitle-sidecar/dist/src/index.js`
   - packaged mode reads bundled resource `sidecar/index.js`
 
+Current Tauri protocol DB rule:
+
+- `MPNEXT_BACKEND_DB_PATH`
+  - always overrides
+- dev mode
+  - falls back to `data/mediaplayernext-dev.db`
+- packaged mode
+  - falls back to Tauri app local data `mediaplayernext.db`
+
 ### Quality Gates
 
 `P6-1` adds a unified quality gate entry under `scripts/quality/`.

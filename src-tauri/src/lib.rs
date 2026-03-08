@@ -1,7 +1,7 @@
 mod runtime_check;
 pub mod subtitle_sidecar;
 
-use anyhow::Error;
+use anyhow::{Context, Error};
 use app_core::archive::{read_archive_entry, resolve_archive_entry_location};
 use app_core::playback::resolve_media_asset_path;
 use app_core::subtitle_host::{
@@ -18,6 +18,7 @@ use shared_model::{
 use std::env;
 use std::path::{Path, PathBuf};
 use tauri::http::{header::CONTENT_TYPE, Response, StatusCode, Uri};
+use tauri::{AppHandle, Manager};
 
 const ERROR_CODE_HEADER: &str = "x-mediaplayernext-error-code";
 const ERROR_RETRIABLE_HEADER: &str = "x-mediaplayernext-error-retriable";
@@ -132,8 +133,10 @@ pub fn run() {
             subtitle_stop_session_command,
             subtitle_get_progress_command
         ])
-        .register_uri_scheme_protocol("thumb", |_app, request| {
-            match thumbnail_protocol_response(&development_database_path(), request.uri()) {
+        .register_uri_scheme_protocol("thumb", |app, request| {
+            match protocol_database_path(app.app_handle())
+                .and_then(|db_path| thumbnail_protocol_response(&db_path, request.uri()))
+            {
                 Ok(response) => response,
                 Err(error) => app_error_response(
                     StatusCode::INTERNAL_SERVER_ERROR,
@@ -144,8 +147,10 @@ pub fn run() {
                 ),
             }
         })
-        .register_uri_scheme_protocol("media", |_app, request| {
-            match media_protocol_response(&development_database_path(), request.uri()) {
+        .register_uri_scheme_protocol("media", |app, request| {
+            match protocol_database_path(app.app_handle())
+                .and_then(|db_path| media_protocol_response(&db_path, request.uri()))
+            {
                 Ok(response) => response,
                 Err(error) => app_error_response(
                     StatusCode::INTERNAL_SERVER_ERROR,
@@ -156,8 +161,10 @@ pub fn run() {
                 ),
             }
         })
-        .register_uri_scheme_protocol("archive", |_app, request| {
-            match archive_protocol_response(&development_database_path(), request.uri()) {
+        .register_uri_scheme_protocol("archive", |app, request| {
+            match protocol_database_path(app.app_handle())
+                .and_then(|db_path| archive_protocol_response(&db_path, request.uri()))
+            {
                 Ok(response) => response,
                 Err(error) => app_error_response(
                     StatusCode::INTERNAL_SERVER_ERROR,
@@ -185,7 +192,7 @@ fn thumbnail_protocol_response(db_path: &Path, uri: &Uri) -> anyhow::Result<Resp
             ));
         }
     };
-    let database = MediaDatabase::open(DatabaseLocation::File(db_path))?;
+    let database = open_protocol_database(db_path)?;
     let repositories = database.repositories();
     let thumbnail = match get_thumbnail(&repositories, &ThumbnailKey(thumbnail_key.clone())) {
         Ok(record) => record,
@@ -236,7 +243,7 @@ fn media_protocol_response(db_path: &Path, uri: &Uri) -> anyhow::Result<Response
             ));
         }
     };
-    let database = MediaDatabase::open(DatabaseLocation::File(db_path))?;
+    let database = open_protocol_database(db_path)?;
     let repositories = database.repositories();
     let (media_path, mime) = match resolve_media_asset_path(
         &repositories,
@@ -293,7 +300,7 @@ fn archive_protocol_response(db_path: &Path, uri: &Uri) -> anyhow::Result<Respon
             ));
         }
     };
-    let database = MediaDatabase::open(DatabaseLocation::File(db_path))?;
+    let database = open_protocol_database(db_path)?;
     let repositories = database.repositories();
     let location = match resolve_archive_entry_location(
         &repositories,
@@ -550,6 +557,32 @@ fn parse_embedded_app_error_code(message: &str) -> Option<AppErrorCode> {
 
 fn development_database_path() -> PathBuf {
     workspace_root().join("data").join("mediaplayernext-dev.db")
+}
+
+fn protocol_database_path(app: &AppHandle) -> anyhow::Result<PathBuf> {
+    if let Some(path) = env::var_os("MPNEXT_BACKEND_DB_PATH") {
+        return Ok(PathBuf::from(path));
+    }
+
+    if tauri::is_dev() {
+        return Ok(development_database_path());
+    }
+
+    Ok(app
+        .path()
+        .app_local_data_dir()
+        .context("resolve application local data dir")?
+        .join("mediaplayernext.db"))
+}
+
+fn open_protocol_database(db_path: &Path) -> anyhow::Result<MediaDatabase> {
+    if let Some(parent) = db_path.parent() {
+        std::fs::create_dir_all(parent).with_context(|| {
+            format!("create protocol database parent dir: {}", parent.display())
+        })?;
+    }
+
+    MediaDatabase::open(DatabaseLocation::File(db_path))
 }
 
 fn workspace_root() -> PathBuf {

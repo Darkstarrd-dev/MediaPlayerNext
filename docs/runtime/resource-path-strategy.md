@@ -128,14 +128,24 @@
 - backend harness
 - 后续 repository / adapter 验证
 
-当前顺序：
+backend harness 当前顺序：
 
-- `MPNEXT_BACKEND_DB_PATH`
-- `MPNEXT_BACKEND_THUMB_CACHE_ROOT`
-- `MPNEXT_BACKEND_PLAYBACK_SESSIONS_ROOT`
-- `MPNEXT_BACKEND_NORMALIZE_ROOT`
+1. `MPNEXT_BACKEND_DB_PATH`
+2. `MPNEXT_BACKEND_THUMB_CACHE_ROOT`
+3. `MPNEXT_BACKEND_PLAYBACK_SESSIONS_ROOT`
+4. `MPNEXT_BACKEND_NORMALIZE_ROOT`
+5. 未设置时回落到仓库下 `data/` 默认路径
 
-未设置时回落到仓库下 `data/` 默认路径。
+Tauri protocol host 当前顺序：
+
+1. `MPNEXT_BACKEND_DB_PATH`
+2. dev 模式回落到仓库 `data/mediaplayernext-dev.db`
+3. 打包态回落到 Tauri `app local data dir/mediaplayernext.db`
+
+当前说明：
+
+- `thumb://` / `media://` / `archive://` 现在不再把打包态数据库路径硬编码回仓库根目录
+- `thumb/playback/normalize` 的缓存根路径仍以 backend harness 默认值为主，尚未统一切到 Tauri app cache
 
 ### 7. migrations
 
@@ -149,6 +159,7 @@
 
 - `scripts/check-runtimes.ps1`
 - `src-tauri/src/bin/backend_harness.rs`
+- `src-tauri/src/lib.rs`
 - `src-tauri/src/subtitle_sidecar.rs`
 - `src-tauri/tauri.conf.json`
 - `config/local.paths.example.json`
