@@ -61,6 +61,7 @@ npm run check
 - `runtime-smoke-check` 已实际输出统一 JSON 日志
 - playback / subtitle 事件样本已补到 fixtures，并进入 contracts test
 - playback / subtitle request、`ffmpeg-progress`、`library.removed`、`scan.failed` 也已进入 contracts test
+- 当前 `library/scan/items/archive/thumbnail/playback/subtitle` 这批已存在 command request 都已经有 fixture 覆盖
 
 ## 样例日志
 

@@ -5,13 +5,23 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   appErrorSchema,
+  archiveEntriesRequestSchema,
+  archiveEntryDetailRequestSchema,
   archiveEntryDetailSchema,
   archiveEntrySummarySchema,
+  archiveNormalizeRequestSchema,
+  archiveNormalizeStatusRequestSchema,
   archiveNormalizeResultSchema,
   ffmpegProgressEventSchema,
+  itemDetailRequestSchema,
   itemDetailSchema,
   itemListEntrySchema,
+  itemsListRequestSchema,
+  libraryAddRequestSchema,
   libraryChangedEventSchema,
+  libraryGetRequestSchema,
+  libraryListRequestSchema,
+  libraryRemoveRequestSchema,
   libraryRemovedEventSchema,
   librarySummarySchema,
   externalProcessLogSchema,
@@ -26,7 +36,11 @@ import {
   scanFailedEventSchema,
   scanFinishedEventSchema,
   scanProgressEventSchema,
+  scanResumeRequestSchema,
   scanRunResultSchema,
+  scanSnapshotRequestSchema,
+  scanStartRequestSchema,
+  scanStatsRequestSchema,
   subtitleGetProgressRequestSchema,
   subtitleHealthRequestSchema,
   subtitlePingRequestSchema,
@@ -39,6 +53,8 @@ import {
   subtitleProgressEventSchema,
   subtitleSessionSchema,
   taskProgressSchema,
+  thumbnailEnsureRequestSchema,
+  thumbnailGetRequestSchema,
   thumbnailEnsureResultSchema,
   thumbnailProgressEventSchema,
 } from "../src/index.js";
@@ -102,12 +118,68 @@ test("library summary fixture passes zod parse", async () => {
   assert.equal(parsed.libraryType, "filesystem");
 });
 
+test("library list request fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "library-list.request.sample.json"), "utf8");
+  const parsed = libraryListRequestSchema.parse(JSON.parse(raw));
+
+  assert.deepEqual(parsed, {});
+});
+
+test("library add request fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "library-add.request.sample.json"), "utf8");
+  const parsed = libraryAddRequestSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.rootPath, "Z:/Media/Comics");
+});
+
+test("library get request fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "library-get.request.sample.json"), "utf8");
+  const parsed = libraryGetRequestSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.libraryId, "library_001");
+});
+
+test("library remove request fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "library-remove.request.sample.json"), "utf8");
+  const parsed = libraryRemoveRequestSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.libraryId, "library_001");
+});
+
 test("scan run result fixture passes zod parse", async () => {
   const raw = await readFile(join(fixturesDir, "scan-run-result.sample.json"), "utf8");
   const parsed = scanRunResultSchema.parse(JSON.parse(raw));
 
   assert.equal(parsed.taskId, "task_scan_fixture_001");
   assert.equal(parsed.discovered, 42);
+});
+
+test("scan start request fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "scan-start.request.sample.json"), "utf8");
+  const parsed = scanStartRequestSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.libraryId, "library_001");
+});
+
+test("scan resume request fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "scan-resume.request.sample.json"), "utf8");
+  const parsed = scanResumeRequestSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.libraryId, "library_001");
+});
+
+test("scan stats request fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "scan-stats.request.sample.json"), "utf8");
+  const parsed = scanStatsRequestSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.libraryId, "library_001");
+});
+
+test("scan snapshot request fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "scan-snapshot.request.sample.json"), "utf8");
+  const parsed = scanSnapshotRequestSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.libraryId, "library_001");
 });
 
 test("scan progress fixture passes zod parse", async () => {
@@ -158,12 +230,27 @@ test("item list entry fixture passes zod parse", async () => {
   assert.equal(parsed.thumbnailKey, "thumb_001");
 });
 
+test("items list request fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "items-list.request.sample.json"), "utf8");
+  const parsed = itemsListRequestSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.libraryId, "library_001");
+  assert.equal(parsed.pageSize, 50);
+});
+
 test("item detail fixture passes zod parse", async () => {
   const raw = await readFile(join(fixturesDir, "item-detail.sample.json"), "utf8");
   const parsed = itemDetailSchema.parse(JSON.parse(raw));
 
   assert.equal(parsed.archiveEntryId, "archive_entry_001");
   assert.equal(parsed.archiveId, "archive_001");
+});
+
+test("item detail request fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "item-detail.request.sample.json"), "utf8");
+  const parsed = itemDetailRequestSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.assetId, "asset_001");
 });
 
 test("external process log fixture passes zod parse", async () => {
@@ -183,12 +270,26 @@ test("archive entry summary fixture passes zod parse", async () => {
   assert.equal(parsed.mediaKind, "image");
 });
 
+test("archive entries request fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "archive-entries.request.sample.json"), "utf8");
+  const parsed = archiveEntriesRequestSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.sourceId, "source_001");
+});
+
 test("archive entry detail fixture passes zod parse", async () => {
   const raw = await readFile(join(fixturesDir, "archive-entry-detail.sample.json"), "utf8");
   const parsed = archiveEntryDetailSchema.parse(JSON.parse(raw));
 
   assert.equal(parsed.archiveEntryId, "archive_entry_001");
   assert.equal(parsed.sourceId, "source_001");
+});
+
+test("archive entry detail request fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "archive-entry-detail.request.sample.json"), "utf8");
+  const parsed = archiveEntryDetailRequestSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.archiveEntryId, "archive_entry_001");
 });
 
 test("archive normalize result fixture passes zod parse", async () => {
@@ -199,12 +300,41 @@ test("archive normalize result fixture passes zod parse", async () => {
   assert.equal(parsed.indexedEntries, 24);
 });
 
+test("archive normalize request fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "archive-normalize.request.sample.json"), "utf8");
+  const parsed = archiveNormalizeRequestSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.sourceId, "source_001");
+});
+
+test("archive normalize status request fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "archive-normalize-status.request.sample.json"), "utf8");
+  const parsed = archiveNormalizeStatusRequestSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.taskId, "task_normalize_001");
+});
+
 test("thumbnail ensure result fixture passes zod parse", async () => {
   const raw = await readFile(join(fixturesDir, "thumbnail-ensure-result.sample.json"), "utf8");
   const parsed = thumbnailEnsureResultSchema.parse(JSON.parse(raw));
 
   assert.equal(parsed.profile, "grid-sm");
   assert.equal(parsed.cacheHit, true);
+});
+
+test("thumbnail ensure request fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "thumbnail-ensure.request.sample.json"), "utf8");
+  const parsed = thumbnailEnsureRequestSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.assetId, "asset_001");
+  assert.equal(parsed.profile, "grid-sm");
+});
+
+test("thumbnail get request fixture passes zod parse", async () => {
+  const raw = await readFile(join(fixturesDir, "thumbnail-get.request.sample.json"), "utf8");
+  const parsed = thumbnailGetRequestSchema.parse(JSON.parse(raw));
+
+  assert.equal(parsed.thumbnailKey, "thumb_001");
 });
 
 test("thumbnail progress fixture passes zod parse", async () => {
