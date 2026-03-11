@@ -385,6 +385,10 @@ Sidebar | Main | Metadata
 - `Sidebar / Main / Metadata` 三列当前都固定采用 `header / main / footer` 三段结构
 - 三列中的 `main` 是主要伸缩区
 - 三列中的 `header / footer` 以固定高度和统一基线保持对齐
+- `Sidebar.main` 当前只承载节点树，不再承担导入、刷新、扫描或状态提示
+- 导入、扫描、最近动作与错误提示统一收口到 `ImportTaskPanel` 与 `Header Logo` 状态
+- `Main.header` 与 `Metadata.header` 不再保留骨架占位文案，只显示真实上下文标题
+- `Main.main` 当前以缩略图网格为唯一主显示，不再混入说明型卡片
 
 ### 12.2 实施顺序
 
@@ -474,7 +478,8 @@ Sidebar | Main | Metadata
 - `paste` 当前已继续补到更原生的文件列表读取：会优先尝试读取系统剪贴板中的文件路径，再回退到文本路径解析
 - Header Logo 当前已补入 `busy` 态；`ImportTaskPanel` 与扫描摘要已开始显示轮询中的扫描状态与进度条
 - `Sidebar` 当前已开始显示真实媒体库列表、当前扫描摘要与最小扫描动作
-- `Main` 当前已开始显示当前媒体库的最小条目预览，并支持当前页内条目切换
+- `Sidebar` 当前已收口为最小节点树区域，导入/刷新/扫描状态不再放入 Sidebar 工作区
+- `Main` 当前已开始显示当前媒体库的最小缩略图网格，并支持当前页内条目切换
 - `Metadata` 当前已开始显示当前媒体库、扫描摘要与选中条目的最小详情
 - 设置面板当前已新增 `数据库管理` 分页，并接通 `清除数据库 / 选择 SQL 目录 / 选择缩略图目录` 三个动作
 
@@ -485,4 +490,9 @@ Sidebar | Main | Metadata
 - 只有在 `4.0 Root` 小面板里点击 `确认清除`，才会真正调用清除链路
 - `ImportTaskPanel` 已开始接入最小任务队列语义，当前会记录最近的导入、刷新与扫描活动
 - `Header` 的 `Logo` 当前已具备 `idle / busy / open` 三态，其中 `busy` 同时覆盖前端导入动作与轮询中的扫描任务
-- 扫描进度当前已在 `Sidebar` 和 `ImportTaskPanel` 同步显示，轮询中的状态会持续更新到最新快照
+- 扫描进度与最近动作当前统一收口在 `ImportTaskPanel`，轮询中的状态会持续更新到最新快照
+- `Sidebar.header` 与 `Main.header` 当前已移除导入/刷新入口，导入入口统一收口到 `Header Logo / ImportTaskPanel / 拖拽 / 粘贴`
+- `Sidebar.main` 当前只显示最小节点树，不再显示 loading/empty/error/扫描状态/最近操作
+- `Main.header` 与 `Metadata.header` 当前已移除 `Workspace / Details / Metadata` 等骨架占位文案
+- `Main.main` 当前已移除说明型卡片，只保留缩略图网格；缩略图缺失时回退为占位块
+- 当主界面处于导入或刷新中的 loading 状态时，`Header Logo` 文案会临时切为 `Loading`，结束后恢复 `MediaPlayerNext`

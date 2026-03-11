@@ -1149,13 +1149,34 @@
 
 .item-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
 }
 
 .item-card-button {
-  min-height: 128px;
-  align-content: start;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  aspect-ratio: 1 / 1;
+  border-radius: 20px;
+}
+
+.item-card-thumbnail {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: linear-gradient(180deg, rgba(249, 243, 236, 0.88), rgba(237, 228, 215, 0.84));
+}
+
+.item-card-thumbnail-placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--mpx-text-3);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .status-pill {
@@ -1258,6 +1279,11 @@
   white-space: nowrap;
 }
 
+.sidebar-title-stack,
+.metadata-header-title {
+  flex: 1;
+}
+
 .sidebar-main-shell {
   min-height: 0;
   display: flex;
@@ -1276,7 +1302,74 @@
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: 2px;
+  padding: 8px 2px;
+  display: grid;
+  align-content: start;
+  gap: 2px;
+}
+
+.sidebar-tree-node {
+  width: 100%;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  display: grid;
+  grid-template-columns: 12px 12px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  transition: background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.sidebar-tree-node:hover {
+  background: rgba(255, 251, 245, 0.68);
+}
+
+.sidebar-tree-node.is-active {
+  background: rgba(233, 246, 238, 0.9);
+  box-shadow: inset 0 0 0 1px rgba(40, 95, 100, 0.14);
+}
+
+.sidebar-tree-node-rail {
+  width: 1px;
+  height: 100%;
+  justify-self: center;
+  background: rgba(119, 99, 71, 0.18);
+}
+
+.sidebar-tree-node-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(40, 95, 100, 0.72);
+}
+
+.sidebar-tree-node-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.sidebar-tree-node-copy strong,
+.pane-title-single {
+  margin: 0;
+  color: var(--mpx-text-1);
+  font-size: 22px;
+}
+
+.sidebar-tree-node-copy span {
+  min-width: 0;
+  color: var(--mpx-text-2);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sidebar-footer {
@@ -1323,6 +1416,11 @@
 
 .main-header-title {
   flex: 1;
+}
+
+.pane-title-single {
+  flex: 1;
+  align-self: center;
 }
 
 [data-slot='fg-main-main'] {

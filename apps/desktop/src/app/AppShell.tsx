@@ -14,6 +14,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window'
 import { hasFiles as clipboardHasFiles, readFiles as readClipboardFiles } from 'tauri-plugin-clipboard-x-api'
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { consumeE2eDirectorySelection } from './e2e-test-bridge'
 import { ImportTaskPanel } from './ImportTaskPanel'
 import { SettingsIcon } from './SettingsIcon'
 import { useMediaRepository } from './use-media-repository'
@@ -194,12 +195,26 @@ function formatScanRunResult(result: ScanRunResult): string {
   return `扫描完成：发现 ${result.discovered} 项，写入 ${result.insertedOrUpdated} 项，跳过 ${result.skippedUnchanged} 项。`
 }
 
+function resolvePathLeaf(path: string): string {
+  const normalizedPath = path.replace(/[\\/]+$/, '')
+  const segments = normalizedPath.split(/[\\/]/).filter((segment) => segment.length > 0)
+  return segments[segments.length - 1] ?? path
+}
+
 function resolveItemLocation(item: ItemDetail | null): string {
   if (item === null) {
     return '当前未选中条目'
   }
 
   return item.filePath ?? item.entryPath ?? item.archivePath ?? '当前条目没有可显示路径'
+}
+
+function resolveItemDisplayLabel(item: ItemDetail | null): string {
+  if (item === null) {
+    return ''
+  }
+
+  return resolvePathLeaf(resolveItemLocation(item))
 }
 
 function resolveLibrarySelection(
@@ -335,7 +350,6 @@ export function AppShell() {
 
   const [libraries, setLibraries] = useState<LibrarySummary[]>([])
   const [librariesLoading, setLibrariesLoading] = useState(false)
-  const [librariesError, setLibrariesError] = useState<string | null>(null)
   const [selectedLibraryId, setSelectedLibraryId] = useState<string | null>(null)
   const [selectedLibraryDetail, setSelectedLibraryDetail] = useState<LibraryDetail | null>(null)
   const [scanStats, setScanStats] = useState<ScanStats | null>(null)
@@ -347,6 +361,7 @@ export function AppShell() {
   const [selectedItemDetail, setSelectedItemDetail] = useState<ItemDetail | null>(null)
   const [itemDetailLoading, setItemDetailLoading] = useState(false)
   const [itemDetailError, setItemDetailError] = useState<string | null>(null)
+  const [itemThumbnailUrls, setItemThumbnailUrls] = useState<Record<string, string>>({})
 
   const [importRootPath, setImportRootPath] = useState('')
   const [actionBusy, setActionBusy] = useState<ActionKind | null>(null)
@@ -429,6 +444,7 @@ export function AppShell() {
     setSelectedItemDetail(null)
     setItemDetailError(null)
     setItemDetailLoading(false)
+    setItemThumbnailUrls({})
   }, [])
 
   const appendImportActivity = useCallback(
@@ -495,6 +511,7 @@ export function AppShell() {
         setScanStats(stats)
         setScanSnapshot(snapshot)
         setItems(nextItems)
+        setItemThumbnailUrls({})
         setSelectedAssetId((currentAssetId) => {
           if (currentAssetId !== null && nextItems.some((item) => item.assetId === currentAssetId)) {
             return currentAssetId
@@ -513,6 +530,7 @@ export function AppShell() {
         setScanSnapshot(null)
         setItems([])
         setSelectedAssetId(null)
+        setItemThumbnailUrls({})
       } finally {
         if (libraryLoadRequestIdRef.current === requestId) {
           setWorkspaceLoading(false)
@@ -525,7 +543,6 @@ export function AppShell() {
   const refreshLibraries = useCallback(
     async (preferredLibraryId?: string | null): Promise<string | null> => {
       setLibrariesLoading(true)
-      setLibrariesError(null)
 
       try {
         const nextLibraries = await repository.library.list()
@@ -536,9 +553,9 @@ export function AppShell() {
 
         return nextSelectedLibraryId
       } catch (error) {
-        setLibrariesError(getErrorMessage(error))
         setLibraries([])
         setSelectedLibraryId(null)
+        setWorkspaceError(getErrorMessage(error))
         clearWorkspaceData()
         return null
       } finally {
@@ -757,6 +774,44 @@ export function AppShell() {
       })
   }, [repository, selectedAssetId])
 
+  useEffect(() => {
+    if (items.length === 0) {
+      setItemThumbnailUrls({})
+      return
+    }
+
+    let disposed = false
+
+    void Promise.all(
+      items.map(async (item) => {
+        if (item.thumbnailKey) {
+          return [item.assetId, repository.urls.thumbnail(item.thumbnailKey)] as const
+        }
+
+        try {
+          const ensuredThumbnail = await repository.thumbnail.ensure(item.assetId, 'grid-md')
+          return [item.assetId, repository.urls.thumbnail(ensuredThumbnail.thumbnailKey)] as const
+        } catch {
+          return null
+        }
+      }),
+    ).then((entries) => {
+      if (disposed) {
+        return
+      }
+
+      setItemThumbnailUrls(
+        Object.fromEntries(
+          entries.filter((entry): entry is readonly [string, string] => entry !== null),
+        ),
+      )
+    })
+
+    return () => {
+      disposed = true
+    }
+  }, [items, repository])
+
   function handleSplitterPointerDown(target: DragTarget) {
     return (event: ReactPointerEvent<HTMLDivElement>): void => {
       event.preventDefault()
@@ -776,35 +831,6 @@ export function AppShell() {
     },
     [loadLibrarySurface],
   )
-
-  const handleRefreshWorkspace = useCallback(async () => {
-    const activityId = appendImportActivity({
-      title: '刷新主界面',
-      source: '主界面',
-      status: 'running',
-      detail: '正在按当前媒体库刷新 Sidebar、Main、Metadata。',
-    })
-
-    setActionBusy('refresh')
-    setActionError(null)
-
-    try {
-      await refreshWorkspace(selectedLibraryId)
-      setActionMessage('已按当前媒体库刷新 Sidebar、Main、Metadata。')
-      updateImportActivity(activityId, {
-        status: 'completed',
-        detail: '已按当前媒体库刷新 Sidebar、Main、Metadata。',
-      })
-    } catch (error) {
-      setActionError(getErrorMessage(error))
-      updateImportActivity(activityId, {
-        status: 'failed',
-        detail: `刷新失败：${getErrorMessage(error)}`,
-      })
-    } finally {
-      setActionBusy(null)
-    }
-  }, [appendImportActivity, refreshWorkspace, selectedLibraryId, updateImportActivity])
 
   const handleAddLibrary = useCallback(
     async (shouldScanAfterAdd: boolean) => {
@@ -859,40 +885,6 @@ export function AppShell() {
     },
     [appendImportActivity, importRootPath, refreshWorkspace, repository, updateImportActivity],
   )
-
-  const handleStartScan = useCallback(async () => {
-    if (selectedLibraryId === null) {
-      return
-    }
-
-    const activityId = appendImportActivity({
-      title: '开始扫描',
-      source: '侧栏扫描',
-      status: 'running',
-      detail: '正在为当前媒体库启动扫描。',
-    })
-
-    setActionBusy('scan')
-    setActionError(null)
-
-    try {
-      const result = await repository.scan.start(selectedLibraryId)
-      setActionMessage(formatScanRunResult(result))
-      updateImportActivity(activityId, {
-        status: 'completed',
-        detail: formatScanRunResult(result),
-      })
-      await refreshWorkspace(selectedLibraryId)
-    } catch (error) {
-      setActionError(getErrorMessage(error))
-      updateImportActivity(activityId, {
-        status: 'failed',
-        detail: `开始扫描失败：${getErrorMessage(error)}`,
-      })
-    } finally {
-      setActionBusy(null)
-    }
-  }, [appendImportActivity, refreshWorkspace, repository, selectedLibraryId, updateImportActivity])
 
   const runPathImport = useCallback(
     async (
@@ -1188,41 +1180,12 @@ export function AppShell() {
     }
   }, [appendImportActivity, scanSnapshot, updateImportActivity])
 
-  const handleResumeScan = useCallback(async () => {
-    if (selectedLibraryId === null) {
-      return
-    }
-
-    const activityId = appendImportActivity({
-      title: '恢复扫描',
-      source: '侧栏扫描',
-      status: 'running',
-      detail: '正在恢复当前媒体库扫描任务。',
-    })
-
-    setActionBusy('resume')
-    setActionError(null)
-
-    try {
-      const result = await repository.scan.resume(selectedLibraryId)
-      setActionMessage(`已恢复扫描：${formatScanRunResult(result)}`)
-      updateImportActivity(activityId, {
-        status: 'completed',
-        detail: `已恢复扫描：${formatScanRunResult(result)}`,
-      })
-      await refreshWorkspace(selectedLibraryId)
-    } catch (error) {
-      setActionError(getErrorMessage(error))
-      updateImportActivity(activityId, {
-        status: 'failed',
-        detail: `恢复扫描失败：${getErrorMessage(error)}`,
-      })
-    } finally {
-      setActionBusy(null)
-    }
-  }, [appendImportActivity, refreshWorkspace, repository, selectedLibraryId, updateImportActivity])
-
   const pickSingleDirectory = useCallback(async (title: string): Promise<string | null> => {
+    const e2eSelection = consumeE2eDirectorySelection(title)
+    if (e2eSelection.handled) {
+      return e2eSelection.path
+    }
+
     const selection = await openDialog({
       directory: true,
       multiple: false,
@@ -1382,11 +1345,6 @@ export function AppShell() {
     }
   }, [repository])
 
-  const openImportTaskPanel = useCallback(() => {
-    setSettingsOpen(false)
-    setImportTaskPanelOpen(true)
-  }, [])
-
   const selectedItemIndex = useMemo(
     () => items.findIndex((item) => item.assetId === selectedAssetId),
     [items, selectedAssetId],
@@ -1409,6 +1367,7 @@ export function AppShell() {
   }, [items, selectedItemIndex])
 
   const importBusy = actionBusy !== null || isActiveTaskProgress(scanSnapshot)
+  const logoLoading = importBusy || librariesLoading || workspaceLoading
   const logoButtonState = importTaskPanelOpen
     ? 'fg-header-logo-state-open'
     : importBusy
@@ -1485,7 +1444,7 @@ export function AppShell() {
                 <span className="header-logo-mark" aria-hidden="true">
                   M
                 </span>
-                <span className="header-logo-label">MediaPlayerNext</span>
+                <span className="header-logo-label">{logoLoading ? 'Loading' : 'MediaPlayerNext'}</span>
               </button>
             </div>
 
@@ -1493,6 +1452,7 @@ export function AppShell() {
               <button
                 className="mpx-btn header-settings-trigger"
                 type="button"
+                data-testid="header-settings-trigger"
                 aria-haspopup="dialog"
                 aria-expanded={settingsOpen}
                 onClick={() => {
@@ -1512,140 +1472,34 @@ export function AppShell() {
           <aside className="app-frame app-sidebar-root" data-slot="fg-sidebar-root">
             <section className="workspace-pane sidebar-frame">
               <header className="workspace-pane-header sidebar-header" data-slot="fg-sidebar-header">
-                <button className="mpx-btn sidebar-title-btn" type="button" aria-pressed="true">
-                  媒体库
-                </button>
-
-                <div className="workspace-pane-actions sidebar-header-actions">
-                  <button className="mpx-btn pane-action-btn" type="button" onClick={openImportTaskPanel}>
-                    导入
-                  </button>
-                  <button
-                    className="mpx-btn pane-action-btn"
-                    type="button"
-                    onClick={() => void handleRefreshWorkspace()}
-                    disabled={librariesLoading || importBusy}
-                  >
-                    刷新
-                  </button>
+                <div className="pane-title-stack sidebar-title-stack">
+                  <h2>媒体库</h2>
                 </div>
               </header>
 
               <div className="workspace-pane-main sidebar-main-shell" data-slot="fg-sidebar-main">
-                <div className="section-block sidebar-tree">
-                  {librariesError === null ? null : <div className="error-text">{librariesError}</div>}
+                <div className="sidebar-tree" role="tree" aria-label="媒体库节点树">
+                  {libraries.map((library) => {
+                    const isActive = library.id === selectedLibraryId
 
-                  <article className="workspace-card compact">
-                    <span className="workspace-label">当前状态</span>
-                    <strong>{libraries.length} 个媒体库</strong>
-                    <p>
-                      {selectedLibraryDetail === null
-                        ? '尚未选择媒体库，可通过 Header Logo 或左侧导入按钮登记新的本地路径。'
-                        : `当前聚焦：${selectedLibraryDetail.rootPath}`}
-                    </p>
-                  </article>
-
-                  <section className="pane-section">
-                    <div className="panel-heading pane-section-heading">
-                      <div>
-                        <span className="workspace-label">Sidebar Main</span>
-                        <h3>媒体库列表</h3>
-                      </div>
-                    </div>
-
-                    {librariesLoading ? (
-                      <div className="workspace-stage compact">
-                        <span className="workspace-label">Libraries</span>
-                        <strong>正在读取媒体库</strong>
-                        <p>正在从 repository 拉取当前已登记的媒体库列表。</p>
-                      </div>
-                    ) : libraries.length === 0 ? (
-                      <div className="workspace-stage compact">
-                        <span className="workspace-label">Libraries</span>
-                        <strong>尚未登记媒体库</strong>
-                        <p>当前仓库还没有可浏览的媒体源，请先在导入面板输入本地路径并登记。</p>
-                      </div>
-                    ) : (
-                      <div className="library-list">
-                        {libraries.map((library) => {
-                          const isActive = library.id === selectedLibraryId
-
-                          return (
-                            <button
-                              key={library.id}
-                              className={`workspace-card-button library-list-item ${isActive ? 'is-active' : ''}`}
-                              type="button"
-                              aria-pressed={isActive}
-                              onClick={() => handleLibrarySelect(library.id)}
-                            >
-                              <span className="workspace-label">{library.libraryType}</span>
-                              <strong>{library.rootPath}</strong>
-                              <span className="library-list-meta">
-                                <span>{library.scanMode}</span>
-                                <span>更新于 {formatDateTime(library.updatedAt)}</span>
-                              </span>
-                            </button>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </section>
-
-                  <section className="pane-section">
-                    <div className="panel-heading pane-section-heading">
-                      <div>
-                        <span className="workspace-label">Scan</span>
-                        <h3>扫描状态</h3>
-                      </div>
-                    </div>
-
-                    <article className="workspace-card compact">
-                      <span className="workspace-label">任务快照</span>
-                      <strong>{scanStateLabel}</strong>
-                      <p>{scanSummary}</p>
-                      {scanProgressPercent === null ? null : (
-                        <div className="progress-track" aria-hidden="true">
-                          <div className="progress-bar" style={{ width: `${scanProgressPercent}%` }} />
-                        </div>
-                      )}
-                      <div className="workspace-inline-meta">
-                        <span>活跃源 {scanStats?.activeSourceCount ?? 0}</span>
-                        <span>总源数 {scanStats?.sourceCount ?? 0}</span>
-                        <span>缺失源 {scanStats?.missingSourceCount ?? 0}</span>
-                      </div>
-                    </article>
-
-                    <div className="actions">
+                    return (
                       <button
-                        className="mpx-btn"
+                        key={library.id}
+                        className={`sidebar-tree-node ${isActive ? 'is-active' : ''}`}
                         type="button"
-                        onClick={() => void handleStartScan()}
-                        disabled={selectedLibraryId === null || importBusy}
+                        role="treeitem"
+                        aria-selected={isActive}
+                        onClick={() => handleLibrarySelect(library.id)}
                       >
-                        开始扫描
+                        <span className="sidebar-tree-node-rail" aria-hidden="true" />
+                        <span className="sidebar-tree-node-dot" aria-hidden="true" />
+                        <span className="sidebar-tree-node-copy">
+                          <strong>{resolvePathLeaf(library.rootPath)}</strong>
+                          <span>{library.rootPath}</span>
+                        </span>
                       </button>
-                      <button
-                        className="mpx-btn"
-                        type="button"
-                        onClick={() => void handleResumeScan()}
-                        disabled={selectedLibraryId === null || importBusy}
-                      >
-                        恢复扫描
-                      </button>
-                    </div>
-                  </section>
-
-                  {actionMessage === null ? null : (
-                    <section className="pane-section">
-                      <div className="result-card">
-                        <span className="workspace-label">最近操作</span>
-                        <strong>{actionPendingLabel ?? '已完成'}</strong>
-                        <p>{actionMessage}</p>
-                      </div>
-                    </section>
-                  )}
-
-                  {actionError === null ? null : <div className="error-text">{actionError}</div>}
+                    )
+                  })}
                 </div>
               </div>
 
@@ -1666,29 +1520,7 @@ export function AppShell() {
           <section className="app-frame app-main-root" data-slot="fg-main-root">
             <section className="workspace-pane main-pane-frame">
               <header className="workspace-pane-header main-header" data-slot="fg-main-header">
-                <div className="pane-title-stack main-header-title">
-                  <span className="section-kicker">Workspace</span>
-                  <h2>{selectedLibraryDetail === null ? 'Main' : 'Items'}</h2>
-                  <p className="pane-title-caption">
-                    {selectedLibraryDetail === null
-                      ? '导入或选择媒体库后，主工作区会基于最新快照刷新条目预览。'
-                      : `当前媒体库：${selectedLibraryDetail.rootPath}`}
-                  </p>
-                </div>
-
-                <div className="workspace-pane-actions main-header-actions">
-                  <button className="mpx-btn pane-action-btn" type="button" onClick={openImportTaskPanel}>
-                    导入
-                  </button>
-                  <button
-                    className="mpx-btn pane-action-btn"
-                    type="button"
-                    onClick={() => void handleRefreshWorkspace()}
-                    disabled={selectedLibraryId === null || importBusy}
-                  >
-                    刷新
-                  </button>
-                </div>
+                {selectedLibraryDetail === null ? <div /> : <h2 className="pane-title-single">{resolvePathLeaf(selectedLibraryDetail.rootPath)}</h2>}
               </header>
 
               <div className="workspace-pane-main main-pane-main" data-slot="fg-main-main">
@@ -1713,36 +1545,30 @@ export function AppShell() {
                     <p>可以直接开始扫描，或回到导入面板登记新的本地路径。</p>
                   </div>
                 ) : (
-                  <>
-                    <article className="workspace-stage compact">
-                      <span className="workspace-label">条目预览</span>
-                      <strong>当前页显示 {items.length} 项</strong>
-                      <p>导入或扫描完成后，主工作区会直接基于最新快照重算并刷新当前条目。</p>
-                    </article>
+                  <div className="item-grid">
+                    {items.map((item) => {
+                      const isActive = item.assetId === selectedAssetId
+                      const thumbnailUrl = itemThumbnailUrls[item.assetId] ?? null
 
-                    <div className="item-grid">
-                      {items.map((item) => {
-                        const isActive = item.assetId === selectedAssetId
-
-                        return (
-                          <button
-                            key={item.assetId}
-                            className={`workspace-card-button item-card-button ${isActive ? 'is-active' : ''}`}
-                            type="button"
-                            aria-pressed={isActive}
-                            onClick={() => setSelectedAssetId(item.assetId)}
-                          >
-                            <span className="workspace-label">{item.sourceKind}</span>
-                            <strong>{item.assetId.slice(-12)}</strong>
-                            <span className="library-list-meta">
-                              <span>{item.mime}</span>
-                              <span>{item.entryPath ?? 'file source'}</span>
-                            </span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </>
+                      return (
+                        <button
+                          key={item.assetId}
+                          className={`workspace-card-button item-card-button ${isActive ? 'is-active' : ''}`}
+                          type="button"
+                          aria-pressed={isActive}
+                          onClick={() => setSelectedAssetId(item.assetId)}
+                        >
+                          {thumbnailUrl === null ? (
+                            <div className="item-card-thumbnail item-card-thumbnail-placeholder">
+                              <span>{item.sourceKind === 'archive_entry' ? 'Archive' : 'Media'}</span>
+                            </div>
+                          ) : (
+                            <img className="item-card-thumbnail" src={thumbnailUrl} alt="" loading="lazy" />
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
                 )}
               </div>
 
@@ -1786,11 +1612,16 @@ export function AppShell() {
           <aside className="app-frame app-meta-root" data-slot="fg-meta-root">
             <section className="workspace-pane metadata-frame">
               <header className="workspace-pane-header metadata-header" data-slot="fg-meta-header">
-                <div className="pane-title-stack metadata-header-title">
-                  <span className="section-kicker">Details</span>
-                  <h2>Metadata</h2>
-                  <p className="pane-title-caption">{resolveItemLocation(selectedItemDetail)}</p>
-                </div>
+                {selectedLibraryId === null ? (
+                  <div />
+                ) : (
+                  <div className="pane-title-stack metadata-header-title">
+                    <h2>{resolveItemDisplayLabel(selectedItemDetail) || resolvePathLeaf(selectedLibraryDetail?.rootPath ?? '')}</h2>
+                    {selectedItemDetail === null ? null : (
+                      <p className="pane-title-caption">{resolveItemLocation(selectedItemDetail)}</p>
+                    )}
+                  </div>
+                )}
 
                 <div className="workspace-pane-actions metadata-header-g3">
                   <span className="status-pill" data-state={scanSnapshot?.state ?? 'idle'}>
@@ -1950,6 +1781,7 @@ export function AppShell() {
           <section
             className="mpx-large-panel settings-panel"
             role="dialog"
+            data-testid="settings-panel"
             aria-modal="true"
             aria-labelledby="app-settings-title"
             onClick={(event) => event.stopPropagation()}
@@ -1967,6 +1799,7 @@ export function AppShell() {
                 <button
                   className={`mpx-btn ${settingsPage === 'ui' ? 'is-active' : ''}`}
                   type="button"
+                  data-testid="settings-page-ui"
                   aria-pressed={settingsPage === 'ui'}
                   onClick={() => setSettingsPage('ui')}
                 >
@@ -1975,6 +1808,7 @@ export function AppShell() {
                 <button
                   className={`mpx-btn ${settingsPage === 'database' ? 'is-active' : ''}`}
                   type="button"
+                  data-testid="settings-page-database"
                   aria-pressed={settingsPage === 'database'}
                   onClick={() => setSettingsPage('database')}
                 >
@@ -1984,7 +1818,7 @@ export function AppShell() {
 
               <section className="mpx-large-panel-main settings-panel-main">
                 {settingsPage === 'ui' ? (
-                  <div className="settings-page-block">
+                  <div className="settings-page-block" data-testid="settings-page-ui-body">
                     <div className="panel-heading settings-page-heading">
                       <div>
                         <span className="section-kicker">Interface</span>
@@ -2044,7 +1878,7 @@ export function AppShell() {
                     />
                   </div>
                 ) : (
-                  <div className="settings-page-block">
+                  <div className="settings-page-block" data-testid="settings-page-database-body">
                     <div className="panel-heading settings-page-heading">
                       <div>
                         <span className="section-kicker">Database</span>
@@ -2060,7 +1894,7 @@ export function AppShell() {
                     {databaseActionError === null ? null : <div className="error-text">{databaseActionError}</div>}
 
                     {databaseActionMessage === null ? null : (
-                      <div className="result-card">
+                      <div className="result-card" data-testid="database-action-message">
                         <span className="result-label">数据库动作</span>
                         <strong>{databasePendingLabel ?? '已完成'}</strong>
                         <p>{databaseActionMessage}</p>
@@ -2079,6 +1913,7 @@ export function AppShell() {
                         <button
                           className="mpx-btn is-danger"
                           type="button"
+                          data-testid="database-clear-button"
                           onClick={handleRequestClearDatabase}
                           disabled={databaseActionBusy !== null}
                         >
@@ -2093,11 +1928,12 @@ export function AppShell() {
                         <span className="workspace-label">SQL</span>
                         <h3>SQL 目录</h3>
                       </div>
-                      <div className="settings-path-output">{runtimeInfoDatabasePath}</div>
+                      <div className="settings-path-output" data-testid="database-sql-path">{runtimeInfoDatabasePath}</div>
                       <div className="settings-action-row">
                         <button
                           className="mpx-btn"
                           type="button"
+                          data-testid="database-select-sql-dir"
                           onClick={() => void handlePickDatabaseDirectory()}
                           disabled={databaseActionBusy !== null}
                         >
@@ -2112,11 +1948,12 @@ export function AppShell() {
                         <span className="workspace-label">Thumbnail</span>
                         <h3>缩略图目录</h3>
                       </div>
-                      <div className="settings-path-output">{runtimeInfoThumbnailCachePath}</div>
+                      <div className="settings-path-output" data-testid="database-thumbnail-path">{runtimeInfoThumbnailCachePath}</div>
                       <div className="settings-action-row">
                         <button
                           className="mpx-btn"
                           type="button"
+                          data-testid="database-select-thumbnail-dir"
                           onClick={() => void handlePickThumbnailDirectory()}
                           disabled={databaseActionBusy !== null}
                         >
@@ -2137,11 +1974,13 @@ export function AppShell() {
         <div
           className="settings-subdialog-overlay"
           onClick={handleCloseClearDatabaseDialog}
+          data-testid="database-clear-dialog-overlay"
           role="presentation"
         >
           <section
             className="mpx-dialog-panel settings-confirm-panel"
             role="dialog"
+            data-testid="database-clear-dialog"
             aria-modal="true"
             aria-labelledby="clear-database-dialog-title"
             onClick={(event) => event.stopPropagation()}
@@ -2168,6 +2007,7 @@ export function AppShell() {
               <button
                 className="mpx-btn"
                 type="button"
+                data-testid="database-clear-cancel"
                 onClick={handleCloseClearDatabaseDialog}
                 disabled={databaseActionBusy === 'clearDatabase'}
               >
@@ -2176,6 +2016,7 @@ export function AppShell() {
               <button
                 className="mpx-btn is-danger"
                 type="button"
+                data-testid="database-clear-confirm"
                 onClick={() => void handleConfirmClearDatabase()}
                 disabled={databaseActionBusy === 'clearDatabase'}
               >
