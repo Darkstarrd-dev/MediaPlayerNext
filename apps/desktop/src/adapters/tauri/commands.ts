@@ -9,8 +9,10 @@ import type {
   LibraryDetail,
   LibrarySummary,
   PlaybackSession,
+  RuntimeInfo,
   ScanRunResult,
   ScanStats,
+  SetRuntimeStoragePathsInput,
   SubtitleHost,
   SubtitleProgress,
   SubtitleSession,
@@ -36,7 +38,7 @@ export interface RuntimeSmokeCheckResult {
 }
 
 function withArgAliases<T extends Record<string, unknown>>(input: T): Record<string, unknown> {
-  const entries = Object.entries(input)
+  const entries = Object.entries(input).filter(([, value]) => value !== undefined)
   const aliased = entries.flatMap(([key, value]) => {
     const snakeKey = key.replace(/[A-Z]/g, (char) => `_${char.toLowerCase()}`)
     return [
@@ -56,6 +58,20 @@ export async function invokeRuntimeSmokeCheck(
     ffprobePath: input.ffprobePath,
     mpvPath: input.mpvPath,
   })
+}
+
+export async function invokeReadRuntimeInfo(): Promise<RuntimeInfo> {
+  return invoke<RuntimeInfo>('read_runtime_info_command')
+}
+
+export async function invokeSetRuntimeStoragePaths(
+  input: SetRuntimeStoragePathsInput,
+): Promise<RuntimeInfo> {
+  return invoke<RuntimeInfo>('set_runtime_storage_paths_command', withArgAliases(input))
+}
+
+export async function invokeClearDatabase(): Promise<void> {
+  return invoke<void>('clear_database_command')
 }
 
 export async function invokeSubtitlePing(): Promise<SubtitleHost> {

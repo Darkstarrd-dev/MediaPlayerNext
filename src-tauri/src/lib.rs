@@ -1,4 +1,5 @@
 mod runtime_check;
+mod runtime_storage;
 pub mod subtitle_sidecar;
 
 use anyhow::{Context, Error};
@@ -25,6 +26,7 @@ use app_core::subtitle_host::{
 use app_core::thumbnail::{ensure_thumbnail_for_asset, get_thumbnail, parse_thumbnail_profile};
 use media_db::{DatabaseLocation, MediaDatabase};
 use runtime_check::{run_runtime_smoke_check, RuntimeSmokeCheckResult};
+use runtime_storage::{resolve_database_path, resolve_runtime_storage_paths, RuntimeInfoPayload};
 use serde::Deserialize;
 use serde_json::json;
 use shared_model::{
@@ -34,7 +36,7 @@ use shared_model::{
 use std::env;
 use std::path::{Path, PathBuf};
 use tauri::http::{header::CONTENT_TYPE, Response, StatusCode, Uri};
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
 const ERROR_CODE_HEADER: &str = "x-mediaplayernext-error-code";
 const ERROR_RETRIABLE_HEADER: &str = "x-mediaplayernext-error-retriable";
@@ -74,6 +76,29 @@ fn runtime_smoke_check(
 ) -> CommandResult<RuntimeSmokeCheckResult> {
     run_runtime_smoke_check(&ffmpeg_path, &ffprobe_path, &mpv_path)
         .map_err(|error| map_runtime_command_error("runtime_smoke_check", error))
+}
+
+#[tauri::command]
+fn read_runtime_info_command(app: tauri::AppHandle) -> CommandResult<RuntimeInfoPayload> {
+    runtime_storage::read_runtime_info(&app)
+        .map_err(|error| map_backend_command_error("read_runtime_info_command", "database", error))
+}
+
+#[tauri::command]
+fn set_runtime_storage_paths_command(
+    app: tauri::AppHandle,
+    database_dir: Option<String>,
+    thumbnail_cache_dir: Option<String>,
+) -> CommandResult<RuntimeInfoPayload> {
+    runtime_storage::set_runtime_storage_paths(&app, database_dir, thumbnail_cache_dir).map_err(
+        |error| map_backend_command_error("set_runtime_storage_paths_command", "database", error),
+    )
+}
+
+#[tauri::command]
+fn clear_database_command(app: tauri::AppHandle) -> CommandResult<()> {
+    runtime_storage::clear_database(&app)
+        .map_err(|error| map_backend_command_error("clear_database_command", "database", error))
 }
 
 #[tauri::command]
@@ -538,6 +563,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             runtime_smoke_check,
+            read_runtime_info_command,
+            set_runtime_storage_paths_command,
+            clear_database_command,
             subtitle_ping_command,
             subtitle_health_command,
             subtitle_start_session_command,
@@ -994,55 +1022,37 @@ where
 
 fn command_environment(app: &AppHandle) -> anyhow::Result<CommandEnvironment> {
     let config_path = workspace_root().join("config").join("local.paths.json");
-    let db_path = command_database_path(app)?;
-    let thumbnail_cache_root = command_cache_path(
-        app,
-        "MPNEXT_BACKEND_THUMB_CACHE_ROOT",
-        development_thumbnail_cache_root(),
-        "thumbs",
-    )?;
-    let normalize_root = command_cache_path(
-        app,
-        "MPNEXT_BACKEND_NORMALIZE_ROOT",
-        development_normalize_root(),
-        "normalized",
-    )?;
-    let playback_sessions_root = command_cache_path(
-        app,
-        "MPNEXT_BACKEND_PLAYBACK_SESSIONS_ROOT",
-        development_playback_sessions_root(),
-        "playback/sessions",
-    )?;
+    let storage_paths = resolve_runtime_storage_paths(app)?;
 
-    if let Some(parent) = db_path.parent() {
+    if let Some(parent) = storage_paths.database_path.parent() {
         std::fs::create_dir_all(parent)
             .with_context(|| format!("create command database parent dir: {}", parent.display()))?;
     }
-    std::fs::create_dir_all(&thumbnail_cache_root).with_context(|| {
+    std::fs::create_dir_all(&storage_paths.thumbnail_cache_root).with_context(|| {
         format!(
             "create thumbnail cache root for commands: {}",
-            thumbnail_cache_root.display()
+            storage_paths.thumbnail_cache_root.display()
         )
     })?;
-    std::fs::create_dir_all(&normalize_root).with_context(|| {
+    std::fs::create_dir_all(&storage_paths.normalize_root).with_context(|| {
         format!(
             "create archive normalize root for commands: {}",
-            normalize_root.display()
+            storage_paths.normalize_root.display()
         )
     })?;
-    std::fs::create_dir_all(&playback_sessions_root).with_context(|| {
+    std::fs::create_dir_all(&storage_paths.playback_sessions_root).with_context(|| {
         format!(
             "create playback sessions root for commands: {}",
-            playback_sessions_root.display()
+            storage_paths.playback_sessions_root.display()
         )
     })?;
 
     Ok(CommandEnvironment {
-        database: MediaDatabase::open(DatabaseLocation::File(&db_path))?,
+        database: MediaDatabase::open(DatabaseLocation::File(&storage_paths.database_path))?,
         runtime_paths: load_runtime_paths(&config_path),
-        thumbnail_cache_root,
-        normalize_root,
-        playback_sessions_root,
+        thumbnail_cache_root: storage_paths.thumbnail_cache_root,
+        normalize_root: storage_paths.normalize_root,
+        playback_sessions_root: storage_paths.playback_sessions_root,
     })
 }
 
@@ -1107,66 +1117,6 @@ fn task_progress_from_record(task: TaskRecord) -> TaskProgress {
     }
 }
 
-fn development_database_path() -> PathBuf {
-    workspace_root().join("data").join("mediaplayernext-dev.db")
-}
-
-fn development_thumbnail_cache_root() -> PathBuf {
-    workspace_root().join("data").join("cache").join("thumbs")
-}
-
-fn development_normalize_root() -> PathBuf {
-    workspace_root()
-        .join("data")
-        .join("cache")
-        .join("normalized")
-}
-
-fn development_playback_sessions_root() -> PathBuf {
-    workspace_root()
-        .join("data")
-        .join("cache")
-        .join("playback")
-        .join("sessions")
-}
-
-fn command_database_path(app: &AppHandle) -> anyhow::Result<PathBuf> {
-    if let Some(path) = env::var_os("MPNEXT_BACKEND_DB_PATH") {
-        return Ok(PathBuf::from(path));
-    }
-
-    if tauri::is_dev() {
-        return Ok(development_database_path());
-    }
-
-    Ok(app
-        .path()
-        .app_local_data_dir()
-        .context("resolve command app local data dir")?
-        .join("mediaplayernext.db"))
-}
-
-fn command_cache_path(
-    app: &AppHandle,
-    env_name: &str,
-    development_default: PathBuf,
-    packaged_segment: &str,
-) -> anyhow::Result<PathBuf> {
-    if let Some(path) = env::var_os(env_name) {
-        return Ok(PathBuf::from(path));
-    }
-
-    if tauri::is_dev() {
-        return Ok(development_default);
-    }
-
-    Ok(app
-        .path()
-        .app_cache_dir()
-        .context("resolve command app cache dir")?
-        .join(packaged_segment))
-}
-
 fn load_runtime_paths(config_path: &Path) -> RuntimePaths {
     let config = if config_path.exists() {
         std::fs::read(config_path)
@@ -1203,7 +1153,7 @@ fn env_path_or_config_or_default(
 }
 
 fn protocol_database_path(app: &AppHandle) -> anyhow::Result<PathBuf> {
-    command_database_path(app)
+    resolve_database_path(app)
 }
 
 fn open_protocol_database(db_path: &Path) -> anyhow::Result<MediaDatabase> {

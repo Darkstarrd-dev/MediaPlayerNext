@@ -24,6 +24,11 @@ export interface MediaRepository {
   diagnostics: {
     checkRuntimeHealth(): Promise<RuntimeSmokeCheckResult>
   }
+  database: {
+    readRuntimeInfo(): Promise<RuntimeInfo>
+    setStoragePaths(input: SetRuntimeStoragePathsInput): Promise<RuntimeInfo>
+    clear(): Promise<void>
+  }
   subtitle: {
     ping(): Promise<SubtitleHost>
     health(): Promise<SubtitleHost>
@@ -61,7 +66,15 @@ export interface MediaRepository {
 | `subtitle.stopSession(sessionId)` | `subtitle_stop_session_command` | 已有首版 | 返回 session summary |
 | `subtitle.getProgress(sessionId)` | `subtitle_get_progress_command` | 已有首版 | 当前仍是请求式，不是 channel |
 
-### C. protocol URL builders
+### C. database
+
+| repository 方法 | 底层入口 | 当前状态 | 说明 |
+|---|---|---|---|
+| `database.readRuntimeInfo()` | `read_runtime_info_command` | 已接入 | 返回当前 SQL 文件路径与缩略图目录 |
+| `database.setStoragePaths(input)` | `set_runtime_storage_paths_command` | 已接入 | 支持设置 `databaseDir` / `thumbnailCacheDir` |
+| `database.clear()` | `clear_database_command` | 已接入 | 恢复到初始化状态 |
+
+### D. protocol URL builders
 
 | repository 方法 | 底层入口 | 当前状态 | 说明 |
 |---|---|---|---|

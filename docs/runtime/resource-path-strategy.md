@@ -139,12 +139,31 @@ backend harness 当前顺序：
 Tauri protocol host 当前顺序：
 
 1. `MPNEXT_BACKEND_DB_PATH`
-2. dev 模式回落到仓库 `data/mediaplayernext-dev.db`
-3. 打包态回落到 Tauri `app local data dir/mediaplayernext.db`
+2. runtime storage config `database_dir`
+3. dev 模式回落到仓库 `data/mediaplayernext-dev.db`
+4. 打包态回落到 Tauri `app local data dir/mediaplayernext.db`
+
+Tauri command host 当前数据库与缩略图目录顺序：
+
+1. `database path`
+   - `MPNEXT_BACKEND_DB_PATH`
+   - runtime storage config `database_dir`
+   - dev / packaged 默认数据库文件名
+2. `thumbnail cache root`
+   - `MPNEXT_BACKEND_THUMB_CACHE_ROOT`
+   - runtime storage config `thumbnail_cache_dir`
+   - dev / packaged 默认目录
+
+运行时存储配置文件位置：
+
+- 开发态：`data/runtime-storage-paths.json`
+- 打包态：`app local data dir/runtime-storage-paths.json`
 
 当前说明：
 
-- `thumb://` / `media://` / `archive://` 现在不再把打包态数据库路径硬编码回仓库根目录
+- `thumb://` / `media://` / `archive://` 现在与 command host 共用数据库路径解析规则，不再把打包态数据库路径硬编码回仓库根目录
+- 设置页现在可以持久化 `database_dir` 与 `thumbnail_cache_dir`
+- `clear_database_command` 会删除 runtime storage config，使路径回落到默认解析规则（若存在 env override，则仍由 env 优先）
 - `thumb/playback/normalize` 的缓存根路径仍以 backend harness 默认值为主，尚未统一切到 Tauri app cache
 
 ### 7. migrations
@@ -160,6 +179,7 @@ Tauri protocol host 当前顺序：
 - `scripts/check-runtimes.ps1`
 - `src-tauri/src/bin/backend_harness.rs`
 - `src-tauri/src/lib.rs`
+- `src-tauri/src/runtime_storage.rs`
 - `src-tauri/src/subtitle_sidecar.rs`
 - `src-tauri/tauri.conf.json`
 - `config/local.paths.example.json`

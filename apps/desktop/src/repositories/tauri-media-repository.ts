@@ -1,5 +1,6 @@
 import type { MediaRepository } from './media-repository'
 import {
+  invokeClearDatabase,
   invokeArchiveEntries,
   invokeArchiveEntryDetail,
   invokeArchiveNormalize,
@@ -13,11 +14,13 @@ import {
   invokePlaybackOpen,
   invokePlaybackSeek,
   invokePlaybackStatus,
+  invokeReadRuntimeInfo,
   invokeRuntimeSmokeCheck,
   invokeScanResume,
   invokeScanSnapshot,
   invokeScanStart,
   invokeScanStats,
+  invokeSetRuntimeStoragePaths,
   invokeSubtitleGetProgress,
   invokeSubtitleHealth,
   invokeSubtitlePing,
@@ -43,6 +46,11 @@ export function createTauriMediaRepository(): MediaRepository {
   return {
     diagnostics: {
       checkRuntimeHealth: invokeRuntimeSmokeCheck,
+    },
+    database: {
+      readRuntimeInfo: invokeReadRuntimeInfo,
+      setStoragePaths: invokeSetRuntimeStoragePaths,
+      clear: invokeClearDatabase,
     },
     library: {
       list: invokeLibraryList,

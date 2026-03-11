@@ -20,6 +20,7 @@ export * from "./models/items.js";
 export * from "./models/library.js";
 export * from "./models/observability.js";
 export * from "./models/playback.js";
+export * from "./models/runtime.js";
 export * from "./models/scan.js";
 export * from "./models/subtitle.js";
 export * from "./models/tasks.js";

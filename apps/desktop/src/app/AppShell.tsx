@@ -3,6 +3,7 @@ import type {
   ItemListEntry,
   LibraryDetail,
   LibrarySummary,
+  RuntimeInfo,
   ScanRunResult,
   ScanStats,
   TaskProgress,
@@ -46,8 +47,16 @@ const ACTION_LABELS = {
   refresh: '刷新主界面',
 } as const
 
+const DATABASE_ACTION_LABELS = {
+  pickDatabaseDir: '选择 SQL 目录',
+  pickThumbnailDir: '选择缩略图目录',
+  clearDatabase: '清除数据库',
+} as const
+
 type DragTarget = 'left' | 'right'
 type ActionKind = keyof typeof ACTION_LABELS
+type DatabaseActionKind = keyof typeof DATABASE_ACTION_LABELS
+type SettingsPage = 'ui' | 'database'
 
 interface DragState {
   target: DragTarget
@@ -253,6 +262,8 @@ export function AppShell() {
 
   const [importTaskPanelOpen, setImportTaskPanelOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settingsPage, setSettingsPage] = useState<SettingsPage>('ui')
+  const [clearDatabaseDialogOpen, setClearDatabaseDialogOpen] = useState(false)
   const [viewportWidth, setViewportWidth] = useState(DEFAULT_VIEWPORT_WIDTH)
   const [settingsBackdropOpacity, setSettingsBackdropOpacity] = useState(() =>
     readSessionNumber(
@@ -327,6 +338,12 @@ export function AppShell() {
   const [actionBusy, setActionBusy] = useState<ActionKind | null>(null)
   const [actionMessage, setActionMessage] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [runtimeInfo, setRuntimeInfo] = useState<RuntimeInfo | null>(null)
+  const [runtimeInfoLoading, setRuntimeInfoLoading] = useState(false)
+  const [runtimeInfoError, setRuntimeInfoError] = useState<string | null>(null)
+  const [databaseActionBusy, setDatabaseActionBusy] = useState<DatabaseActionKind | null>(null)
+  const [databaseActionMessage, setDatabaseActionMessage] = useState<string | null>(null)
+  const [databaseActionError, setDatabaseActionError] = useState<string | null>(null)
 
   const layoutPreview = useMemo(() => {
     const normalizedLayoutGapScaleCoeff = clampNumber(layoutGapScaleCoeff, 0, 3)
@@ -1017,28 +1034,165 @@ export function AppShell() {
     }
   }, [refreshWorkspace, repository, selectedLibraryId])
 
+  const pickSingleDirectory = useCallback(async (title: string): Promise<string | null> => {
+    const selection = await openDialog({
+      directory: true,
+      multiple: false,
+      title,
+    })
+
+    if (selection === null) {
+      return null
+    }
+
+    const nextPath = Array.isArray(selection) ? selection[0] : selection
+    return typeof nextPath === 'string' && nextPath.trim().length > 0 ? nextPath : null
+  }, [])
+
   const handlePickDirectory = useCallback(async () => {
     setActionError(null)
 
     try {
-      const selection = await openDialog({
-        directory: true,
-        multiple: false,
-        title: '选择媒体库目录',
-      })
-
-      if (selection === null) {
+      const nextPath = await pickSingleDirectory('选择媒体库目录')
+      if (nextPath === null) {
         return
       }
 
-      const nextPath = Array.isArray(selection) ? selection[0] : selection
-      if (typeof nextPath === 'string' && nextPath.trim().length > 0) {
-        setImportRootPath(nextPath)
-      }
+      setImportRootPath(nextPath)
     } catch (error) {
       setActionError(`系统文件夹选择器不可用：${getErrorMessage(error)}`)
     }
-  }, [])
+  }, [pickSingleDirectory])
+
+  const refreshRuntimeInfo = useCallback(async () => {
+    setRuntimeInfoLoading(true)
+    setRuntimeInfoError(null)
+
+    try {
+      const nextRuntimeInfo = await repository.database.readRuntimeInfo()
+      setRuntimeInfo(nextRuntimeInfo)
+    } catch (error) {
+      setRuntimeInfo(null)
+      setRuntimeInfoError(getErrorMessage(error))
+    } finally {
+      setRuntimeInfoLoading(false)
+    }
+  }, [repository])
+
+  useEffect(() => {
+    if (!settingsOpen || settingsPage !== 'database') {
+      return
+    }
+
+    void refreshRuntimeInfo()
+  }, [refreshRuntimeInfo, settingsOpen, settingsPage])
+
+  useEffect(() => {
+    if (settingsOpen) {
+      return
+    }
+
+    setClearDatabaseDialogOpen(false)
+  }, [settingsOpen])
+
+  useEffect(() => {
+    if (!clearDatabaseDialogOpen) {
+      return
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || databaseActionBusy === 'clearDatabase') {
+        return
+      }
+
+      setClearDatabaseDialogOpen(false)
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [clearDatabaseDialogOpen, databaseActionBusy])
+
+  const handlePickDatabaseDirectory = useCallback(async () => {
+    setRuntimeInfoError(null)
+    setDatabaseActionError(null)
+
+    try {
+      const nextPath = await pickSingleDirectory('选择 SQL 目录')
+      if (nextPath === null) {
+        return
+      }
+
+      setDatabaseActionBusy('pickDatabaseDir')
+      setDatabaseActionMessage(null)
+      const nextRuntimeInfo = await repository.database.setStoragePaths({ databaseDir: nextPath })
+      setRuntimeInfo(nextRuntimeInfo)
+      setDatabaseActionMessage('SQL 目录已保存。')
+    } catch (error) {
+      setDatabaseActionError(getErrorMessage(error))
+    } finally {
+      setDatabaseActionBusy(null)
+    }
+  }, [pickSingleDirectory, repository])
+
+  const handlePickThumbnailDirectory = useCallback(async () => {
+    setRuntimeInfoError(null)
+    setDatabaseActionError(null)
+
+    try {
+      const nextPath = await pickSingleDirectory('选择缩略图目录')
+      if (nextPath === null) {
+        return
+      }
+
+      setDatabaseActionBusy('pickThumbnailDir')
+      setDatabaseActionMessage(null)
+      const nextRuntimeInfo = await repository.database.setStoragePaths({
+        thumbnailCacheDir: nextPath,
+      })
+      setRuntimeInfo(nextRuntimeInfo)
+      setDatabaseActionMessage('缩略图目录已保存。')
+    } catch (error) {
+      setDatabaseActionError(getErrorMessage(error))
+    } finally {
+      setDatabaseActionBusy(null)
+    }
+  }, [pickSingleDirectory, repository])
+
+  const handleRequestClearDatabase = useCallback(() => {
+    if (databaseActionBusy !== null) {
+      return
+    }
+
+    setDatabaseActionError(null)
+    setDatabaseActionMessage(null)
+    setClearDatabaseDialogOpen(true)
+  }, [databaseActionBusy])
+
+  const handleCloseClearDatabaseDialog = useCallback(() => {
+    if (databaseActionBusy === 'clearDatabase') {
+      return
+    }
+
+    setClearDatabaseDialogOpen(false)
+  }, [databaseActionBusy])
+
+  const handleConfirmClearDatabase = useCallback(async () => {
+    setRuntimeInfoError(null)
+    setDatabaseActionBusy('clearDatabase')
+    setDatabaseActionError(null)
+    setDatabaseActionMessage(null)
+
+    try {
+      await repository.database.clear()
+      setDatabaseActionMessage('已清除数据库，正在重新加载。')
+      setClearDatabaseDialogOpen(false)
+      window.location.reload()
+    } catch (error) {
+      setDatabaseActionError(getErrorMessage(error))
+    } finally {
+      setDatabaseActionBusy(null)
+    }
+  }, [repository])
 
   const openImportTaskPanel = useCallback(() => {
     setSettingsOpen(false)
@@ -1098,6 +1252,13 @@ export function AppShell() {
   const mainFooterSecondary = items.length === 0
     ? '当前作用域暂无条目'
     : `当前预览 ${items.length} 个条目`
+  const databasePendingLabel = databaseActionBusy === null ? null : DATABASE_ACTION_LABELS[databaseActionBusy]
+  const runtimeInfoDatabasePath = runtimeInfoLoading
+    ? '正在读取当前 SQL 路径...'
+    : runtimeInfo?.databasePath ?? '未读取'
+  const runtimeInfoThumbnailCachePath = runtimeInfoLoading
+    ? '正在读取当前缩略图目录...'
+    : runtimeInfo?.thumbnailCachePath ?? '未读取'
 
   return (
     <main className="app-shell" data-slot="bg-app-root">
@@ -1144,6 +1305,7 @@ export function AppShell() {
                 aria-expanded={settingsOpen}
                 onClick={() => {
                   setImportTaskPanelOpen(false)
+                  setSettingsPage('ui')
                   setSettingsOpen(true)
                 }}
               >
@@ -1609,72 +1771,223 @@ export function AppShell() {
 
             <div className="mpx-large-panel-shell settings-panel-shell">
               <aside className="mpx-large-panel-side settings-panel-side">
-                <button className="mpx-btn is-active" type="button" aria-pressed="true">
+                <button
+                  className={`mpx-btn ${settingsPage === 'ui' ? 'is-active' : ''}`}
+                  type="button"
+                  aria-pressed={settingsPage === 'ui'}
+                  onClick={() => setSettingsPage('ui')}
+                >
                   界面设置
+                </button>
+                <button
+                  className={`mpx-btn ${settingsPage === 'database' ? 'is-active' : ''}`}
+                  type="button"
+                  aria-pressed={settingsPage === 'database'}
+                  onClick={() => setSettingsPage('database')}
+                >
+                  数据库管理
                 </button>
               </aside>
 
               <section className="mpx-large-panel-main settings-panel-main">
-                <div className="settings-page-block">
-                  <div className="panel-heading settings-page-heading">
-                    <div>
-                      <span className="section-kicker">Interface</span>
-                      <h2>界面设置</h2>
+                {settingsPage === 'ui' ? (
+                  <div className="settings-page-block">
+                    <div className="panel-heading settings-page-heading">
+                      <div>
+                        <span className="section-kicker">Interface</span>
+                        <h2>界面设置</h2>
+                      </div>
                     </div>
-                  </div>
 
-                  <UiSettingsRangeField
-                    label="面板背景遮罩透明度"
-                    valueLabel={`${Math.round(settingsBackdropOpacity)}%`}
-                    hint="数值越高背景越暗，用于控制设置类大面板出现时的遮罩深度。"
-                    min={0}
-                    max={100}
-                    step={1}
-                    value={settingsBackdropOpacity}
-                    onChange={setSettingsBackdropOpacity}
-                  />
-                  <UiSettingsRangeField
-                    label="容器外边界系数"
-                    valueLabel={`${layoutGapScaleCoeff.toFixed(2)}x / ${layoutPreview.layoutGapPx}px`}
-                    hint="基准为窗口宽度的 1%，当前只驱动外留白与 Header 间距。"
-                    min={0}
-                    max={3}
-                    step={0.1}
-                    value={layoutGapScaleCoeff}
-                    onChange={setLayoutGapScaleCoeff}
-                  />
-                  <UiSettingsRangeField
-                    label="容器内边距系数"
-                    valueLabel={`${paneInnerGapScaleCoeff.toFixed(2)}x / ${layoutPreview.paneInnerPaddingPx}px`}
-                    hint="基准同样为窗口宽度的 1%，当前用于控制容器内部 padding。"
-                    min={0}
-                    max={2}
-                    step={0.1}
-                    value={paneInnerGapScaleCoeff}
-                    onChange={setPaneInnerGapScaleCoeff}
-                  />
-                  <UiSettingsRangeField
-                    label="容器内上中下间距系数"
-                    valueLabel={`${paneStackGapScaleCoeff.toFixed(2)}x / ${layoutPreview.paneStackGapPx}px`}
-                    hint="按容器内边距的 75% 计算，仅用于控制 Sidebar、Main、Metadata 三列中 header、main、footer 之间的纵向间距。"
-                    min={0}
-                    max={2}
-                    step={0.1}
-                    value={paneStackGapScaleCoeff}
-                    onChange={setPaneStackGapScaleCoeff}
-                  />
-                  <UiSettingsRangeField
-                    label="分割条宽度系数"
-                    valueLabel={`${splitterWidthScaleCoeff.toFixed(2)}x / ${layoutPreview.splitterWidthPx}px`}
-                    hint="仅控制 Sidebar/Main/Metadata 之间的分隔宽度，不影响 Header 与工作区的间距。"
-                    min={0.5}
-                    max={2}
-                    step={0.1}
-                    value={splitterWidthScaleCoeff}
-                    onChange={setSplitterWidthScaleCoeff}
-                  />
-                </div>
+                    <UiSettingsRangeField
+                      label="面板背景遮罩透明度"
+                      valueLabel={`${Math.round(settingsBackdropOpacity)}%`}
+                      hint="数值越高背景越暗，用于控制设置类大面板出现时的遮罩深度。"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={settingsBackdropOpacity}
+                      onChange={setSettingsBackdropOpacity}
+                    />
+                    <UiSettingsRangeField
+                      label="容器外边界系数"
+                      valueLabel={`${layoutGapScaleCoeff.toFixed(2)}x / ${layoutPreview.layoutGapPx}px`}
+                      hint="基准为窗口宽度的 1%，当前只驱动外留白与 Header 间距。"
+                      min={0}
+                      max={3}
+                      step={0.1}
+                      value={layoutGapScaleCoeff}
+                      onChange={setLayoutGapScaleCoeff}
+                    />
+                    <UiSettingsRangeField
+                      label="容器内边距系数"
+                      valueLabel={`${paneInnerGapScaleCoeff.toFixed(2)}x / ${layoutPreview.paneInnerPaddingPx}px`}
+                      hint="基准同样为窗口宽度的 1%，当前用于控制容器内部 padding。"
+                      min={0}
+                      max={2}
+                      step={0.1}
+                      value={paneInnerGapScaleCoeff}
+                      onChange={setPaneInnerGapScaleCoeff}
+                    />
+                    <UiSettingsRangeField
+                      label="容器内上中下间距系数"
+                      valueLabel={`${paneStackGapScaleCoeff.toFixed(2)}x / ${layoutPreview.paneStackGapPx}px`}
+                      hint="按容器内边距的 75% 计算，仅用于控制 Sidebar、Main、Metadata 三列中 header、main、footer 之间的纵向间距。"
+                      min={0}
+                      max={2}
+                      step={0.1}
+                      value={paneStackGapScaleCoeff}
+                      onChange={setPaneStackGapScaleCoeff}
+                    />
+                    <UiSettingsRangeField
+                      label="分割条宽度系数"
+                      valueLabel={`${splitterWidthScaleCoeff.toFixed(2)}x / ${layoutPreview.splitterWidthPx}px`}
+                      hint="仅控制 Sidebar/Main/Metadata 之间的分隔宽度，不影响 Header 与工作区的间距。"
+                      min={0.5}
+                      max={2}
+                      step={0.1}
+                      value={splitterWidthScaleCoeff}
+                      onChange={setSplitterWidthScaleCoeff}
+                    />
+                  </div>
+                ) : (
+                  <div className="settings-page-block">
+                    <div className="panel-heading settings-page-heading">
+                      <div>
+                        <span className="section-kicker">Database</span>
+                        <h2>数据库管理</h2>
+                      </div>
+                    </div>
+
+                    <p className="settings-page-caption">
+                      当前首轮只接 3 个动作：清除数据库、选择 SQL 目录、选择缩略图目录。清除后会恢复到首次打开 App 的初始化状态。
+                    </p>
+
+                    {runtimeInfoError === null ? null : <div className="error-text">{runtimeInfoError}</div>}
+                    {databaseActionError === null ? null : <div className="error-text">{databaseActionError}</div>}
+
+                    {databaseActionMessage === null ? null : (
+                      <div className="result-card">
+                        <span className="result-label">数据库动作</span>
+                        <strong>{databasePendingLabel ?? '已完成'}</strong>
+                        <p>{databaseActionMessage}</p>
+                      </div>
+                    )}
+
+                    <article className="settings-manage-card">
+                      <div className="settings-manage-heading">
+                        <span className="workspace-label">Reset</span>
+                        <h3>清除数据库</h3>
+                      </div>
+                      <p className="settings-page-caption">
+                        会清掉当前 SQL、缩略图缓存、normalize 缓存、playback sessions 和运行时存储路径配置，然后自动重新加载应用。
+                      </p>
+                      <div className="settings-action-row">
+                        <button
+                          className="mpx-btn is-danger"
+                          type="button"
+                          onClick={handleRequestClearDatabase}
+                          disabled={databaseActionBusy !== null}
+                        >
+                          {databaseActionBusy === 'clearDatabase' ? '清除中...' : '清除数据库'}
+                        </button>
+                        <span className="settings-inline-note">成功后会自动 reload。</span>
+                      </div>
+                    </article>
+
+                    <article className="settings-manage-card">
+                      <div className="settings-manage-heading">
+                        <span className="workspace-label">SQL</span>
+                        <h3>SQL 目录</h3>
+                      </div>
+                      <div className="settings-path-output">{runtimeInfoDatabasePath}</div>
+                      <div className="settings-action-row">
+                        <button
+                          className="mpx-btn"
+                          type="button"
+                          onClick={() => void handlePickDatabaseDirectory()}
+                          disabled={databaseActionBusy !== null}
+                        >
+                          {databaseActionBusy === 'pickDatabaseDir' ? '保存中...' : '选择 SQL 目录'}
+                        </button>
+                        <span className="settings-inline-note">选择的是目录；旧 DB 会迁移 `db / -wal / -shm`。</span>
+                      </div>
+                    </article>
+
+                    <article className="settings-manage-card">
+                      <div className="settings-manage-heading">
+                        <span className="workspace-label">Thumbnail</span>
+                        <h3>缩略图目录</h3>
+                      </div>
+                      <div className="settings-path-output">{runtimeInfoThumbnailCachePath}</div>
+                      <div className="settings-action-row">
+                        <button
+                          className="mpx-btn"
+                          type="button"
+                          onClick={() => void handlePickThumbnailDirectory()}
+                          disabled={databaseActionBusy !== null}
+                        >
+                          {databaseActionBusy === 'pickThumbnailDir' ? '保存中...' : '选择缩略图目录'}
+                        </button>
+                        <span className="settings-inline-note">只切换目录并确保存在，首轮不迁移旧缓存。</span>
+                      </div>
+                    </article>
+                  </div>
+                )}
               </section>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {clearDatabaseDialogOpen ? (
+        <div
+          className="settings-subdialog-overlay"
+          onClick={handleCloseClearDatabaseDialog}
+          role="presentation"
+        >
+          <section
+            className="mpx-dialog-panel settings-confirm-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="clear-database-dialog-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="settings-confirm-heading">
+              <span className="workspace-label">Reset Confirmation</span>
+              <h3 id="clear-database-dialog-title">确认清除数据库</h3>
+            </div>
+
+            <p className="settings-page-caption">
+              这会把应用恢复到首次打开状态，不保留任何用户数据或运行时状态。只有点击下方“确认清除”后，才会真正执行清理。
+            </p>
+
+            <div className="settings-confirm-copy">
+              <span>将清理：</span>
+              <span>当前 SQL 文件与 `-wal / -shm`</span>
+              <span>缩略图缓存、normalize 缓存、playback sessions</span>
+              <span>runtime storage 配置文件</span>
+            </div>
+
+            {databaseActionError === null ? null : <div className="error-text">{databaseActionError}</div>}
+
+            <div className="settings-confirm-actions">
+              <button
+                className="mpx-btn"
+                type="button"
+                onClick={handleCloseClearDatabaseDialog}
+                disabled={databaseActionBusy === 'clearDatabase'}
+              >
+                取消
+              </button>
+              <button
+                className="mpx-btn is-danger"
+                type="button"
+                onClick={() => void handleConfirmClearDatabase()}
+                disabled={databaseActionBusy === 'clearDatabase'}
+              >
+                {databaseActionBusy === 'clearDatabase' ? '清除中...' : '确认清除'}
+              </button>
             </div>
           </section>
         </div>

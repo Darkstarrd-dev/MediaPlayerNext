@@ -98,12 +98,12 @@
 
 | Phase | 目标 | 状态 |
 |---|---|---|
-| `Phase 0` | 语义冻结与文件落点准备 | `pending` |
-| `Phase 1` | contracts / repository / adapter 扩展 | `pending` |
-| `Phase 2` | Rust runtime info 与 storage path 更新链路 | `pending` |
-| `Phase 3` | Rust 清除数据库与“初始化状态”恢复 | `pending` |
-| `Phase 4` | 设置面板新增数据库管理分页并接 3 个动作 | `pending` |
-| `Phase 5` | 验证、日志、文档回填 | `pending` |
+| `Phase 0` | 语义冻结与文件落点准备 | `done` |
+| `Phase 1` | contracts / repository / adapter 扩展 | `done` |
+| `Phase 2` | Rust runtime info 与 storage path 更新链路 | `done` |
+| `Phase 3` | Rust 清除数据库与“初始化状态”恢复 | `done` |
+| `Phase 4` | 设置面板新增数据库管理分页并接 3 个动作 | `done` |
+| `Phase 5` | 验证、日志、文档回填 | `done（CLI 验证）` |
 
 ---
 
@@ -138,9 +138,9 @@
 
 ### 6.4 phase 完成后状态 check
 
-- [ ] `清除数据库` 的语义已经固定成“初始化状态”
-- [ ] 运行时存储路径配置文件位置已固定
-- [ ] docs 索引可找到本计划文档
+- [x] `清除数据库` 的语义已经固定成“初始化状态”
+- [x] 运行时存储路径配置文件位置已固定
+- [x] docs 索引可找到本计划文档
 
 ---
 
@@ -190,10 +190,10 @@ database: {
 
 ### 7.4 phase 完成后状态 check
 
-- [ ] contracts 已有数据库管理最小 DTO
-- [ ] adapter 已能调用 3 个数据库管理 command
-- [ ] `MediaRepository` 已暴露 `database.*`
-- [ ] 组件层不需要直接 `invoke`
+- [x] contracts 已有数据库管理最小 DTO
+- [x] adapter 已能调用 3 个数据库管理 command
+- [x] `MediaRepository` 已暴露 `database.*`
+- [x] 组件层不需要直接 `invoke`
 
 ---
 
@@ -263,11 +263,11 @@ SQL 目录切换时要处理：
 
 ### 8.4 phase 完成后状态 check
 
-- [ ] 宿主可返回当前 SQL 路径与缩略图路径
-- [ ] 宿主可持久化设置 `database_dir`
-- [ ] 宿主可持久化设置 `thumbnail_cache_dir`
-- [ ] 切换 SQL 目录时已处理 `db / -wal / -shm` 迁移
-- [ ] 路径解析顺序已切到 `env -> config -> default`
+- [x] 宿主可返回当前 SQL 路径与缩略图路径
+- [x] 宿主可持久化设置 `database_dir`
+- [x] 宿主可持久化设置 `thumbnail_cache_dir`
+- [x] 切换 SQL 目录时已处理 `db / -wal / -shm` 迁移
+- [x] 路径解析顺序已切到 `env -> config -> default`
 
 ---
 
@@ -308,10 +308,10 @@ SQL 目录切换时要处理：
 
 ### 9.4 phase 完成后状态 check
 
-- [ ] `clear_database_command` 已可调用
-- [ ] SQL 文件与缓存目录已全部清掉
-- [ ] runtime storage config 已删除
-- [ ] reload 后应用回到初始化状态
+- [x] `clear_database_command` 已可调用
+- [x] SQL 文件与缓存目录已全部清掉
+- [x] runtime storage config 已删除
+- [x] reload 后应用回到初始化状态
 
 ---
 
@@ -364,11 +364,11 @@ UI 首轮建议结构：
 
 ### 10.4 phase 完成后状态 check
 
-- [ ] 设置面板已存在 `数据库管理` 分页
-- [ ] SQL 路径可显示、可修改
-- [ ] 缩略图目录可显示、可修改
-- [ ] 清除数据库按钮已接通并带确认
-- [ ] 成功清除后会 reload
+- [x] 设置面板已存在 `数据库管理` 分页
+- [x] SQL 路径可显示、可修改
+- [x] 缩略图目录可显示、可修改
+- [x] 清除数据库按钮已接通并带确认
+- [x] 成功清除后会 reload
 
 ---
 
@@ -402,10 +402,15 @@ UI 首轮建议结构：
 
 ### 11.4 phase 完成后状态 check
 
-- [ ] 构建通过
-- [ ] runtime check 通过
+- [x] 构建通过
+- [x] runtime check 通过
 - [ ] 3 个动作已手动验证
-- [ ] 文档与日志已同步
+- [x] 文档与日志已同步
+
+补充说明：
+
+- 当前已在 CLI 环境完成 `npm run build:web`、`npm run check`、Rust 单元测试与 Tauri 启动尝试
+- `npm run tauri:dev` 本轮被现有 `1420` 端口占用阻塞，未在交互界面内完成最终手动点验
 
 ---
 
@@ -430,14 +435,16 @@ UI 首轮建议结构：
 ### 13.1 总状态
 
 - `Phase 0`：`done`
-- `Phase 1`：`pending`
-- `Phase 2`：`pending`
-- `Phase 3`：`pending`
-- `Phase 4`：`pending`
-- `Phase 5`：`pending`
+- `Phase 1`：`done`
+- `Phase 2`：`done`
+- `Phase 3`：`done`
+- `Phase 4`：`done`
+- `Phase 5`：`done（CLI 验证）`
 
 ### 13.2 当前下一步
 
-下一步直接进入：
+当前批次代码、文档与 CLI 验证已经完成。
 
-- `Phase 1`：先补 `database.*` 的 contracts / repository / adapter 能力面
+仍待进入交互环境补的最后一项是：
+
+- 打开 `设置 -> 数据库管理`，手动点验 `选择 SQL 目录 / 选择缩略图目录 / 清除数据库` 三个 UI 动作

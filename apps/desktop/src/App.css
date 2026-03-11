@@ -374,8 +374,103 @@
   margin-bottom: 4px;
 }
 
+.settings-page-caption {
+  margin: 0;
+  color: var(--mpx-text-2);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.settings-subdialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 52;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: color-mix(in srgb, var(--mpx-bg-tooltip) 20%, transparent);
+}
+
+.settings-confirm-panel {
+  width: min(440px, 92vw);
+}
+
+.settings-confirm-heading {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-confirm-heading h3 {
+  margin: 0;
+}
+
+.settings-confirm-copy {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid rgba(119, 99, 71, 0.16);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--mpx-text-2);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.settings-confirm-actions {
+  display: flex;
+  justify-content: end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .settings-close-btn {
   justify-self: end;
+}
+
+.settings-manage-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid rgba(119, 99, 71, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 251, 245, 0.82);
+}
+
+.settings-manage-heading {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-manage-heading h3 {
+  margin: 0;
+  color: var(--mpx-text-1);
+  font-size: 20px;
+}
+
+.settings-path-output {
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1px dashed rgba(119, 99, 71, 0.24);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.56);
+  color: var(--mpx-text-1);
+  font-size: 13px;
+  line-height: 1.7;
+  word-break: break-all;
+}
+
+.settings-action-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.settings-inline-note {
+  color: var(--mpx-text-3);
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .settings-slider-field {

@@ -9,8 +9,10 @@ import type {
   LibraryDetail,
   LibrarySummary,
   PlaybackSession,
+  RuntimeInfo,
   ScanRunResult,
   ScanStats,
+  SetRuntimeStoragePathsInput,
   SubtitleHost,
   SubtitleProgress,
   SubtitleSession,
@@ -27,6 +29,11 @@ import type {
 export interface MediaRepository {
   diagnostics: {
     checkRuntimeHealth(input: RuntimeSmokeCheckInput): Promise<RuntimeSmokeCheckResult>
+  }
+  database: {
+    readRuntimeInfo(): Promise<RuntimeInfo>
+    setStoragePaths(input: SetRuntimeStoragePathsInput): Promise<RuntimeInfo>
+    clear(): Promise<void>
   }
   library: {
     list(): Promise<LibrarySummary[]>
@@ -95,6 +102,11 @@ export const i1DomainStatuses: readonly RepositoryDomainStatus[] = [
     note: 'runtime_smoke_check 已能通过 repository 调用',
   },
   {
+    domain: 'database',
+    status: 'ready',
+    note: 'readRuntimeInfo/setStoragePaths/clear 已通过 repository 接入 Tauri command',
+  },
+  {
     domain: 'subtitle',
     status: 'ready',
     note: 'subtitle ping/health/session/progress 已接进 repository',
@@ -132,6 +144,13 @@ export const i1DomainStatuses: readonly RepositoryDomainStatus[] = [
 ] as const
 
 export const i1PageDependencies: readonly PageDependencyRow[] = [
+  {
+    page: 'SettingsDatabasePage',
+    interaction: '读取运行时存储路径并执行 SQL/缩略图目录切换与数据库清除',
+    repositoryMethods: ['database.readRuntimeInfo', 'database.setStoragePaths', 'database.clear'],
+    transport: ['command'],
+    status: 'ready',
+  },
   {
     page: 'LibraryPicker',
     interaction: '列出现有媒体库并创建/删除入口',
