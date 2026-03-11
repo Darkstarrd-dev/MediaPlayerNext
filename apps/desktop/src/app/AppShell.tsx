@@ -1,11 +1,13 @@
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import { useEffect, useMemo, useState } from 'react'
+import { ImportTaskPanel } from './ImportTaskPanel'
 import { SettingsIcon } from './SettingsIcon'
 
 const DEFAULT_VIEWPORT_WIDTH = 1280
 const DEFAULT_SETTINGS_BACKDROP_OPACITY = 18
 const DEFAULT_LAYOUT_GAP_SCALE_COEFF = 1
 const DEFAULT_PANE_INNER_GAP_SCALE_COEFF = 1
+const DEFAULT_PANE_STACK_GAP_SCALE_COEFF = 1
 const DEFAULT_SPLITTER_WIDTH_SCALE_COEFF = 1
 const DEFAULT_SIDEBAR_WIDTH_PX = 300
 const DEFAULT_META_WIDTH_PX = 340
@@ -14,6 +16,7 @@ const SETTINGS_STORAGE_KEYS = {
   settingsBackdropOpacity: 'mpnext.ui.settingsBackdropOpacity',
   layoutGapScaleCoeff: 'mpnext.ui.layoutGapScaleCoeff',
   paneInnerGapScaleCoeff: 'mpnext.ui.paneInnerGapScaleCoeff',
+  paneStackGapScaleCoeff: 'mpnext.ui.paneStackGapScaleCoeff',
   splitterWidthScaleCoeff: 'mpnext.ui.splitterWidthScaleCoeff',
   sidebarWidthPx: 'mpnext.ui.sidebarWidthPx',
   metaWidthPx: 'mpnext.ui.metaWidthPx',
@@ -94,6 +97,7 @@ function resolveWorkspaceWidths(
 }
 
 export function AppShell() {
+  const [importTaskPanelOpen, setImportTaskPanelOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [viewportWidth, setViewportWidth] = useState(DEFAULT_VIEWPORT_WIDTH)
   const [settingsBackdropOpacity, setSettingsBackdropOpacity] = useState(() =>
@@ -116,6 +120,14 @@ export function AppShell() {
     readSessionNumber(
       SETTINGS_STORAGE_KEYS.paneInnerGapScaleCoeff,
       DEFAULT_PANE_INNER_GAP_SCALE_COEFF,
+      0,
+      2,
+    ),
+  )
+  const [paneStackGapScaleCoeff, setPaneStackGapScaleCoeff] = useState(() =>
+    readSessionNumber(
+      SETTINGS_STORAGE_KEYS.paneStackGapScaleCoeff,
+      DEFAULT_PANE_STACK_GAP_SCALE_COEFF,
       0,
       2,
     ),
@@ -144,20 +156,31 @@ export function AppShell() {
   const layoutPreview = useMemo(() => {
     const normalizedLayoutGapScaleCoeff = clampNumber(layoutGapScaleCoeff, 0, 3)
     const normalizedPaneInnerGapScaleCoeff = clampNumber(paneInnerGapScaleCoeff, 0, 2)
+    const normalizedPaneStackGapScaleCoeff = clampNumber(paneStackGapScaleCoeff, 0, 2)
     const normalizedSplitterWidthScaleCoeff = clampNumber(splitterWidthScaleCoeff, 0.5, 2)
     const layoutGapPx = resolveSpacingPx(viewportWidth, normalizedLayoutGapScaleCoeff)
     const paneInnerPaddingPx = resolveSpacingPx(viewportWidth, normalizedPaneInnerGapScaleCoeff)
+    const paneStackGapPx = Math.max(
+      0,
+      Math.round(paneInnerPaddingPx * 0.75 * normalizedPaneStackGapScaleCoeff),
+    )
     const splitterWidthPx = Math.max(0, Math.round(layoutGapPx * normalizedSplitterWidthScaleCoeff))
+    const paneHeaderHeightPx = Math.max(68, Math.round(paneInnerPaddingPx * 3.2))
+    const paneFooterHeightPx = Math.max(48, Math.round(paneInnerPaddingPx * 2.2))
 
     return {
       layoutGapPx,
       paneInnerPaddingPx,
+      paneStackGapPx,
+      paneHeaderHeightPx,
+      paneFooterHeightPx,
       splitterWidthPx,
       normalizedLayoutGapScaleCoeff,
       normalizedPaneInnerGapScaleCoeff,
+      normalizedPaneStackGapScaleCoeff,
       normalizedSplitterWidthScaleCoeff,
     }
-  }, [layoutGapScaleCoeff, paneInnerGapScaleCoeff, splitterWidthScaleCoeff, viewportWidth])
+  }, [layoutGapScaleCoeff, paneInnerGapScaleCoeff, paneStackGapScaleCoeff, splitterWidthScaleCoeff, viewportWidth])
 
   const workspaceLayout = useMemo(
     () =>
@@ -220,6 +243,14 @@ export function AppShell() {
     )
     root.style.setProperty('--mpx-pane-inner-padding-px', `${layoutPreview.paneInnerPaddingPx}px`)
     root.style.setProperty(
+      '--mpx-pane-stack-gap-scale',
+      layoutPreview.normalizedPaneStackGapScaleCoeff.toFixed(2),
+    )
+    root.style.setProperty('--mpx-pane-stack-gap-px', `${layoutPreview.paneStackGapPx}px`)
+    root.style.setProperty('--mpx-pane-section-gap-px', `${layoutPreview.paneStackGapPx}px`)
+    root.style.setProperty('--mpx-pane-header-height-px', `${layoutPreview.paneHeaderHeightPx}px`)
+    root.style.setProperty('--mpx-pane-footer-height-px', `${layoutPreview.paneFooterHeightPx}px`)
+    root.style.setProperty(
       '--mpx-splitter-width-scale',
       layoutPreview.normalizedSplitterWidthScaleCoeff.toFixed(2),
     )
@@ -244,6 +275,10 @@ export function AppShell() {
       paneInnerGapScaleCoeff.toString(),
     )
     window.sessionStorage.setItem(
+      SETTINGS_STORAGE_KEYS.paneStackGapScaleCoeff,
+      paneStackGapScaleCoeff.toString(),
+    )
+    window.sessionStorage.setItem(
       SETTINGS_STORAGE_KEYS.splitterWidthScaleCoeff,
       splitterWidthScaleCoeff.toString(),
     )
@@ -255,6 +290,7 @@ export function AppShell() {
   }, [
     layoutGapScaleCoeff,
     paneInnerGapScaleCoeff,
+    paneStackGapScaleCoeff,
     settingsBackdropOpacity,
     splitterWidthScaleCoeff,
     workspaceLayout.metaWidthPx,
@@ -262,13 +298,18 @@ export function AppShell() {
   ])
 
   useEffect(() => {
-    if (!settingsOpen) {
+    if (!settingsOpen && !importTaskPanelOpen) {
       return
     }
 
     const handleEscape = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {
-        setSettingsOpen(false)
+        if (settingsOpen) {
+          setSettingsOpen(false)
+          return
+        }
+
+        setImportTaskPanelOpen(false)
       }
     }
 
@@ -277,7 +318,7 @@ export function AppShell() {
     return () => {
       window.removeEventListener('keydown', handleEscape)
     }
-  }, [settingsOpen])
+  }, [importTaskPanelOpen, settingsOpen])
 
   useEffect(() => {
     if (!dragState) {
@@ -327,48 +368,92 @@ export function AppShell() {
     }
   }
 
+  const logoButtonState = importTaskPanelOpen
+    ? 'fg-header-logo-state-open'
+    : 'fg-header-logo-state-idle'
+
   return (
     <main className="app-shell" data-slot="bg-app-root">
       <div className="app-background-layer" aria-hidden="true" />
 
       <div className="app-chrome">
-        <header className="app-frame app-header-root" data-slot="fg-header-root">
-          <div className="header-bar">
-            <button
-              className="mpx-btn header-settings-trigger"
-              type="button"
-              aria-haspopup="dialog"
-              aria-expanded={settingsOpen}
-              onClick={() => setSettingsOpen(true)}
-            >
-              <SettingsIcon className="settings-trigger-icon" />
-              <span className="settings-trigger-label">设置</span>
-            </button>
+        <header className="app-frame app-header app-header-root" data-slot="fg-header-root">
+          <div className="app-header-frame">
+            <div className="header-left">
+              <button
+                className="mpx-btn header-logo-btn"
+                type="button"
+                aria-haspopup="dialog"
+                aria-expanded={importTaskPanelOpen}
+                aria-controls="import-task-panel"
+                data-slot="fg-header-logo"
+                data-slot-state={logoButtonState}
+                onClick={() => {
+                  setSettingsOpen(false)
+                  setImportTaskPanelOpen((open) => !open)
+                }}
+              >
+                <span className="header-logo-mark" aria-hidden="true">
+                  M
+                </span>
+                <span className="header-logo-label">MediaPlayerNext</span>
+              </button>
+            </div>
+
+            <div className="header-right">
+              <button
+                className="mpx-btn header-settings-trigger"
+                type="button"
+                aria-haspopup="dialog"
+                aria-expanded={settingsOpen}
+                onClick={() => {
+                  setImportTaskPanelOpen(false)
+                  setSettingsOpen(true)
+                }}
+              >
+                <SettingsIcon className="settings-trigger-icon" />
+                <span className="settings-trigger-label">设置</span>
+              </button>
+            </div>
           </div>
         </header>
 
         <div className="app-workspace" style={workspaceStyle}>
           <aside className="app-frame app-sidebar-root" data-slot="fg-sidebar-root">
-            <section className="workspace-panel">
-              <div className="panel-heading">
-                <div>
-                  <span className="section-kicker">Navigation</span>
-                  <h2>Sidebar</h2>
+            <section className="workspace-pane sidebar-frame">
+              <header className="workspace-pane-header sidebar-header" data-slot="fg-sidebar-header">
+                <button className="mpx-btn sidebar-title-btn" type="button" aria-pressed="true">
+                  Sidebar
+                </button>
+
+                <div className="workspace-pane-actions sidebar-header-actions">
+                  <button className="mpx-btn pane-action-btn" type="button" disabled>
+                    媒体库
+                  </button>
+                  <button className="mpx-btn pane-action-btn" type="button" disabled>
+                    扫描
+                  </button>
+                </div>
+              </header>
+
+              <div className="workspace-pane-main sidebar-main-shell" data-slot="fg-sidebar-main">
+                <div className="workspace-stack sidebar-tree">
+                  <article className="workspace-card">
+                    <span className="workspace-label">媒体库</span>
+                    <strong>等待接入</strong>
+                    <p>后续在这里承接媒体库选择、创建与切换。</p>
+                  </article>
+                  <article className="workspace-card">
+                    <span className="workspace-label">扫描</span>
+                    <strong>等待接入</strong>
+                    <p>后续在这里承接扫描启动、恢复与状态摘要。</p>
+                  </article>
                 </div>
               </div>
 
-              <div className="workspace-stack">
-                <article className="workspace-card">
-                  <span className="workspace-label">媒体库</span>
-                  <strong>等待接入</strong>
-                  <p>后续在这里承接媒体库选择、创建与切换。</p>
-                </article>
-                <article className="workspace-card">
-                  <span className="workspace-label">扫描</span>
-                  <strong>等待接入</strong>
-                  <p>后续在这里承接扫描启动、恢复与状态摘要。</p>
-                </article>
-              </div>
+              <footer className="workspace-pane-footer sidebar-footer" data-slot="fg-sidebar-footer">
+                <span>Footer 预留，后续接入侧栏底部动作与状态。</span>
+              </footer>
             </section>
           </aside>
 
@@ -381,34 +466,62 @@ export function AppShell() {
           />
 
           <section className="app-frame app-main-root" data-slot="fg-main-root">
-            <section className="workspace-panel workspace-panel-main">
-              <div className="panel-heading">
-                <div>
+            <section className="workspace-pane main-pane-frame">
+              <header className="workspace-pane-header main-header" data-slot="fg-main-header">
+                <div className="pane-title-stack main-header-title">
                   <span className="section-kicker">Workspace</span>
                   <h2>Main</h2>
                 </div>
+
+                <div className="workspace-pane-actions main-header-actions">
+                  <button className="mpx-btn pane-action-btn" type="button" disabled>
+                    Items
+                  </button>
+                  <button className="mpx-btn pane-action-btn" type="button" disabled>
+                    Archive
+                  </button>
+                </div>
+              </header>
+
+              <div className="workspace-pane-main main-pane-main" data-slot="fg-main-main">
+                <div className="workspace-stage">
+                  <span className="workspace-label">主工作区</span>
+                  <strong>内容区待接入</strong>
+                  <p>后续这里承接条目列表、归档浏览、搜索结果与主操作流程。</p>
+                </div>
+
+                <div className="workspace-stage-grid">
+                  <article className="workspace-card compact">
+                    <span className="workspace-label">列表</span>
+                    <strong>Items</strong>
+                  </article>
+                  <article className="workspace-card compact">
+                    <span className="workspace-label">归档</span>
+                    <strong>Archive</strong>
+                  </article>
+                  <article className="workspace-card compact">
+                    <span className="workspace-label">协议</span>
+                    <strong>Protocol</strong>
+                  </article>
+                </div>
               </div>
 
-              <div className="workspace-stage">
-                <span className="workspace-label">主工作区</span>
-                <strong>内容区待接入</strong>
-                <p>后续这里承接条目列表、归档浏览、搜索结果与主操作流程。</p>
-              </div>
+              <footer className="workspace-pane-footer main-footer" data-slot="fg-main-footer">
+                <div className="main-footer-meta" data-slot="fg-main-footer-meta">
+                  <span>主工作区壳层已固定</span>
+                  <span>Items / Archive / Protocol 待接入真实链路</span>
+                </div>
 
-              <div className="workspace-stage-grid">
-                <article className="workspace-card compact">
-                  <span className="workspace-label">列表</span>
-                  <strong>Items</strong>
-                </article>
-                <article className="workspace-card compact">
-                  <span className="workspace-label">归档</span>
-                  <strong>Archive</strong>
-                </article>
-                <article className="workspace-card compact">
-                  <span className="workspace-label">协议</span>
-                  <strong>Protocol</strong>
-                </article>
-              </div>
+                <div className="main-footer-pagination" data-slot="fg-main-footer-pagination">
+                  <button className="mpx-btn pane-pagination-btn" type="button" disabled>
+                    Prev
+                  </button>
+                  <span>0 / 0</span>
+                  <button className="mpx-btn pane-pagination-btn" type="button" disabled>
+                    Next
+                  </button>
+                </div>
+              </footer>
             </section>
           </section>
 
@@ -421,23 +534,39 @@ export function AppShell() {
           />
 
           <aside className="app-frame app-meta-root" data-slot="fg-meta-root">
-            <section className="workspace-panel">
-              <div className="panel-heading">
-                <div>
+            <section className="workspace-pane metadata-frame">
+              <header className="workspace-pane-header metadata-header" data-slot="fg-meta-header">
+                <div className="pane-title-stack metadata-header-title">
                   <span className="section-kicker">Details</span>
                   <h2>Metadata</h2>
                 </div>
+
+                <div className="workspace-pane-actions metadata-header-g3">
+                  <button className="mpx-btn pane-action-btn" type="button" disabled>
+                    摘要
+                  </button>
+                </div>
+              </header>
+
+              <div className="workspace-pane-main metadata-main" data-slot="fg-meta-main">
+                <div className="workspace-stage compact">
+                  <span className="workspace-label">详情区</span>
+                  <strong>等待接入</strong>
+                  <p>后续这里用于展示选中项详情、元数据和辅助状态信息。</p>
+                </div>
               </div>
 
-              <div className="workspace-stage compact">
-                <span className="workspace-label">详情区</span>
-                <strong>等待接入</strong>
-                <p>后续这里用于展示选中项详情、元数据和辅助状态信息。</p>
-              </div>
+              <footer className="workspace-pane-footer metadata-footer" data-slot="fg-meta-footer">
+                <div className="metadata-image-caption" data-slot="fg-meta-footer-caption">
+                  Caption / 摘要预留，后续根据选中项显示真实内容。
+                </div>
+              </footer>
             </section>
           </aside>
         </div>
       </div>
+
+      <ImportTaskPanel open={importTaskPanelOpen} onClose={() => setImportTaskPanelOpen(false)} />
 
       {settingsOpen ? (
         <div className="settings-mask" onClick={() => setSettingsOpen(false)}>
@@ -501,6 +630,16 @@ export function AppShell() {
                     step={0.1}
                     value={paneInnerGapScaleCoeff}
                     onChange={setPaneInnerGapScaleCoeff}
+                  />
+                  <UiSettingsRangeField
+                    label="容器内上中下间距系数"
+                    valueLabel={`${paneStackGapScaleCoeff.toFixed(2)}x / ${layoutPreview.paneStackGapPx}px`}
+                    hint="按容器内边距的 75% 计算，仅用于控制 Sidebar、Main、Metadata 三列中 header、main、footer 之间的纵向间距。"
+                    min={0}
+                    max={2}
+                    step={0.1}
+                    value={paneStackGapScaleCoeff}
+                    onChange={setPaneStackGapScaleCoeff}
                   />
                   <UiSettingsRangeField
                     label="分割条宽度系数"

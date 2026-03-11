@@ -63,7 +63,6 @@
 ### 4.2 本批不做内容
 
 - 不接入真实面板业务内容
-- 不展开 `2.1/2.2/2.3/2.4` 单容器细化样式
 - 不做复杂视觉细节和主题等价复刻
 - 不引入页面级交互打磨
 
@@ -81,7 +80,8 @@
 
 - `bg.app.root` 负责最外层背景
 - 其余四项负责主页面的四大前景容器
-- 当前阶段不继续扩展更细 slot
+- `Header` 已继续细化为 Logo 入口与设置入口所在的稳定根容器
+- `Sidebar / Main / Metadata` 当前已建立各自的 `header / main / footer` 三段结构与对应 slot
 
 ## 6. 当前变量合同
 
@@ -109,12 +109,22 @@
 
 ### 6.3 容器派生层预留
 
-当前先预留，不强制全部落地：
+当前已开始首轮落地：
 
 - `--mpx-header-*`
 - `--mpx-sidebar-*`
 - `--mpx-main-*`
 - `--mpx-metadata-*`
+
+当前已落的运行时布局变量补充：
+
+- `--mpx-pane-inner-gap-scale`
+- `--mpx-pane-inner-padding-px`
+- `--mpx-pane-stack-gap-scale`
+- `--mpx-pane-stack-gap-px`
+- `--mpx-pane-section-gap-px`
+- `--mpx-pane-header-height-px`
+- `--mpx-pane-footer-height-px`
 
 ## 7. 通用组件定义编号
 
@@ -361,6 +371,21 @@ slot/局部覆写
   - 中部 `Main`
   - 右侧 `Metadata`
 
+当前主界面固定为：
+
+```text
+Header
+Sidebar | Main | Metadata
+```
+
+补充约束：
+
+- `Header` 当前已包含 `Logo` 按钮与设置按钮
+- `Logo` 按钮打开的是独立的大面板 overlay，不回退为说明型入口
+- `Sidebar / Main / Metadata` 三列当前都固定采用 `header / main / footer` 三段结构
+- 三列中的 `main` 是主要伸缩区
+- 三列中的 `header / footer` 以固定高度和统一基线保持对齐
+
 ### 12.2 实施顺序
 
 1. 先建立 DOM 骨架
@@ -368,6 +393,14 @@ slot/局部覆写
 3. 再接共享壳层变量
 4. 再接布局参数与 splitter 宽度
 5. 最后再进入单容器派生层细化
+
+### 12.3 当前布局口径
+
+- 不再把主界面做成说明页或自动折叠页
+- Root 级不允许滚动条
+- 滚动只允许发生在三列各自的 `main` 区域
+- `splitter width` 只影响三列之间的横向间距，不影响 `Header` 与 workspace 的纵向间距
+- `pane stack gap` 只影响 `Sidebar / Main / Metadata` 三列中 `header / main / footer` 的纵向间距，不下沉到 `main` 内部内容间距
 
 ## 13. 切片规划
 
@@ -387,6 +420,9 @@ slot/局部覆写
 - 四个容器默认共享同一套 frame 基架
 - `layout padding` 能影响主工作区留白
 - `splitter width` 有明确变量入口
+- `Sidebar / Main / Metadata` 都具有稳定的 `header / main / footer` 子结构
+- 三列 `header / footer` 保持固定高度与垂直对齐
+- `pane stack gap` 有明确变量入口，并且只影响三列 `header / main / footer` 的纵向间距
 - 在没有单容器覆写时，界面不出现样式断链
 
 ## 15. 每个切片的固定模板
@@ -426,3 +462,7 @@ slot/局部覆写
 - 固定 `5.1 通用变体` 为整个 app 的默认按钮根样式
 - `Header` 已增加设置入口按钮，并开始接入最小设置面板
 - 最小设置面板当前只开放 `界面设置`，首轮包含遮罩透明度、容器外边界系数、容器内边距系数、分割条宽度系数四项运行时设置
+- `Header` 已补入 `Logo` 按钮，当前文案为 `MediaPlayerNext`，并可打开独立的大面板 overlay
+- `fg-import-task-root` / `fg-import-task-ovl` 已作为大面板实例首轮接入，当前用于导入任务入口占位
+- `Sidebar / Main / Metadata` 已从统一占位块细化为 `header / main / footer` 三段结构，并挂上对应 slot
+- 当前已新增 `容器内上中下间距系数` 设置项，范围 `0~2`，会话级保留，仅影响三列 `header / main / footer` 的纵向间距
