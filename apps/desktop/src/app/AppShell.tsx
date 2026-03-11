@@ -11,6 +11,7 @@ import type {
 import { open as openDialog } from '@tauri-apps/plugin-dialog'
 import { readText as readClipboardText } from '@tauri-apps/plugin-clipboard-manager'
 import { getCurrentWindow } from '@tauri-apps/api/window'
+import { hasFiles as clipboardHasFiles, readFiles as readClipboardFiles } from 'tauri-plugin-clipboard-x-api'
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ImportTaskPanel } from './ImportTaskPanel'
@@ -63,6 +64,17 @@ interface DragState {
   startX: number
   startSidebarWidthPx: number
   startMetaWidthPx: number
+}
+
+type ImportActivityStatus = 'running' | 'completed' | 'failed'
+
+interface ImportActivity {
+  id: string
+  title: string
+  source: string
+  status: ImportActivityStatus
+  detail: string
+  createdAt: string
 }
 
 function clampNumber(value: number, min: number, max: number): number {
@@ -259,6 +271,8 @@ export function AppShell() {
   const itemDetailRequestIdRef = useRef(0)
   const handleDropImportRef = useRef<(paths: string[]) => Promise<void>>(async () => undefined)
   const handlePasteImportRef = useRef<(text: string) => Promise<void>>(async () => undefined)
+  const activeScanActivityTaskIdRef = useRef<string | null>(null)
+  const activeScanActivityEntryIdRef = useRef<string | null>(null)
 
   const [importTaskPanelOpen, setImportTaskPanelOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -338,6 +352,7 @@ export function AppShell() {
   const [actionBusy, setActionBusy] = useState<ActionKind | null>(null)
   const [actionMessage, setActionMessage] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [importActivities, setImportActivities] = useState<ImportActivity[]>([])
   const [runtimeInfo, setRuntimeInfo] = useState<RuntimeInfo | null>(null)
   const [runtimeInfoLoading, setRuntimeInfoLoading] = useState(false)
   const [runtimeInfoError, setRuntimeInfoError] = useState<string | null>(null)
@@ -415,6 +430,36 @@ export function AppShell() {
     setItemDetailError(null)
     setItemDetailLoading(false)
   }, [])
+
+  const appendImportActivity = useCallback(
+    (activity: Omit<ImportActivity, 'id' | 'createdAt'>): string => {
+      const nextActivity: ImportActivity = {
+        ...activity,
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        createdAt: new Date().toISOString(),
+      }
+
+      setImportActivities((current) => [nextActivity, ...current].slice(0, 8))
+      return nextActivity.id
+    },
+    [],
+  )
+
+  const updateImportActivity = useCallback(
+    (activityId: string, patch: Partial<Omit<ImportActivity, 'id' | 'createdAt'>>) => {
+      setImportActivities((current) =>
+        current.map((activity) =>
+          activity.id === activityId
+            ? {
+                ...activity,
+                ...patch,
+              }
+            : activity,
+        ),
+      )
+    },
+    [],
+  )
 
   const loadLibrarySurface = useCallback(
     async (libraryId: string) => {
@@ -733,18 +778,33 @@ export function AppShell() {
   )
 
   const handleRefreshWorkspace = useCallback(async () => {
+    const activityId = appendImportActivity({
+      title: '刷新主界面',
+      source: '主界面',
+      status: 'running',
+      detail: '正在按当前媒体库刷新 Sidebar、Main、Metadata。',
+    })
+
     setActionBusy('refresh')
     setActionError(null)
 
     try {
       await refreshWorkspace(selectedLibraryId)
       setActionMessage('已按当前媒体库刷新 Sidebar、Main、Metadata。')
+      updateImportActivity(activityId, {
+        status: 'completed',
+        detail: '已按当前媒体库刷新 Sidebar、Main、Metadata。',
+      })
     } catch (error) {
       setActionError(getErrorMessage(error))
+      updateImportActivity(activityId, {
+        status: 'failed',
+        detail: `刷新失败：${getErrorMessage(error)}`,
+      })
     } finally {
       setActionBusy(null)
     }
-  }, [refreshWorkspace, selectedLibraryId])
+  }, [appendImportActivity, refreshWorkspace, selectedLibraryId, updateImportActivity])
 
   const handleAddLibrary = useCallback(
     async (shouldScanAfterAdd: boolean) => {
@@ -755,6 +815,15 @@ export function AppShell() {
         return
       }
 
+      const activityId = appendImportActivity({
+        title: shouldScanAfterAdd ? '登记并扫描' : '登记媒体库',
+        source: '手动路径',
+        status: 'running',
+        detail: shouldScanAfterAdd
+          ? `正在登记并扫描：${rootPath}`
+          : `正在登记媒体库：${rootPath}`,
+      })
+
       setActionBusy(shouldScanAfterAdd ? 'addAndScan' : 'addLibrary')
       setActionError(null)
 
@@ -764,19 +833,31 @@ export function AppShell() {
         if (shouldScanAfterAdd) {
           const runResult = await repository.scan.start(createdLibrary.id)
           setActionMessage(`已登记并扫描：${formatScanRunResult(runResult)}`)
+          updateImportActivity(activityId, {
+            status: 'completed',
+            detail: `已登记并启动扫描：${createdLibrary.rootPath}`,
+          })
         } else {
           setActionMessage(`已登记媒体库：${createdLibrary.rootPath}`)
+          updateImportActivity(activityId, {
+            status: 'completed',
+            detail: `已登记媒体库：${createdLibrary.rootPath}`,
+          })
         }
 
         setImportRootPath('')
         await refreshWorkspace(createdLibrary.id)
       } catch (error) {
         setActionError(getErrorMessage(error))
+        updateImportActivity(activityId, {
+          status: 'failed',
+          detail: `登记失败：${getErrorMessage(error)}`,
+        })
       } finally {
         setActionBusy(null)
       }
     },
-    [importRootPath, refreshWorkspace, repository],
+    [appendImportActivity, importRootPath, refreshWorkspace, repository, updateImportActivity],
   )
 
   const handleStartScan = useCallback(async () => {
@@ -784,19 +865,34 @@ export function AppShell() {
       return
     }
 
+    const activityId = appendImportActivity({
+      title: '开始扫描',
+      source: '侧栏扫描',
+      status: 'running',
+      detail: '正在为当前媒体库启动扫描。',
+    })
+
     setActionBusy('scan')
     setActionError(null)
 
     try {
       const result = await repository.scan.start(selectedLibraryId)
       setActionMessage(formatScanRunResult(result))
+      updateImportActivity(activityId, {
+        status: 'completed',
+        detail: formatScanRunResult(result),
+      })
       await refreshWorkspace(selectedLibraryId)
     } catch (error) {
       setActionError(getErrorMessage(error))
+      updateImportActivity(activityId, {
+        status: 'failed',
+        detail: `开始扫描失败：${getErrorMessage(error)}`,
+      })
     } finally {
       setActionBusy(null)
     }
-  }, [refreshWorkspace, repository, selectedLibraryId])
+  }, [appendImportActivity, refreshWorkspace, repository, selectedLibraryId, updateImportActivity])
 
   const runPathImport = useCallback(
     async (
@@ -812,6 +908,13 @@ export function AppShell() {
         setActionError(emptyErrorMessage)
         return
       }
+
+      const activityId = appendImportActivity({
+        title: ACTION_LABELS[actionKind],
+        source: actionKind === 'dropImport' ? '拖拽导入' : '粘贴导入',
+        status: 'running',
+        detail: `正在处理 ${paths.length} 条路径。`,
+      })
 
       setActionBusy(actionKind)
       setActionError(null)
@@ -843,9 +946,17 @@ export function AppShell() {
         if (failedPaths.length > 0) {
           setActionMessage(`${successSummary} 部分路径失败。`)
           setActionError(failedPaths.join('；'))
+          updateImportActivity(activityId, {
+            status: 'completed',
+            detail: `${successSummary} 部分路径失败。`,
+          })
         } else {
           setActionMessage(successSummary)
           setActionError(null)
+          updateImportActivity(activityId, {
+            status: 'completed',
+            detail: successSummary,
+          })
         }
 
         return
@@ -853,8 +964,12 @@ export function AppShell() {
 
       setActionMessage(null)
       setActionError(failedPaths.join('；') || failureSummaryLabel)
+      updateImportActivity(activityId, {
+        status: 'failed',
+        detail: failedPaths.join('；') || failureSummaryLabel,
+      })
     },
-    [refreshWorkspace, repository, selectedLibraryId],
+    [appendImportActivity, refreshWorkspace, repository, selectedLibraryId, updateImportActivity],
   )
 
   const handleDropImport = useCallback(
@@ -943,6 +1058,24 @@ export function AppShell() {
         event.clipboardData?.getData('text/plain') || event.clipboardData?.getData('text/uri-list') || ''
 
       const processPaste = async (): Promise<void> => {
+        const nativeFilePaths = await clipboardHasFiles()
+          .then(async (hasFiles) => {
+            if (!hasFiles) {
+              return []
+            }
+
+            const result = await readClipboardFiles()
+            return normalizePathBatch(result.paths)
+          })
+          .catch(() => [])
+
+        if (nativeFilePaths.length > 0) {
+          event.preventDefault()
+          setImportTaskPanelOpen(true)
+          await handlePasteImportRef.current(nativeFilePaths.join('\n'))
+          return
+        }
+
         const fallbackText = clipboardText.length > 0 ? clipboardText : await readClipboardText().catch(() => '')
         const parsedPaths = parseClipboardPaths(fallbackText)
 
@@ -1015,10 +1148,57 @@ export function AppShell() {
     }
   }, [loadLibrarySurface, repository, scanSnapshot, selectedLibraryId])
 
+  useEffect(() => {
+    if (scanSnapshot === null) {
+      activeScanActivityTaskIdRef.current = null
+      activeScanActivityEntryIdRef.current = null
+      return
+    }
+
+    const statusMap: Record<TaskProgress['state'], ImportActivityStatus> = {
+      queued: 'running',
+      running: 'running',
+      completed: 'completed',
+      failed: 'failed',
+      cancelled: 'failed',
+    }
+    const detail = `${formatTaskStateLabel(scanSnapshot.state)} · ${scanSnapshot.current}/${scanSnapshot.total ?? '?'} · ${scanSnapshot.message ?? '暂无消息'}`
+
+    if (activeScanActivityTaskIdRef.current !== scanSnapshot.taskId || activeScanActivityEntryIdRef.current === null) {
+      const nextActivityId = appendImportActivity({
+        title: '扫描任务',
+        source: '扫描轮询',
+        status: statusMap[scanSnapshot.state],
+        detail,
+      })
+
+      activeScanActivityTaskIdRef.current = scanSnapshot.taskId
+      activeScanActivityEntryIdRef.current = nextActivityId
+      return
+    }
+
+    updateImportActivity(activeScanActivityEntryIdRef.current, {
+      status: statusMap[scanSnapshot.state],
+      detail,
+    })
+
+    if (!isActiveTaskProgress(scanSnapshot)) {
+      activeScanActivityTaskIdRef.current = null
+      activeScanActivityEntryIdRef.current = null
+    }
+  }, [appendImportActivity, scanSnapshot, updateImportActivity])
+
   const handleResumeScan = useCallback(async () => {
     if (selectedLibraryId === null) {
       return
     }
+
+    const activityId = appendImportActivity({
+      title: '恢复扫描',
+      source: '侧栏扫描',
+      status: 'running',
+      detail: '正在恢复当前媒体库扫描任务。',
+    })
 
     setActionBusy('resume')
     setActionError(null)
@@ -1026,13 +1206,21 @@ export function AppShell() {
     try {
       const result = await repository.scan.resume(selectedLibraryId)
       setActionMessage(`已恢复扫描：${formatScanRunResult(result)}`)
+      updateImportActivity(activityId, {
+        status: 'completed',
+        detail: `已恢复扫描：${formatScanRunResult(result)}`,
+      })
       await refreshWorkspace(selectedLibraryId)
     } catch (error) {
       setActionError(getErrorMessage(error))
+      updateImportActivity(activityId, {
+        status: 'failed',
+        detail: `恢复扫描失败：${getErrorMessage(error)}`,
+      })
     } finally {
       setActionBusy(null)
     }
-  }, [refreshWorkspace, repository, selectedLibraryId])
+  }, [appendImportActivity, refreshWorkspace, repository, selectedLibraryId, updateImportActivity])
 
   const pickSingleDirectory = useCallback(async (title: string): Promise<string | null> => {
     const selection = await openDialog({
@@ -1252,6 +1440,10 @@ export function AppShell() {
   const mainFooterSecondary = items.length === 0
     ? '当前作用域暂无条目'
     : `当前预览 ${items.length} 个条目`
+  const importActivitiesForPanel = importActivities.map((activity) => ({
+    ...activity,
+    createdAt: formatDateTime(activity.createdAt),
+  }))
   const databasePendingLabel = databaseActionBusy === null ? null : DATABASE_ACTION_LABELS[databaseActionBusy]
   const runtimeInfoDatabasePath = runtimeInfoLoading
     ? '正在读取当前 SQL 路径...'
@@ -1750,6 +1942,7 @@ export function AppShell() {
         scanStateLabel={scanStateLabel}
         scanSummary={scanSummary}
         scanProgressPercent={scanProgressPercent}
+        activities={importActivitiesForPanel}
       />
 
       {settingsOpen ? (

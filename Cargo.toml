@@ -27,3 +27,6 @@ tempfile = "3"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
 sha2 = "0.10"
+
+[profile.dev]
+debug = 1

@@ -775,6 +775,46 @@
   gap: 12px;
 }
 
+.import-activity-list {
+  display: grid;
+  gap: 12px;
+}
+
+.import-activity-item {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid rgba(119, 99, 71, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 251, 245, 0.78);
+}
+
+.import-activity-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.import-activity-row strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--mpx-text-1);
+  font-size: 18px;
+}
+
+.import-activity-item p {
+  margin: 0;
+  color: var(--mpx-text-2);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.import-activity-time {
+  color: var(--mpx-text-3);
+  font-size: 12px;
+}
+
 .import-task-panel-actions {
   align-items: stretch;
 }
@@ -787,6 +827,10 @@
   display: grid;
   gap: 10px;
   padding: clamp(20px, 4vw, 32px);
+}
+
+.import-task-panel-empty.compact-empty {
+  padding: 18px;
 }
 
 .badge,
@@ -1140,6 +1184,12 @@
   border-color: rgba(45, 122, 87, 0.22);
   background: rgba(233, 246, 238, 0.92);
   color: #236b4b;
+}
+
+.status-pill[data-state='failed'] {
+  border-color: rgba(156, 70, 54, 0.22);
+  background: rgba(252, 237, 233, 0.92);
+  color: #8c2f23;
 }
 
 .status-pill[data-state='failed'],

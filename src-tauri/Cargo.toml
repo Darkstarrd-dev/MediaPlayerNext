@@ -31,6 +31,7 @@ serde_json.workspace = true
 shared-model = { path = "../crates/shared-model" }
 tauri.workspace = true
 tauri-plugin-clipboard-manager = "2"
+tauri-plugin-clipboard-x = "2"
 tauri-plugin-dialog = "2"
 thiserror.workspace = true
 tokio.workspace = true

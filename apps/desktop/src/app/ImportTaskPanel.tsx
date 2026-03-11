@@ -1,3 +1,12 @@
+interface ImportTaskPanelActivity {
+  id: string
+  title: string
+  source: string
+  status: 'running' | 'completed' | 'failed'
+  detail: string
+  createdAt: string
+}
+
 interface ImportTaskPanelProps {
   open: boolean
   onClose: () => void
@@ -15,6 +24,7 @@ interface ImportTaskPanelProps {
   scanStateLabel: string
   scanSummary: string
   scanProgressPercent: number | null
+  activities: ImportTaskPanelActivity[]
 }
 
 const IMPORT_TASK_PANEL_ITEMS = [
@@ -52,6 +62,7 @@ export function ImportTaskPanel({
   scanStateLabel,
   scanSummary,
   scanProgressPercent,
+  activities,
 }: ImportTaskPanelProps) {
   if (!open) {
     return null
@@ -157,6 +168,45 @@ export function ImportTaskPanel({
                   </article>
                 ))}
               </div>
+            </section>
+
+            <section className="import-task-panel-section">
+              <div className="panel-heading import-task-panel-heading">
+                <div>
+                  <span className="section-kicker">Queue</span>
+                  <h2>任务队列</h2>
+                </div>
+              </div>
+
+              {activities.length === 0 ? (
+                <section className="import-task-panel-empty compact-empty">
+                  <span className="workspace-label">当前队列</span>
+                  <strong>尚未产生导入任务记录</strong>
+                  <p>完成一次路径登记、拖拽、粘贴或扫描动作后，最近任务会显示在这里。</p>
+                </section>
+              ) : (
+                <div className="import-activity-list">
+                  {activities.map((activity) => (
+                    <article key={activity.id} className="import-activity-item">
+                      <div className="import-activity-row">
+                        <div>
+                          <span className="workspace-label">{activity.source}</span>
+                          <strong>{activity.title}</strong>
+                        </div>
+                        <span className="status-pill" data-state={activity.status}>
+                          {activity.status === 'running'
+                            ? '进行中'
+                            : activity.status === 'completed'
+                              ? '已完成'
+                              : '失败'}
+                        </span>
+                      </div>
+                      <p>{activity.detail}</p>
+                      <span className="import-activity-time">{activity.createdAt}</span>
+                    </article>
+                  ))}
+                </div>
+              )}
             </section>
 
             {actionPendingLabel === null ? null : (
