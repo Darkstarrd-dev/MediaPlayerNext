@@ -2,17 +2,17 @@
 
 ## 1. 文档定位
 
-本文件不是替代 `docs/00-MediaPlayerNext_实施计划_v2.md`，而是在 `docs/02-MediaPlayerNext_后端先行具体实施计划_B1-B4_v1.md` 已完成首版收口后，把后端先行阶段的后四个里程碑继续拆成可直接执行的实施清单。
+本文件不是替代 `docs/archive/root-plans/00-MediaPlayerNext_实施计划_v2.md`，而是在 `docs/archive/root-plans/02-MediaPlayerNext_后端先行具体实施计划_B1-B4_v1.md` 已完成首版收口后，把后端先行阶段的后四个里程碑继续拆成可直接执行的实施清单。
 
 四份文档的职责固定如下：
 
-- `docs/00-MediaPlayerNext_实施计划_v2.md`
+- `docs/archive/root-plans/00-MediaPlayerNext_实施计划_v2.md`
   - 负责总路线、工作包边界、接口策略与总体顺序
-- `docs/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md`
+- `docs/archive/root-plans/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md`
   - 负责质量门禁、测试要求、迁移流程、benchmark 与发布约束
-- `docs/02-MediaPlayerNext_后端先行具体实施计划_B1-B4_v1.md`
+- `docs/archive/root-plans/02-MediaPlayerNext_后端先行具体实施计划_B1-B4_v1.md`
   - 负责 `B1-B4` 的数据地基、扫描闭环与 zip 主链路
-- `docs/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md`
+- `docs/archive/root-plans/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md`
   - 负责 `B5-B8` 的缩略图、归一化、播放后端与字幕 sidecar 宿主协议
 
 本文件只覆盖 **后端先行阶段的后四个里程碑**：
@@ -400,7 +400,7 @@ cargo run --bin backend_harness -- thumbnail show <thumbnail-key>
 
 实现完成后，至少同步更新以下检查项：
 
-- `docs/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md`
+- `docs/archive/root-plans/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md`
   - `B5` 当前状态
   - `B5` 完成情况
   - `B5` 完成定义
@@ -419,11 +419,11 @@ cargo run --bin backend_harness -- thumbnail show <thumbnail-key>
 当后续要直接开始 `B5` 开发时，可在新对话中只给下面这段提示，避免一次加载过多上下文：
 
 ```text
-请按 `docs/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md` 的 `7. B5` 章节开始开发，只聚焦 B5。
+请按 `docs/archive/root-plans/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md` 的 `7. B5` 章节开始开发，只聚焦 B5。
 
 先读取：
-- `docs/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md` 中 `7. B5`
-- `docs/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md`
+- `docs/archive/root-plans/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md` 中 `7. B5`
+- `docs/archive/root-plans/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md`
 - `Cargo.toml`
 - `crates/shared-model/src/records.rs`
 - `crates/app-core/src/archive.rs`
@@ -596,7 +596,7 @@ cargo run --bin backend_harness -- archive normalize-status <task-id>
 
 实现完成后，至少同步更新以下检查项：
 
-- `docs/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md`
+- `docs/archive/root-plans/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md`
   - `B6` 当前状态
   - `B6` 完成情况
   - `B6` 完成定义
@@ -605,18 +605,18 @@ cargo run --bin backend_harness -- archive normalize-status <task-id>
 - `docs/fixtures/archive-fixture/README.md`
 - `docs/benchmarks/` 下的归一化验证/benchmark 记录
 - 若新增 schema 字段或 migration：
-  - `docs/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md` 所要求的 migration fixture / upgrade tests
+  - `docs/archive/root-plans/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md` 所要求的 migration fixture / upgrade tests
 
 ## 8.12 用于新对话启动的最小提示
 
 当后续要直接开始 `B6` 开发时，可在新对话中只给下面这段提示：
 
 ```text
-请按 `docs/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md` 的 `8. B6` 章节开始开发，只聚焦 B6。
+请按 `docs/archive/root-plans/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md` 的 `8. B6` 章节开始开发，只聚焦 B6。
 
 先读取：
-- `docs/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md` 中 `8. B6`
-- `docs/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md`
+- `docs/archive/root-plans/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md` 中 `8. B6`
+- `docs/archive/root-plans/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md`
 - `config/local.paths.json`
 - `crates/media-io/src/lib.rs`
 - `crates/app-core/src/archive.rs`
@@ -785,7 +785,7 @@ cargo run --bin backend_harness -- playback status <session-id>
 
 实现完成后，至少同步更新以下检查项：
 
-- `docs/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md`
+- `docs/archive/root-plans/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md`
   - `B7` 当前状态
   - `B7` 完成情况
   - `B7` 完成定义
@@ -802,11 +802,11 @@ cargo run --bin backend_harness -- playback status <session-id>
 当后续要直接开始 `B7` 开发时，可在新对话中只给下面这段提示：
 
 ```text
-请按 `docs/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md` 的 `9. B7` 章节开始开发，只聚焦 B7。
+请按 `docs/archive/root-plans/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md` 的 `9. B7` 章节开始开发，只聚焦 B7。
 
 先读取：
-- `docs/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md` 中 `9. B7`
-- `docs/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md`
+- `docs/archive/root-plans/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md` 中 `9. B7`
+- `docs/archive/root-plans/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md`
 - `config/local.paths.json`
 - `src-tauri/src/runtime_check.rs`
 - `scripts/check-runtimes.ps1`
@@ -974,7 +974,7 @@ cargo run --bin backend_harness -- subtitle stop-session <session-id>
 
 实现完成后，至少同步更新以下检查项：
 
-- `docs/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md`
+- `docs/archive/root-plans/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md`
   - `B8` 当前状态
   - `B8` 完成情况
   - `B8` 完成定义
@@ -989,11 +989,11 @@ cargo run --bin backend_harness -- subtitle stop-session <session-id>
 当后续要直接开始 `B8` 开发时，可在新对话中只给下面这段提示：
 
 ```text
-请按 `docs/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md` 的 `10. B8` 章节开始开发，只聚焦 B8。
+请按 `docs/archive/root-plans/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md` 的 `10. B8` 章节开始开发，只聚焦 B8。
 
 先读取：
-- `docs/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md` 中 `10. B8`
-- `docs/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md`
+- `docs/archive/root-plans/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md` 中 `10. B8`
+- `docs/archive/root-plans/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md`
 - `apps/subtitle-sidecar/package.json`
 - `apps/subtitle-sidecar/src/index.ts`
 - `packages/contracts/src/index.ts`

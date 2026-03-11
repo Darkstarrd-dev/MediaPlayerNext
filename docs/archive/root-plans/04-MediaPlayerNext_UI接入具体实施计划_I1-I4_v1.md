@@ -2,19 +2,19 @@
 
 ## 1. 文档定位
 
-本文件不是替代 `docs/00-MediaPlayerNext_实施计划_v2.md`，而是在 `docs/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md` 已完成首版收口后，把 UI 接入阶段的前四个里程碑继续拆成可直接执行的实施清单。
+本文件不是替代 `docs/archive/root-plans/00-MediaPlayerNext_实施计划_v2.md`，而是在 `docs/archive/root-plans/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md` 已完成首版收口后，把 UI 接入阶段的前四个里程碑继续拆成可直接执行的实施清单。
 
 五份文档的职责固定如下：
 
-- `docs/00-MediaPlayerNext_实施计划_v2.md`
+- `docs/archive/root-plans/00-MediaPlayerNext_实施计划_v2.md`
   - 负责总路线、工作包边界、接口策略与总体顺序
-- `docs/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md`
+- `docs/archive/root-plans/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md`
   - 负责质量门禁、测试要求、迁移流程、benchmark 与发布约束
-- `docs/02-MediaPlayerNext_后端先行具体实施计划_B1-B4_v1.md`
+- `docs/archive/root-plans/02-MediaPlayerNext_后端先行具体实施计划_B1-B4_v1.md`
   - 负责 `B1-B4` 的数据地基、扫描闭环与 zip 主链路
-- `docs/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md`
+- `docs/archive/root-plans/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md`
   - 负责 `B5-B8` 的缩略图、归一化、播放后端与字幕 sidecar 宿主协议
-- `docs/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md`
+- `docs/archive/root-plans/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md`
   - 负责 `I1-I4` 的 repository / adapter、缩略图列表、zip 浏览与媒体库全链路 UI 接入
 
 本文件只覆盖 **UI 接入阶段的前四个里程碑**：
@@ -336,7 +336,7 @@ scripts/run-cargo-with-msvc.cmd test --workspace
 
 ## 7.9 本阶段完成后必须更新的 check 项
 
-- `docs/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md`
+- `docs/archive/root-plans/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md`
   - `I1` 当前状态
   - `I1` 完成情况
   - `I1` 完成定义
@@ -350,12 +350,12 @@ scripts/run-cargo-with-msvc.cmd test --workspace
 当后续要直接开始 `I1` 开发时，可在新对话中只给下面这段提示：
 
 ```text
-请按 `docs/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md` 的 `7. I1` 章节开始开发，只聚焦 I1。
+请按 `docs/archive/root-plans/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md` 的 `7. I1` 章节开始开发，只聚焦 I1。
 
 先读取：
-- `docs/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md` 中 `7. I1`
-- `docs/00-MediaPlayerNext_实施计划_v2.md` 中 UI 接入阶段说明
-- `docs/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md`
+- `docs/archive/root-plans/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md` 中 `7. I1`
+- `docs/archive/root-plans/00-MediaPlayerNext_实施计划_v2.md` 中 UI 接入阶段说明
+- `docs/archive/root-plans/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md`
 - `apps/desktop/src/App.tsx`
 - `packages/contracts/src/index.ts`
 - `src-tauri/src/lib.rs`
@@ -463,7 +463,7 @@ npm run tauri:dev
 
 ## 8.9 本阶段完成后必须更新的 check 项
 
-- `docs/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md`
+- `docs/archive/root-plans/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md`
   - `I2` 当前状态
   - `I2` 完成情况
   - `I2` 完成定义
@@ -476,10 +476,10 @@ npm run tauri:dev
 ## 8.10 用于新对话启动的最小提示
 
 ```text
-请按 `docs/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md` 的 `8. I2` 章节开始开发，只聚焦 I2。
+请按 `docs/archive/root-plans/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md` 的 `8. I2` 章节开始开发，只聚焦 I2。
 
 先读取：
-- `docs/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md` 中 `8. I2`
+- `docs/archive/root-plans/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md` 中 `8. I2`
 - `apps/desktop/src/`
 - `packages/contracts/src/index.ts`
 - `src-tauri/src/lib.rs`
@@ -579,7 +579,7 @@ npm run tauri:dev
 
 ## 9.9 本阶段完成后必须更新的 check 项
 
-- `docs/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md`
+- `docs/archive/root-plans/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md`
   - `I3` 当前状态
   - `I3` 完成情况
   - `I3` 完成定义
@@ -591,10 +591,10 @@ npm run tauri:dev
 ## 9.10 用于新对话启动的最小提示
 
 ```text
-请按 `docs/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md` 的 `9. I3` 章节开始开发，只聚焦 I3。
+请按 `docs/archive/root-plans/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md` 的 `9. I3` 章节开始开发，只聚焦 I3。
 
 先读取：
-- `docs/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md` 中 `9. I3`
+- `docs/archive/root-plans/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md` 中 `9. I3`
 - `apps/desktop/src/`
 - `packages/contracts/src/index.ts`
 - `docs/fixtures/archive-fixture/README.md`
@@ -698,7 +698,7 @@ npm run tauri:dev
 
 ## 10.9 本阶段完成后必须更新的 check 项
 
-- `docs/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md`
+- `docs/archive/root-plans/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md`
   - `I4` 当前状态
   - `I4` 完成情况
   - `I4` 完成定义
@@ -711,10 +711,10 @@ npm run tauri:dev
 ## 10.10 用于新对话启动的最小提示
 
 ```text
-请按 `docs/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md` 的 `10. I4` 章节开始开发，只聚焦 I4。
+请按 `docs/archive/root-plans/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md` 的 `10. I4` 章节开始开发，只聚焦 I4。
 
 先读取：
-- `docs/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md` 中 `10. I4`
+- `docs/archive/root-plans/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md` 中 `10. I4`
 - `apps/desktop/src/`
 - `packages/contracts/src/index.ts`
 - `src-tauri/src/lib.rs`

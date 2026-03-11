@@ -15,8 +15,8 @@
 - `crates/app-core/src/scan.rs`
 - `crates/shared-model/src/records.rs`
 - `crates/shared-model/src/tasks.rs`
-- `docs/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md:195`
-- `docs/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md:242`
+- `docs/archive/root-plans/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md:195`
+- `docs/archive/root-plans/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md:242`
 
 ## 一、library contracts 草案
 

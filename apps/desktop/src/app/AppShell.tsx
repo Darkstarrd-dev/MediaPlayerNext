@@ -1,464 +1,564 @@
-import { useMemo, useState } from 'react'
-import type {
-  PlaybackSession,
-  SubtitleHost,
-  SubtitleProgress,
-  SubtitleSession,
-} from '@mediaplayernext/contracts'
-import {
-  i1DomainStatuses,
-  i1PageDependencies,
-} from '../repositories/media-repository'
-import type {
-  RuntimeSmokeCheckInput,
-  RuntimeSmokeCheckResult,
-} from '../adapters/tauri/commands'
-import { useMediaRepository } from './use-media-repository'
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { SettingsIcon } from './SettingsIcon'
 
-const DEFAULT_RUNTIME_PATHS: RuntimeSmokeCheckInput = {
-  ffmpegPath: 'C:/Tools/ffmpeg-7.1.1-essentials_build/bin/ffmpeg.exe',
-  ffprobePath: 'C:/Tools/ffmpeg-7.1.1-essentials_build/bin/ffprobe.exe',
-  mpvPath: 'Z:/Playground/CurrentWorking/mpv/mpv.exe',
+const DEFAULT_VIEWPORT_WIDTH = 1280
+const DEFAULT_SETTINGS_BACKDROP_OPACITY = 18
+const DEFAULT_LAYOUT_GAP_SCALE_COEFF = 1
+const DEFAULT_PANE_INNER_GAP_SCALE_COEFF = 1
+const DEFAULT_SPLITTER_WIDTH_SCALE_COEFF = 1
+const DEFAULT_SIDEBAR_WIDTH_PX = 300
+const DEFAULT_META_WIDTH_PX = 340
+
+const SETTINGS_STORAGE_KEYS = {
+  settingsBackdropOpacity: 'mpnext.ui.settingsBackdropOpacity',
+  layoutGapScaleCoeff: 'mpnext.ui.layoutGapScaleCoeff',
+  paneInnerGapScaleCoeff: 'mpnext.ui.paneInnerGapScaleCoeff',
+  splitterWidthScaleCoeff: 'mpnext.ui.splitterWidthScaleCoeff',
+  sidebarWidthPx: 'mpnext.ui.sidebarWidthPx',
+  metaWidthPx: 'mpnext.ui.metaWidthPx',
+} as const
+
+type DragTarget = 'left' | 'right'
+
+interface DragState {
+  target: DragTarget
+  startX: number
+  startSidebarWidthPx: number
+  startMetaWidthPx: number
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value))
+}
+
+function resolveSpacingPx(viewportWidth: number, scaleCoeff: number): number {
+  return Math.max(0, Math.round(Math.max(0, viewportWidth) * 0.01 * scaleCoeff))
+}
+
+function readSessionNumber(key: string, fallback: number, min: number, max: number): number {
+  if (typeof window === 'undefined') {
+    return fallback
+  }
+
+  const rawValue = window.sessionStorage.getItem(key)
+  if (rawValue === null) {
+    return fallback
+  }
+
+  const parsedValue = Number.parseFloat(rawValue)
+  if (!Number.isFinite(parsedValue)) {
+    return fallback
+  }
+
+  return clampNumber(parsedValue, min, max)
+}
+
+function resolveWorkspaceWidths(
+  viewportWidth: number,
+  layoutPaddingPx: number,
+  splitterWidthPx: number,
+  preferredSidebarWidthPx: number,
+  preferredMetaWidthPx: number,
+) {
+  const availableWidth = Math.max(0, viewportWidth - layoutPaddingPx * 2 - splitterWidthPx * 2)
+  const minSidebarWidthPx = Math.min(220, Math.max(160, Math.round(availableWidth * 0.22)))
+  const minMetaWidthPx = Math.min(280, Math.max(200, Math.round(availableWidth * 0.24)))
+  const minMainWidthPx = Math.min(420, Math.max(280, Math.round(availableWidth * 0.34)))
+
+  const maxSidebarWidthPx = Math.max(
+    minSidebarWidthPx,
+    availableWidth - minMetaWidthPx - minMainWidthPx,
+  )
+  const sidebarWidthPx = clampNumber(
+    preferredSidebarWidthPx,
+    minSidebarWidthPx,
+    maxSidebarWidthPx,
+  )
+
+  const maxMetaWidthPx = Math.max(minMetaWidthPx, availableWidth - sidebarWidthPx - minMainWidthPx)
+  const metaWidthPx = clampNumber(preferredMetaWidthPx, minMetaWidthPx, maxMetaWidthPx)
+
+  const stabilizedSidebarWidthPx = clampNumber(
+    sidebarWidthPx,
+    minSidebarWidthPx,
+    Math.max(minSidebarWidthPx, availableWidth - metaWidthPx - minMainWidthPx),
+  )
+
+  return {
+    availableWidth,
+    sidebarWidthPx: stabilizedSidebarWidthPx,
+    metaWidthPx,
+    mainWidthPx: Math.max(0, availableWidth - stabilizedSidebarWidthPx - metaWidthPx),
+  }
 }
 
 export function AppShell() {
-  const repository = useMediaRepository()
-  const [runtimePaths, setRuntimePaths] = useState<RuntimeSmokeCheckInput>(DEFAULT_RUNTIME_PATHS)
-  const [runtimeResult, setRuntimeResult] = useState<RuntimeSmokeCheckResult | null>(null)
-  const [runtimeError, setRuntimeError] = useState('')
-  const [runtimeLoading, setRuntimeLoading] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [viewportWidth, setViewportWidth] = useState(DEFAULT_VIEWPORT_WIDTH)
+  const [settingsBackdropOpacity, setSettingsBackdropOpacity] = useState(() =>
+    readSessionNumber(
+      SETTINGS_STORAGE_KEYS.settingsBackdropOpacity,
+      DEFAULT_SETTINGS_BACKDROP_OPACITY,
+      0,
+      100,
+    ),
+  )
+  const [layoutGapScaleCoeff, setLayoutGapScaleCoeff] = useState(() =>
+    readSessionNumber(
+      SETTINGS_STORAGE_KEYS.layoutGapScaleCoeff,
+      DEFAULT_LAYOUT_GAP_SCALE_COEFF,
+      0,
+      3,
+    ),
+  )
+  const [paneInnerGapScaleCoeff, setPaneInnerGapScaleCoeff] = useState(() =>
+    readSessionNumber(
+      SETTINGS_STORAGE_KEYS.paneInnerGapScaleCoeff,
+      DEFAULT_PANE_INNER_GAP_SCALE_COEFF,
+      0,
+      2,
+    ),
+  )
+  const [splitterWidthScaleCoeff, setSplitterWidthScaleCoeff] = useState(() =>
+    readSessionNumber(
+      SETTINGS_STORAGE_KEYS.splitterWidthScaleCoeff,
+      DEFAULT_SPLITTER_WIDTH_SCALE_COEFF,
+      0.5,
+      2,
+    ),
+  )
+  const [sidebarWidthPx, setSidebarWidthPx] = useState(() =>
+    readSessionNumber(
+      SETTINGS_STORAGE_KEYS.sidebarWidthPx,
+      DEFAULT_SIDEBAR_WIDTH_PX,
+      160,
+      640,
+    ),
+  )
+  const [metaWidthPx, setMetaWidthPx] = useState(() =>
+    readSessionNumber(SETTINGS_STORAGE_KEYS.metaWidthPx, DEFAULT_META_WIDTH_PX, 200, 720),
+  )
+  const [dragState, setDragState] = useState<DragState | null>(null)
 
-  const [assetId, setAssetId] = useState('asset_001')
-  const [sessionId, setSessionId] = useState('')
-  const [playbackSessionId, setPlaybackSessionId] = useState('')
-  const [playbackPositionMs, setPlaybackPositionMs] = useState('0')
-  const [subtitleHost, setSubtitleHost] = useState<SubtitleHost | null>(null)
-  const [subtitleSession, setSubtitleSession] = useState<SubtitleSession | null>(null)
-  const [subtitleProgress, setSubtitleProgress] = useState<SubtitleProgress | null>(null)
-  const [playbackSession, setPlaybackSession] = useState<PlaybackSession | null>(null)
-  const [subtitleError, setSubtitleError] = useState('')
-  const [subtitleLoading, setSubtitleLoading] = useState(false)
-  const [playbackError, setPlaybackError] = useState('')
-  const [playbackLoading, setPlaybackLoading] = useState(false)
+  const layoutPreview = useMemo(() => {
+    const normalizedLayoutGapScaleCoeff = clampNumber(layoutGapScaleCoeff, 0, 3)
+    const normalizedPaneInnerGapScaleCoeff = clampNumber(paneInnerGapScaleCoeff, 0, 2)
+    const normalizedSplitterWidthScaleCoeff = clampNumber(splitterWidthScaleCoeff, 0.5, 2)
+    const layoutGapPx = resolveSpacingPx(viewportWidth, normalizedLayoutGapScaleCoeff)
+    const paneInnerPaddingPx = resolveSpacingPx(viewportWidth, normalizedPaneInnerGapScaleCoeff)
+    const splitterWidthPx = Math.max(0, Math.round(layoutGapPx * normalizedSplitterWidthScaleCoeff))
 
-  const protocolPreview = useMemo(
-    () => ({
-      thumbnail: repository.urls.thumbnail('thumb_001'),
-      media: repository.urls.media(assetId || 'asset_001'),
-      archive: repository.urls.archiveEntry('archive_entry_001'),
-    }),
-    [assetId, repository],
+    return {
+      layoutGapPx,
+      paneInnerPaddingPx,
+      splitterWidthPx,
+      normalizedLayoutGapScaleCoeff,
+      normalizedPaneInnerGapScaleCoeff,
+      normalizedSplitterWidthScaleCoeff,
+    }
+  }, [layoutGapScaleCoeff, paneInnerGapScaleCoeff, splitterWidthScaleCoeff, viewportWidth])
+
+  const workspaceLayout = useMemo(
+    () =>
+      resolveWorkspaceWidths(
+        viewportWidth,
+        layoutPreview.layoutGapPx,
+        layoutPreview.splitterWidthPx,
+        sidebarWidthPx,
+        metaWidthPx,
+      ),
+    [layoutPreview.layoutGapPx, layoutPreview.splitterWidthPx, metaWidthPx, sidebarWidthPx, viewportWidth],
   )
 
-  async function handleRuntimeCheck(): Promise<void> {
-    setRuntimeLoading(true)
-    setRuntimeError('')
-    try {
-      const result = await repository.diagnostics.checkRuntimeHealth(runtimePaths)
-      setRuntimeResult(result)
-    } catch (error) {
-      setRuntimeResult(null)
-      setRuntimeError(String(error))
-    } finally {
-      setRuntimeLoading(false)
-    }
-  }
+  const workspaceStyle = useMemo(
+    () =>
+      ({
+        '--app-sidebar-width-px': `${workspaceLayout.sidebarWidthPx}px`,
+        '--app-meta-width-px': `${workspaceLayout.metaWidthPx}px`,
+      }) as CSSProperties,
+    [workspaceLayout.metaWidthPx, workspaceLayout.sidebarWidthPx],
+  )
 
-  async function runSubtitleAction(action: () => Promise<void>): Promise<void> {
-    setSubtitleLoading(true)
-    setSubtitleError('')
-    try {
-      await action()
-    } catch (error) {
-      setSubtitleError(String(error))
-    } finally {
-      setSubtitleLoading(false)
-    }
-  }
-
-  async function runPlaybackAction(action: () => Promise<void>): Promise<void> {
-    setPlaybackLoading(true)
-    setPlaybackError('')
-    try {
-      await action()
-    } catch (error) {
-      setPlaybackError(String(error))
-    } finally {
-      setPlaybackLoading(false)
-    }
-  }
-
-  async function handleSubtitlePing(): Promise<void> {
-    await runSubtitleAction(async () => {
-      const host = await repository.subtitle.ping()
-      setSubtitleHost(host)
-    })
-  }
-
-  async function handleSubtitleHealth(): Promise<void> {
-    await runSubtitleAction(async () => {
-      const host = await repository.subtitle.health()
-      setSubtitleHost(host)
-    })
-  }
-
-  async function handleSubtitleStart(): Promise<void> {
-    await runSubtitleAction(async () => {
-      const nextSession = await repository.subtitle.startSession(assetId || undefined)
-      setSubtitleSession(nextSession)
-      setSessionId(nextSession.sessionId)
-      setSubtitleProgress(null)
-    })
-  }
-
-  async function handleSubtitleProgress(): Promise<void> {
-    if (!sessionId) {
-      setSubtitleError('请先输入 sessionId，或先启动 subtitle session')
+  useEffect(() => {
+    if (typeof window === 'undefined') {
       return
     }
 
-    await runSubtitleAction(async () => {
-      const nextProgress = await repository.subtitle.getProgress(sessionId)
-      setSubtitleProgress(nextProgress)
-    })
-  }
+    const updateViewportWidth = (): void => {
+      setViewportWidth(window.innerWidth)
+    }
 
-  async function handleSubtitleStop(): Promise<void> {
-    if (!sessionId) {
-      setSubtitleError('请先输入 sessionId，或先启动 subtitle session')
+    updateViewportWidth()
+    window.addEventListener('resize', updateViewportWidth)
+
+    return () => {
+      window.removeEventListener('resize', updateViewportWidth)
+    }
+  }, [])
+
+  useEffect(() => {
+    const root = document.documentElement
+
+    root.style.setProperty(
+      '--mpx-settings-backdrop-opacity',
+      `${clampNumber(settingsBackdropOpacity, 0, 100).toFixed(0)}%`,
+    )
+    root.style.setProperty(
+      '--mpx-layout-gap-scale',
+      layoutPreview.normalizedLayoutGapScaleCoeff.toFixed(2),
+    )
+    root.style.setProperty('--mpx-layout-gap-px', `${layoutPreview.layoutGapPx}px`)
+    root.style.setProperty('--mpx-layout-padding', `${layoutPreview.layoutGapPx}px`)
+    root.style.setProperty(
+      '--mpx-header-floating-gap',
+      `${layoutPreview.layoutGapPx}px ${layoutPreview.layoutGapPx}px 0px`,
+    )
+    root.style.setProperty(
+      '--mpx-pane-inner-gap-scale',
+      layoutPreview.normalizedPaneInnerGapScaleCoeff.toFixed(2),
+    )
+    root.style.setProperty('--mpx-pane-inner-padding-px', `${layoutPreview.paneInnerPaddingPx}px`)
+    root.style.setProperty(
+      '--mpx-splitter-width-scale',
+      layoutPreview.normalizedSplitterWidthScaleCoeff.toFixed(2),
+    )
+    root.style.setProperty('--mpx-splitter-width', `${layoutPreview.splitterWidthPx}px`)
+  }, [layoutPreview, settingsBackdropOpacity])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
       return
     }
 
-    await runSubtitleAction(async () => {
-      const nextSession = await repository.subtitle.stopSession(sessionId)
-      setSubtitleSession(nextSession)
-      setSessionId(nextSession.sessionId)
-    })
-  }
+    window.sessionStorage.setItem(
+      SETTINGS_STORAGE_KEYS.settingsBackdropOpacity,
+      settingsBackdropOpacity.toString(),
+    )
+    window.sessionStorage.setItem(
+      SETTINGS_STORAGE_KEYS.layoutGapScaleCoeff,
+      layoutGapScaleCoeff.toString(),
+    )
+    window.sessionStorage.setItem(
+      SETTINGS_STORAGE_KEYS.paneInnerGapScaleCoeff,
+      paneInnerGapScaleCoeff.toString(),
+    )
+    window.sessionStorage.setItem(
+      SETTINGS_STORAGE_KEYS.splitterWidthScaleCoeff,
+      splitterWidthScaleCoeff.toString(),
+    )
+    window.sessionStorage.setItem(
+      SETTINGS_STORAGE_KEYS.sidebarWidthPx,
+      workspaceLayout.sidebarWidthPx.toString(),
+    )
+    window.sessionStorage.setItem(SETTINGS_STORAGE_KEYS.metaWidthPx, workspaceLayout.metaWidthPx.toString())
+  }, [
+    layoutGapScaleCoeff,
+    paneInnerGapScaleCoeff,
+    settingsBackdropOpacity,
+    splitterWidthScaleCoeff,
+    workspaceLayout.metaWidthPx,
+    workspaceLayout.sidebarWidthPx,
+  ])
 
-  async function handlePlaybackOpen(): Promise<void> {
-    await runPlaybackAction(async () => {
-      const nextSession = await repository.playback.open(assetId)
-      setPlaybackSession(nextSession)
-      setPlaybackSessionId(nextSession.sessionId)
-    })
-  }
-
-  async function handlePlaybackStatus(): Promise<void> {
-    if (!playbackSessionId) {
-      setPlaybackError('请先输入 playback sessionId，或先打开 playback session')
+  useEffect(() => {
+    if (!settingsOpen) {
       return
     }
 
-    await runPlaybackAction(async () => {
-      const nextSession = await repository.playback.status(playbackSessionId)
-      setPlaybackSession(nextSession)
-      setPlaybackSessionId(nextSession.sessionId)
-    })
-  }
+    const handleEscape = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        setSettingsOpen(false)
+      }
+    }
 
-  async function handlePlaybackSeek(): Promise<void> {
-    if (!playbackSessionId) {
-      setPlaybackError('请先输入 playback sessionId，或先打开 playback session')
+    window.addEventListener('keydown', handleEscape)
+
+    return () => {
+      window.removeEventListener('keydown', handleEscape)
+    }
+  }, [settingsOpen])
+
+  useEffect(() => {
+    if (!dragState) {
       return
     }
 
-    const positionMs = Number.parseInt(playbackPositionMs, 10)
-    if (!Number.isFinite(positionMs) || positionMs < 0) {
-      setPlaybackError('positionMs 必须是大于等于 0 的整数')
-      return
+    const previousUserSelect = document.body.style.userSelect
+    const previousCursor = document.body.style.cursor
+    document.body.style.userSelect = 'none'
+    document.body.style.cursor = 'col-resize'
+
+    const handlePointerMove = (event: PointerEvent): void => {
+      const deltaX = event.clientX - dragState.startX
+
+      if (dragState.target === 'left') {
+        setSidebarWidthPx(dragState.startSidebarWidthPx + deltaX)
+        return
+      }
+
+      setMetaWidthPx(dragState.startMetaWidthPx - deltaX)
     }
 
-    await runPlaybackAction(async () => {
-      const nextSession = await repository.playback.seek(playbackSessionId, positionMs)
-      setPlaybackSession(nextSession)
-      setPlaybackSessionId(nextSession.sessionId)
-    })
+    const handlePointerUp = (): void => {
+      setDragState(null)
+    }
+
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', handlePointerUp)
+
+    return () => {
+      document.body.style.userSelect = previousUserSelect
+      document.body.style.cursor = previousCursor
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', handlePointerUp)
+    }
+  }, [dragState])
+
+  function handleSplitterPointerDown(target: DragTarget) {
+    return (event: ReactPointerEvent<HTMLDivElement>): void => {
+      event.preventDefault()
+      setDragState({
+        target,
+        startX: event.clientX,
+        startSidebarWidthPx: workspaceLayout.sidebarWidthPx,
+        startMetaWidthPx: workspaceLayout.metaWidthPx,
+      })
+    }
   }
 
   return (
-    <main className="shell">
-      <section className="hero panel panel-hero">
-        <div>
-          <span className="badge">I1 Repository Shell</span>
-          <h1>先冻结 repository / adapter，再等待 theme 收口</h1>
-          <p className="lead">
-            这个桌面壳不迁 theme，只把已经确认的交互关系收口成 repository、adapter
-            与页面依赖矩阵，避免后续 React 组件继续散落 `invoke(...)`。
-          </p>
-        </div>
-        <div className="hero-grid">
-          {i1DomainStatuses.map((item) => (
-            <article key={item.domain} className="status-card">
-              <span className={`status-dot status-${item.status}`} />
-              <strong>{item.domain}</strong>
-              <p>{item.note}</p>
-            </article>
-          ))}
-        </div>
-      </section>
+    <main className="app-shell" data-slot="bg-app-root">
+      <div className="app-background-layer" aria-hidden="true" />
 
-      <section className="workspace-grid">
-        <section className="panel">
-          <div className="panel-heading">
-            <div>
-              <span className="section-kicker">P6-3 补件</span>
-              <h2>页面依赖矩阵</h2>
-            </div>
+      <div className="app-chrome">
+        <header className="app-frame app-header-root" data-slot="fg-header-root">
+          <div className="header-bar">
+            <button
+              className="mpx-btn header-settings-trigger"
+              type="button"
+              aria-haspopup="dialog"
+              aria-expanded={settingsOpen}
+              onClick={() => setSettingsOpen(true)}
+            >
+              <SettingsIcon className="settings-trigger-icon" />
+              <span className="settings-trigger-label">设置</span>
+            </button>
           </div>
-          <div className="matrix-table">
-            <div className="matrix-head">页面/模块</div>
-            <div className="matrix-head">交互关系</div>
-            <div className="matrix-head">repository 方法</div>
-            <div className="matrix-head">transport</div>
-            <div className="matrix-head">状态</div>
-            {i1PageDependencies.map((row) => (
-              <div key={row.page} className="matrix-row">
-                <div className="matrix-cell matrix-page">{row.page}</div>
-                <div className="matrix-cell">{row.interaction}</div>
-                <div className="matrix-cell">{row.repositoryMethods.join(' / ')}</div>
-                <div className="matrix-cell">{row.transport.join(' / ')}</div>
-                <div className="matrix-cell">
-                  <span className={`pill pill-${row.status}`}>{row.status}</span>
+        </header>
+
+        <div className="app-workspace" style={workspaceStyle}>
+          <aside className="app-frame app-sidebar-root" data-slot="fg-sidebar-root">
+            <section className="workspace-panel">
+              <div className="panel-heading">
+                <div>
+                  <span className="section-kicker">Navigation</span>
+                  <h2>Sidebar</h2>
                 </div>
               </div>
-            ))}
-          </div>
-        </section>
 
-        <section className="panel stack-panel">
-          <div className="panel-heading">
-            <div>
-              <span className="section-kicker">已接线能力</span>
-              <h2>宿主诊断与 subtitle</h2>
-            </div>
-          </div>
+              <div className="workspace-stack">
+                <article className="workspace-card">
+                  <span className="workspace-label">媒体库</span>
+                  <strong>等待接入</strong>
+                  <p>后续在这里承接媒体库选择、创建与切换。</p>
+                </article>
+                <article className="workspace-card">
+                  <span className="workspace-label">扫描</span>
+                  <strong>等待接入</strong>
+                  <p>后续在这里承接扫描启动、恢复与状态摘要。</p>
+                </article>
+              </div>
+            </section>
+          </aside>
 
-          <section className="subpanel">
-            <h3>Runtime Smoke Check</h3>
-            <label className="field" htmlFor="ffmpeg-path">
-              <span>ffmpegPath</span>
-              <input
-                id="ffmpeg-path"
-                value={runtimePaths.ffmpegPath}
-                onChange={(event) =>
-                  setRuntimePaths((current) => ({ ...current, ffmpegPath: event.target.value }))
-                }
-              />
-            </label>
-            <label className="field" htmlFor="ffprobe-path">
-              <span>ffprobePath</span>
-              <input
-                id="ffprobe-path"
-                value={runtimePaths.ffprobePath}
-                onChange={(event) =>
-                  setRuntimePaths((current) => ({ ...current, ffprobePath: event.target.value }))
-                }
-              />
-            </label>
-            <label className="field" htmlFor="mpv-path">
-              <span>mpvPath</span>
-              <input
-                id="mpv-path"
-                value={runtimePaths.mpvPath}
-                onChange={(event) =>
-                  setRuntimePaths((current) => ({ ...current, mpvPath: event.target.value }))
-                }
-              />
-            </label>
-            <div className="actions">
-              <button type="button" onClick={() => void handleRuntimeCheck()} disabled={runtimeLoading}>
-                {runtimeLoading ? '校验中...' : '执行 runtime_smoke_check'}
-              </button>
-            </div>
-            {runtimeError ? <p className="error-text">{runtimeError}</p> : null}
-            {runtimeResult ? (
-              <dl className="kv-list">
+          <div
+            className={`workspace-splitter ${dragState?.target === 'left' ? 'is-dragging' : ''}`}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="调整 Sidebar 与 Main 宽度"
+            onPointerDown={handleSplitterPointerDown('left')}
+          />
+
+          <section className="app-frame app-main-root" data-slot="fg-main-root">
+            <section className="workspace-panel workspace-panel-main">
+              <div className="panel-heading">
                 <div>
-                  <dt>sqlite</dt>
-                  <dd>{runtimeResult.sqliteVersion}</dd>
+                  <span className="section-kicker">Workspace</span>
+                  <h2>Main</h2>
                 </div>
-                <div>
-                  <dt>ffmpeg</dt>
-                  <dd>{runtimeResult.ffmpegFirstLine}</dd>
-                </div>
-                <div>
-                  <dt>ffprobe</dt>
-                  <dd>{runtimeResult.ffprobeFirstLine}</dd>
-                </div>
-                <div>
-                  <dt>mpv</dt>
-                  <dd>{runtimeResult.mpvFirstLine}</dd>
-                </div>
-              </dl>
-            ) : null}
+              </div>
+
+              <div className="workspace-stage">
+                <span className="workspace-label">主工作区</span>
+                <strong>内容区待接入</strong>
+                <p>后续这里承接条目列表、归档浏览、搜索结果与主操作流程。</p>
+              </div>
+
+              <div className="workspace-stage-grid">
+                <article className="workspace-card compact">
+                  <span className="workspace-label">列表</span>
+                  <strong>Items</strong>
+                </article>
+                <article className="workspace-card compact">
+                  <span className="workspace-label">归档</span>
+                  <strong>Archive</strong>
+                </article>
+                <article className="workspace-card compact">
+                  <span className="workspace-label">协议</span>
+                  <strong>Protocol</strong>
+                </article>
+              </div>
+            </section>
           </section>
 
-          <section className="subpanel">
-            <h3>Subtitle Host</h3>
-            <label className="field" htmlFor="subtitle-asset-id">
-              <span>assetId</span>
-              <input
-                id="subtitle-asset-id"
-                value={assetId}
-                onChange={(event) => setAssetId(event.target.value)}
-              />
-            </label>
-            <label className="field" htmlFor="subtitle-session-id">
-              <span>sessionId</span>
-              <input
-                id="subtitle-session-id"
-                value={sessionId}
-                onChange={(event) => setSessionId(event.target.value)}
-              />
-            </label>
-            <div className="actions actions-wrap">
-              <button type="button" onClick={() => void handleSubtitlePing()} disabled={subtitleLoading}>
-                ping
+          <div
+            className={`workspace-splitter ${dragState?.target === 'right' ? 'is-dragging' : ''}`}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="调整 Main 与 Metadata 宽度"
+            onPointerDown={handleSplitterPointerDown('right')}
+          />
+
+          <aside className="app-frame app-meta-root" data-slot="fg-meta-root">
+            <section className="workspace-panel">
+              <div className="panel-heading">
+                <div>
+                  <span className="section-kicker">Details</span>
+                  <h2>Metadata</h2>
+                </div>
+              </div>
+
+              <div className="workspace-stage compact">
+                <span className="workspace-label">详情区</span>
+                <strong>等待接入</strong>
+                <p>后续这里用于展示选中项详情、元数据和辅助状态信息。</p>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </div>
+
+      {settingsOpen ? (
+        <div className="settings-mask" onClick={() => setSettingsOpen(false)}>
+          <section
+            className="mpx-large-panel settings-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="app-settings-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="mpx-large-panel-head settings-panel-head">
+              <div className="mpx-large-panel-head-spacer" aria-hidden="true" />
+              <h2 id="app-settings-title">设置</h2>
+              <button className="mpx-btn settings-close-btn" type="button" onClick={() => setSettingsOpen(false)}>
+                关闭
               </button>
-              <button type="button" onClick={() => void handleSubtitleHealth()} disabled={subtitleLoading}>
-                health
-              </button>
-              <button type="button" onClick={() => void handleSubtitleStart()} disabled={subtitleLoading}>
-                startSession
-              </button>
-              <button type="button" onClick={() => void handleSubtitleProgress()} disabled={subtitleLoading}>
-                getProgress
-              </button>
-              <button type="button" onClick={() => void handleSubtitleStop()} disabled={subtitleLoading}>
-                stopSession
-              </button>
-            </div>
-            {subtitleError ? <p className="error-text">{subtitleError}</p> : null}
-            <div className="result-grid">
-              <article className="result-card">
-                <span className="result-label">Host</span>
-                <code>{formatSubtitleHost(subtitleHost)}</code>
-              </article>
-              <article className="result-card">
-                <span className="result-label">Session</span>
-                <code>{formatSubtitleSession(subtitleSession)}</code>
-              </article>
-              <article className="result-card">
-                <span className="result-label">Progress</span>
-                <code>{formatSubtitleProgress(subtitleProgress)}</code>
-              </article>
+            </header>
+
+            <div className="mpx-large-panel-shell settings-panel-shell">
+              <aside className="mpx-large-panel-side settings-panel-side">
+                <button className="mpx-btn is-active" type="button" aria-pressed="true">
+                  界面设置
+                </button>
+              </aside>
+
+              <section className="mpx-large-panel-main settings-panel-main">
+                <div className="settings-page-block">
+                  <div className="panel-heading settings-page-heading">
+                    <div>
+                      <span className="section-kicker">Interface</span>
+                      <h2>界面设置</h2>
+                    </div>
+                  </div>
+
+                  <UiSettingsRangeField
+                    label="面板背景遮罩透明度"
+                    valueLabel={`${Math.round(settingsBackdropOpacity)}%`}
+                    hint="数值越高背景越暗，用于控制设置类大面板出现时的遮罩深度。"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={settingsBackdropOpacity}
+                    onChange={setSettingsBackdropOpacity}
+                  />
+                  <UiSettingsRangeField
+                    label="容器外边界系数"
+                    valueLabel={`${layoutGapScaleCoeff.toFixed(2)}x / ${layoutPreview.layoutGapPx}px`}
+                    hint="基准为窗口宽度的 1%，当前只驱动外留白与 Header 间距。"
+                    min={0}
+                    max={3}
+                    step={0.1}
+                    value={layoutGapScaleCoeff}
+                    onChange={setLayoutGapScaleCoeff}
+                  />
+                  <UiSettingsRangeField
+                    label="容器内边距系数"
+                    valueLabel={`${paneInnerGapScaleCoeff.toFixed(2)}x / ${layoutPreview.paneInnerPaddingPx}px`}
+                    hint="基准同样为窗口宽度的 1%，当前用于控制容器内部 padding。"
+                    min={0}
+                    max={2}
+                    step={0.1}
+                    value={paneInnerGapScaleCoeff}
+                    onChange={setPaneInnerGapScaleCoeff}
+                  />
+                  <UiSettingsRangeField
+                    label="分割条宽度系数"
+                    valueLabel={`${splitterWidthScaleCoeff.toFixed(2)}x / ${layoutPreview.splitterWidthPx}px`}
+                    hint="仅控制 Sidebar/Main/Metadata 之间的分隔宽度，不影响 Header 与工作区的间距。"
+                    min={0.5}
+                    max={2}
+                    step={0.1}
+                    value={splitterWidthScaleCoeff}
+                    onChange={setSplitterWidthScaleCoeff}
+                  />
+                </div>
+              </section>
             </div>
           </section>
-
-          <section className="subpanel">
-            <h3>Playback Host</h3>
-            <label className="field" htmlFor="playback-asset-id">
-              <span>assetId</span>
-              <input
-                id="playback-asset-id"
-                value={assetId}
-                onChange={(event) => setAssetId(event.target.value)}
-              />
-            </label>
-            <label className="field" htmlFor="playback-session-id">
-              <span>sessionId</span>
-              <input
-                id="playback-session-id"
-                value={playbackSessionId}
-                onChange={(event) => setPlaybackSessionId(event.target.value)}
-              />
-            </label>
-            <label className="field" htmlFor="playback-position-ms">
-              <span>positionMs</span>
-              <input
-                id="playback-position-ms"
-                value={playbackPositionMs}
-                onChange={(event) => setPlaybackPositionMs(event.target.value)}
-              />
-            </label>
-            <div className="actions actions-wrap">
-              <button type="button" onClick={() => void handlePlaybackOpen()} disabled={playbackLoading}>
-                open
-              </button>
-              <button type="button" onClick={() => void handlePlaybackStatus()} disabled={playbackLoading}>
-                status
-              </button>
-              <button type="button" onClick={() => void handlePlaybackSeek()} disabled={playbackLoading}>
-                seek
-              </button>
-            </div>
-            {playbackError ? <p className="error-text">{playbackError}</p> : null}
-            <article className="result-card">
-              <span className="result-label">Playback</span>
-              <code>{formatPlaybackSession(playbackSession)}</code>
-            </article>
-          </section>
-        </section>
-
-        <section className="panel">
-          <div className="panel-heading">
-            <div>
-              <span className="section-kicker">协议统一入口</span>
-              <h2>Protocol URL builders</h2>
-            </div>
-          </div>
-          <div className="result-grid">
-            <article className="result-card">
-              <span className="result-label">thumb://</span>
-              <code>{protocolPreview.thumbnail}</code>
-            </article>
-            <article className="result-card">
-              <span className="result-label">media://</span>
-              <code>{protocolPreview.media}</code>
-            </article>
-            <article className="result-card">
-              <span className="result-label">archive://</span>
-              <code>{protocolPreview.archive}</code>
-            </article>
-          </div>
-          <p className="muted-note">
-            组件层后续只能从 repository/adapter 取 URL，不能重新散写协议字符串。
-          </p>
-        </section>
-      </section>
+        </div>
+      ) : null}
     </main>
   )
 }
 
-function formatSubtitleHost(host: SubtitleHost | null): string {
-  if (host === null) {
-    return '尚未调用'
-  }
+interface UiSettingsRangeFieldProps {
+  label: string
+  valueLabel: string
+  hint: string
+  min: number
+  max: number
+  step: number
+  value: number
+  onChange: (value: number) => void
+}
 
-  return JSON.stringify(
-    {
-      executable: host.executable,
-      running: host.running,
-      restartCount: host.restartCount,
-      nodeVersion: host.health?.nodeVersion,
-      activeSessions: host.health?.activeSessions,
-    },
-    null,
-    2,
+function UiSettingsRangeField({
+  label,
+  valueLabel,
+  hint,
+  min,
+  max,
+  step,
+  value,
+  onChange,
+}: UiSettingsRangeFieldProps) {
+  return (
+    <label className="settings-slider-field">
+      <div className="settings-slider-row">
+        <span className="settings-slider-label">{label}</span>
+        <span className="settings-slider-value">{valueLabel}</span>
+      </div>
+      <input
+        className="settings-range"
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+      />
+      <span className="settings-slider-hint">{hint}</span>
+    </label>
   )
-}
-
-function formatSubtitleSession(session: SubtitleSession | null): string {
-  if (session === null) {
-    return '尚未调用'
-  }
-
-  return JSON.stringify(session, null, 2)
-}
-
-function formatSubtitleProgress(progress: SubtitleProgress | null): string {
-  if (progress === null) {
-    return '尚未调用'
-  }
-
-  return JSON.stringify(progress, null, 2)
-}
-
-function formatPlaybackSession(session: PlaybackSession | null): string {
-  if (session === null) {
-    return '尚未调用'
-  }
-
-  return JSON.stringify(session, null, 2)
 }

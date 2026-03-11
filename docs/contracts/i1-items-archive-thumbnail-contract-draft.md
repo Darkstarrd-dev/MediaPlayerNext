@@ -15,8 +15,8 @@
 - `crates/app-core/src/archive.rs`
 - `crates/app-core/src/thumbnail.rs`
 - `crates/shared-model/src/records.rs`
-- `docs/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md:197`
-- `docs/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md:246`
+- `docs/archive/root-plans/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md:197`
+- `docs/archive/root-plans/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md:246`
 
 ## 一、items contracts 草案
 

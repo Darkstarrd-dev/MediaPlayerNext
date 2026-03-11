@@ -2,15 +2,15 @@
 
 ## 1. 文档定位
 
-本文件不是替代 `docs/00-MediaPlayerNext_实施计划_v2.md`，而是把 v2 总纲转成当前仓库可直接执行的实施清单。
+本文件不是替代 `docs/archive/root-plans/00-MediaPlayerNext_实施计划_v2.md`，而是把 v2 总纲转成当前仓库可直接执行的实施清单。
 
 三份文档的职责固定如下：
 
-- `docs/00-MediaPlayerNext_实施计划_v2.md`
+- `docs/archive/root-plans/00-MediaPlayerNext_实施计划_v2.md`
   - 负责总路线、工作包边界、总体顺序与里程碑
-- `docs/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md`
+- `docs/archive/root-plans/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md`
   - 负责质量门禁、测试要求、迁移流程、CI/PR 约束
-- `docs/02-MediaPlayerNext_后端先行具体实施计划_B1-B4_v1.md`
+- `docs/archive/root-plans/02-MediaPlayerNext_后端先行具体实施计划_B1-B4_v1.md`
   - 负责把当前阶段拆成可执行的阶段、目录、交付物、验收标准与验证命令
 
 本文件只覆盖 **后端先行阶段的前四个里程碑**：
@@ -70,7 +70,7 @@
 
 ### 2.3 当前最自然的下一步
 
-1. 补写 `docs/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md`
+1. 补写 `docs/archive/root-plans/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md`
 2. 进入 `B5`，把 `archive_entries` 接到 `media_assets` 与缩略图输入面
 
 ---
@@ -115,7 +115,7 @@
 
 ### 4.3 质量门禁继承关系
 
-本文件所有阶段默认继承 `docs/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md` 中的要求，尤其是：
+本文件所有阶段默认继承 `docs/archive/root-plans/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md` 中的要求，尤其是：
 
 - 契约优先流程
 - migration 固定流程
@@ -1069,7 +1069,7 @@ docs/fixtures/
 
 当 `B1-B4` 已完成首版后，新增下一份文档：
 
-- `docs/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md`
+- `docs/archive/root-plans/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md`
 
 该文档再覆盖：
 

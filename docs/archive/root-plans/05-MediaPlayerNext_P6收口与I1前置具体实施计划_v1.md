@@ -2,21 +2,21 @@
 
 ## 1. 文档定位
 
-本文件不是替代 `docs/00-MediaPlayerNext_实施计划_v2.md`，而是在 `docs/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md` 已明确 UI 接入顺序后，把 `P6` 阶段继续拆成可直接执行的实施清单，用于在真实前端接入前把 benchmark、质量门禁、错误场景、接口文档、资源路径、可观测性与 contracts 再收紧一轮。
+本文件不是替代 `docs/archive/root-plans/00-MediaPlayerNext_实施计划_v2.md`，而是在 `docs/archive/root-plans/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md` 已明确 UI 接入顺序后，把 `P6` 阶段继续拆成可直接执行的实施清单，用于在真实前端接入前把 benchmark、质量门禁、错误场景、接口文档、资源路径、可观测性与 contracts 再收紧一轮。
 
 六份文档的职责固定如下：
 
-- `docs/00-MediaPlayerNext_实施计划_v2.md`
+- `docs/archive/root-plans/00-MediaPlayerNext_实施计划_v2.md`
   - 负责总路线、工作包边界、接口策略与总体顺序
-- `docs/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md`
+- `docs/archive/root-plans/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md`
   - 负责质量门禁、测试要求、迁移流程、benchmark 与发布约束
-- `docs/02-MediaPlayerNext_后端先行具体实施计划_B1-B4_v1.md`
+- `docs/archive/root-plans/02-MediaPlayerNext_后端先行具体实施计划_B1-B4_v1.md`
   - 负责 `B1-B4` 的数据地基、扫描闭环与 zip 主链路
-- `docs/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md`
+- `docs/archive/root-plans/03-MediaPlayerNext_后端先行具体实施计划_B5-B8_v1.md`
   - 负责 `B5-B8` 的缩略图、归一化、播放后端与字幕 sidecar 宿主协议
-- `docs/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md`
+- `docs/archive/root-plans/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md`
   - 负责 `I1-I4` 的 repository / adapter、缩略图列表、zip 浏览与媒体库全链路 UI 接入
-- `docs/05-MediaPlayerNext_P6收口与I1前置具体实施计划_v1.md`
+- `docs/archive/root-plans/05-MediaPlayerNext_P6收口与I1前置具体实施计划_v1.md`
   - 负责 `P6` 的 benchmark、门禁自动化、错误场景、接口文档、资源路径、可观测性与 contracts 收口
 
 本文件只覆盖 **`P6` 阶段继续收口所需的六类工作**：
@@ -49,7 +49,7 @@
 - `docs/benchmarks/backend-regression-20260307.md` 已形成 `B5-B8` 的统一回归收口记录
 - `npm run check`、contracts 测试、Rust workspace 的 `fmt / clippy / test` 已形成一轮可复跑基线
 - `thumb://` / `media://` / `archive://` / subtitle sidecar 协议已具备首版验证记录
-- `docs/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md` 已明确 `I1-I4` 的顺序与边界
+- `docs/archive/root-plans/04-MediaPlayerNext_UI接入具体实施计划_I1-I4_v1.md` 已明确 `I1-I4` 的顺序与边界
 
 ### 2.2 当前进度判断
 
@@ -78,7 +78,7 @@
   - 真实视频样本下的 `ffprobe / ffmpeg` 耗时
   - `mpv` 启动耗时
   - sidecar `ping / health / restart` 毫秒级统计
-- `docs/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md` 已明确 `P0 / P1 / P2` 门禁口径，但仓库内尚无统一的“全门禁执行脚本”与结果产物路径
+- `docs/archive/root-plans/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md` 已明确 `P0 / P1 / P2` 门禁口径，但仓库内尚无统一的“全门禁执行脚本”与结果产物路径
 - `apps/desktop` 仍是最小 Tauri command demo，尚未建立 `MediaRepository`，因此 `I1` 目前仍缺接口收口文档支撑
 - `config/local.paths.example.json` 已覆盖 `ffmpeg` / `ffprobe` / `node` / `sevenz` / `mpv` 开发态路径，但打包态查找顺序仍未单独文档化
 - `src-tauri` 当前能提供 runtime smoke、custom protocol 与 subtitle host wrapper，但日志字段与外部进程可观测性还没统一口径
@@ -258,7 +258,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\bench\run-sidecar-
 
 ## 7.9 本阶段完成后必须更新的 check 项
 
-- `docs/05-MediaPlayerNext_P6收口与I1前置具体实施计划_v1.md`
+- `docs/archive/root-plans/05-MediaPlayerNext_P6收口与I1前置具体实施计划_v1.md`
   - `P6-0` 当前状态
   - `P6-0` 完成情况
   - `P6-0` 完成定义
@@ -274,7 +274,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\bench\run-sidecar-
 
 ## 8.1 阶段目标
 
-把 `docs/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md` 中 `P0 / P1 / P2` 门禁的关键命令真正落成可执行脚本与统一入口，不再依赖“人记得手动跑哪些命令”。
+把 `docs/archive/root-plans/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md` 中 `P0 / P1 / P2` 门禁的关键命令真正落成可执行脚本与统一入口，不再依赖“人记得手动跑哪些命令”。
 
 ## 8.2 范围
 
@@ -345,13 +345,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\quality\run-rust-g
 
 - `scripts/quality/`
 - `package.json`
-- `docs/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md`
+- `docs/archive/root-plans/01-MediaPlayerNext_Rust_审核方案_与质量流程_v1.md`
 - `docs/benchmarks/`
 - `src-tauri/Cargo.toml`
 
 ## 8.9 本阶段完成后必须更新的 check 项
 
-- `docs/05-MediaPlayerNext_P6收口与I1前置具体实施计划_v1.md`
+- `docs/archive/root-plans/05-MediaPlayerNext_P6收口与I1前置具体实施计划_v1.md`
 - `docs/benchmarks/` 下的 quality gates 记录
 - `docs/logs/<当天日期>.md`
 - 若新增 npm scripts：
@@ -440,7 +440,7 @@ npm run check
 
 ## 9.8 本阶段完成后必须更新的 check 项
 
-- `docs/05-MediaPlayerNext_P6收口与I1前置具体实施计划_v1.md`
+- `docs/archive/root-plans/05-MediaPlayerNext_P6收口与I1前置具体实施计划_v1.md`
 - `docs/benchmarks/` 下的 bad path validation 记录
 - `docs/fixtures/` 下对应异常样本说明
 - `docs/logs/<当天日期>.md`
@@ -526,7 +526,7 @@ scripts/run-cargo-with-msvc.cmd test --workspace
 
 ## 10.8 本阶段完成后必须更新的 check 项
 
-- `docs/05-MediaPlayerNext_P6收口与I1前置具体实施计划_v1.md`
+- `docs/archive/root-plans/05-MediaPlayerNext_P6收口与I1前置具体实施计划_v1.md`
 - `docs/contracts/`
 - `docs/logs/<当天日期>.md`
 
@@ -615,7 +615,7 @@ scripts/run-cargo-with-msvc.cmd tauri build
 
 ## 11.8 本阶段完成后必须更新的 check 项
 
-- `docs/05-MediaPlayerNext_P6收口与I1前置具体实施计划_v1.md`
+- `docs/archive/root-plans/05-MediaPlayerNext_P6收口与I1前置具体实施计划_v1.md`
 - `docs/runtime/resource-path-strategy.md`
 - `README.md`
 - `config/local.paths.example.json`
@@ -711,7 +711,7 @@ npm run check
 
 ## 12.8 本阶段完成后必须更新的 check 项
 
-- `docs/05-MediaPlayerNext_P6收口与I1前置具体实施计划_v1.md`
+- `docs/archive/root-plans/05-MediaPlayerNext_P6收口与I1前置具体实施计划_v1.md`
 - `packages/contracts/src/index.ts` 与对应 `tests` / `fixtures`
 - `docs/logs/<当天日期>.md`
 - `docs/benchmarks/` 下的 contracts / observability 验证记录

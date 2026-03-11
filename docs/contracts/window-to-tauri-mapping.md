@@ -13,10 +13,10 @@
 
 旧仓桥接证据入口：
 
-- `docs/migration-plan.md:29`
-- `docs/migration-plan.md:31`
-- `docs/migration-plan.md:32`
-- `docs/migration-plan.md:33`
+- `docs/archive/root-plans/migration-plan.md:29`
+- `docs/archive/root-plans/migration-plan.md:31`
+- `docs/archive/root-plans/migration-plan.md:32`
+- `docs/archive/root-plans/migration-plan.md:33`
 
 ## 当前新仓已注册输入面
 
