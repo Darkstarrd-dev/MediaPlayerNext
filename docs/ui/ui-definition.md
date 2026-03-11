@@ -407,7 +407,7 @@ Sidebar | Main | Metadata
 | 切片 | 目标 | 验收重点 | 状态 |
 |---|---|---|---|
 | `U0` | 背景层 + 共享壳层 + 四容器分隔 | 结构、变量合同、回落链、基础布局 | 已完成首轮 |
-| `U1` | `LibraryPanel` + `ScanPanel` | 基础操作流与状态展示 | 待开始 |
+| `U1` | `LibraryPanel` + `ScanPanel` | 基础操作流与状态展示 | 进行中 |
 | `U2` | `ItemsPanel` | 列表与缩略图主链路 | 待开始 |
 | `U3` | `ArchivePanel` | 归档浏览与页序导航 | 待开始 |
 | `U4` | `DetailPanel` | 详情与基础元数据 | 待开始 |
@@ -466,3 +466,11 @@ Sidebar | Main | Metadata
 - `fg-import-task-root` / `fg-import-task-ovl` 已作为大面板实例首轮接入，当前用于导入任务入口占位
 - `Sidebar / Main / Metadata` 已从统一占位块细化为 `header / main / footer` 三段结构，并挂上对应 slot
 - 当前已新增 `容器内上中下间距系数` 设置项，范围 `0~2`，会话级保留，仅影响三列 `header / main / footer` 的纵向间距
+- `U1` 已开始首轮接入：当前通过 `ImportTaskPanel` 支持本地路径登记媒体库、登记并扫描，并在成功后刷新 `Sidebar / Main / Metadata`
+- `ImportTaskPanel` 当前已补入系统文件夹选择器，并继续保留手动路径输入作为补充入口
+- 主窗口当前已开始监听全窗口拖拽，拖入本地路径后会直接进入当前导入链路并刷新主界面三列
+- 主窗口当前已开始监听全局 `paste`，当剪贴板中存在本地路径文本时，会直接进入当前导入链路并刷新主界面三列
+- Header Logo 当前已补入 `busy` 态；`ImportTaskPanel` 与扫描摘要已开始显示轮询中的扫描状态与进度条
+- `Sidebar` 当前已开始显示真实媒体库列表、当前扫描摘要与最小扫描动作
+- `Main` 当前已开始显示当前媒体库的最小条目预览，并支持当前页内条目切换
+- `Metadata` 当前已开始显示当前媒体库、扫描摘要与选中条目的最小详情

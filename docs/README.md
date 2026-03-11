@@ -38,6 +38,7 @@
   - fixtures 与 golden 说明
 - `docs/runtime/`
   - 运行时路径与资源策略
+  - 当前数据库管理分页实施计划：`docs/runtime/database-management-phase-plan.md`
 - `docs/logs/`
   - 每日工作记录
 
