@@ -78,6 +78,7 @@ export function ImportTaskPanel({
       <section
         id="import-task-panel"
         className="mpx-large-panel import-task-panel"
+        data-testid="import-task-panel"
         data-slot="fg-import-task-root"
         data-overlay-close="import-task-panel"
         role="dialog"
@@ -131,6 +132,7 @@ export function ImportTaskPanel({
                   <span>本地路径</span>
                   <input
                     type="text"
+                    data-testid="import-root-path-input"
                     value={importRootPath}
                     placeholder="例如：D:\\Media\\Gallery"
                     onChange={(event) => onImportRootPathChange(event.target.value)}
@@ -144,7 +146,13 @@ export function ImportTaskPanel({
                   <button className="mpx-btn" type="button" onClick={onAddLibrary} disabled={busy}>
                     登记媒体库
                   </button>
-                  <button className="mpx-btn" type="button" onClick={onAddAndScan} disabled={busy}>
+                  <button
+                    className="mpx-btn"
+                    type="button"
+                    data-testid="import-add-and-scan"
+                    onClick={onAddAndScan}
+                    disabled={busy}
+                  >
                     登记并扫描
                   </button>
                 </div>

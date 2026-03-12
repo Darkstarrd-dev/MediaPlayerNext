@@ -1,5 +1,11 @@
 export const selectors = {
+  headerLogoTrigger: '[data-testid="header-logo-trigger"]',
   headerSettingsTrigger: '[data-testid="header-settings-trigger"]',
+  importTaskPanel: '[data-testid="import-task-panel"]',
+  importRootPathInput: '[data-testid="import-root-path-input"]',
+  importAddAndScan: '[data-testid="import-add-and-scan"]',
+  workspaceRoot: '[data-testid="workspace-root"]',
+  sidebarTreeNode: '[data-testid="sidebar-tree-node"]',
   settingsPanel: '[data-testid="settings-panel"]',
   settingsPageDatabase: '[data-testid="settings-page-database"]',
   settingsPageDatabaseBody: '[data-testid="settings-page-database-body"]',
@@ -12,6 +18,48 @@ export const selectors = {
   databaseClearDialog: '[data-testid="database-clear-dialog"]',
   databaseClearCancel: '[data-testid="database-clear-cancel"]',
   databaseClearConfirm: '[data-testid="database-clear-confirm"]',
+}
+
+export async function openImportTaskPanel() {
+  const trigger = await $(selectors.headerLogoTrigger)
+  await trigger.waitForDisplayed({ timeout: 30000 })
+  await trigger.click()
+
+  const panel = await $(selectors.importTaskPanel)
+  await panel.waitForDisplayed({ timeout: 30000 })
+}
+
+export async function closeImportTaskPanelIfOpen() {
+  const panel = await $(selectors.importTaskPanel)
+  const panelVisible = await panel.isDisplayed().catch(() => false)
+
+  if (!panelVisible) {
+    return
+  }
+
+  await browser.keys('Escape')
+  const closedByEscape = await browser
+    .waitUntil(async () => !(await panel.isDisplayed().catch(() => false)), {
+      timeout: 2000,
+      timeoutMsg: 'ImportTaskPanel still open after Escape',
+      interval: 100,
+    })
+    .then(() => true)
+    .catch(() => false)
+
+  if (!closedByEscape) {
+    await browser.execute(() => {
+      const overlay = document.querySelector('[data-overlay-close="import-task-panel"]')
+      if (overlay instanceof HTMLElement) {
+        overlay.click()
+      }
+    })
+  }
+
+  await browser.waitUntil(async () => !(await panel.isDisplayed().catch(() => false)), {
+    timeout: 30000,
+    timeoutMsg: 'Timed out waiting for ImportTaskPanel to close',
+  })
 }
 
 export async function openDatabaseSettingsPage() {

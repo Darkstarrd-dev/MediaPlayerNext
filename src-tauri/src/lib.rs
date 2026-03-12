@@ -8,7 +8,9 @@ use app_core::archive::{
     archive_snapshot, normalize_archive_source, normalize_archive_status,
     resolve_archive_entry_location, ArchiveNormalizeSummary,
 };
-use app_core::asset::{asset_snapshot_for_library, resolve_asset, AssetResolution};
+use app_core::asset::{
+    asset_snapshot_for_library, ensure_media_assets_for_library, resolve_asset, AssetResolution,
+};
 use app_core::content::{
     asset_snapshot_for_media_source, media_source_snapshot_for_library, sync_library_content,
 };
@@ -237,6 +239,14 @@ fn library_nodes_command(
         let existing_sources =
             app_core::ports::MediaSourceRepository::list_by_library(&repositories, &library_id)?;
         if existing_sources.is_empty() {
+            let _ = ensure_media_assets_for_library(
+                &repositories,
+                &repositories,
+                &repositories,
+                &repositories,
+                &repositories,
+                &library_id,
+            )?;
             let _ = sync_library_content(
                 &repositories,
                 &repositories,
@@ -332,6 +342,14 @@ fn scan_start_command(app: tauri::AppHandle, library_id: String) -> CommandResul
         let repositories = environment.database.repositories();
         let library_id = LibraryId(library_id);
         let summary = run_scan(&repositories, &repositories, &repositories, &library_id)?;
+        let _ = ensure_media_assets_for_library(
+            &repositories,
+            &repositories,
+            &repositories,
+            &repositories,
+            &repositories,
+            &library_id,
+        )?;
         let _ = sync_library_content(
             &repositories,
             &repositories,
@@ -354,6 +372,14 @@ fn scan_resume_command(app: tauri::AppHandle, library_id: String) -> CommandResu
         let repositories = environment.database.repositories();
         let library_id = LibraryId(library_id);
         let summary = resume_scan(&repositories, &repositories, &repositories, &library_id)?;
+        let _ = ensure_media_assets_for_library(
+            &repositories,
+            &repositories,
+            &repositories,
+            &repositories,
+            &repositories,
+            &library_id,
+        )?;
         let _ = sync_library_content(
             &repositories,
             &repositories,

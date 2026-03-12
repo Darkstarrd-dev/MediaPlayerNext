@@ -342,6 +342,7 @@ export function AppShell() {
   const handlePasteImportRef = useRef<(text: string) => Promise<void>>(async () => undefined)
   const activeScanActivityTaskIdRef = useRef<string | null>(null)
   const activeScanActivityEntryIdRef = useRef<string | null>(null)
+  const completedScanSurfaceSyncTaskIdRef = useRef<string | null>(null)
   const [mainGridElement, setMainGridElement] = useState<HTMLDivElement | null>(null)
 
   const [importTaskPanelOpen, setImportTaskPanelOpen] = useState(false)
@@ -576,6 +577,29 @@ export function AppShell() {
       )
     },
     [],
+  )
+
+  const bootstrapScanSnapshot = useCallback(
+    async (libraryId: string): Promise<void> => {
+      const maxAttempts = 24
+
+      for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+        try {
+          const snapshot = await repository.scan.snapshot(libraryId)
+          setScanSnapshot(snapshot)
+          return
+        } catch (error) {
+          if (!isTaskNotFoundError(error)) {
+            throw error
+          }
+        }
+
+        await new Promise<void>((resolve) => {
+          window.setTimeout(resolve, 250)
+        })
+      }
+    },
+    [repository],
   )
 
   const loadLibrarySurface = useCallback(
@@ -1196,7 +1220,16 @@ export function AppShell() {
       }
 
       const matchedNode = sidebarNodes.find((node) => node.nodeId === nodeId) ?? null
-      const nextMediaSourceId = matchedNode?.mediaSourceId ?? null
+      if (matchedNode === null) {
+        return
+      }
+
+      if (matchedNode.nodeType !== 'media_source') {
+        setSelectedSidebarNodeId(nodeId)
+        return
+      }
+
+      const nextMediaSourceId = matchedNode.mediaSourceId ?? null
 
       setSelectedSidebarNodeId(nodeId)
       setSelectedMediaSourceId(nextMediaSourceId)
@@ -1240,19 +1273,14 @@ export function AppShell() {
             status: 'completed',
             detail: `已登记并启动扫描：${createdLibrary.rootPath}`,
           })
-          void repository.scan.start(createdLibrary.id).catch((error: unknown) => {
-            setActionError(`扫描启动失败：${getErrorMessage(error)}`)
-          })
-          window.setTimeout(() => {
-            void repository.scan
-              .snapshot(createdLibrary.id)
-              .then((nextSnapshot) => {
-                setScanSnapshot(nextSnapshot)
-              })
-              .catch(() => {
-                // ignore task-not-found race during start
-              })
-          }, 260)
+          void repository.scan
+            .start(createdLibrary.id)
+            .then(async () => {
+              await bootstrapScanSnapshot(createdLibrary.id)
+            })
+            .catch((error: unknown) => {
+              setActionError(`扫描启动失败：${getErrorMessage(error)}`)
+            })
         } else {
           setActionMessage(`已登记媒体库：${createdLibrary.rootPath}`)
           updateImportActivity(activityId, {
@@ -1276,7 +1304,14 @@ export function AppShell() {
         setActionBusy(null)
       }
     },
-    [appendImportActivity, importRootPath, refreshWorkspace, repository, updateImportActivity],
+    [
+      appendImportActivity,
+      bootstrapScanSnapshot,
+      importRootPath,
+      refreshWorkspace,
+      repository,
+      updateImportActivity,
+    ],
   )
 
   const runPathImport = useCallback(
@@ -1312,19 +1347,14 @@ export function AppShell() {
         try {
           const createdLibrary = await repository.library.add({ rootPath: path })
           successLibraries.push(createdLibrary)
-          void repository.scan.start(createdLibrary.id).catch((error: unknown) => {
-            setActionError(`扫描启动失败：${getErrorMessage(error)}`)
-          })
-          window.setTimeout(() => {
-            void repository.scan
-              .snapshot(createdLibrary.id)
-              .then((nextSnapshot) => {
-                setScanSnapshot(nextSnapshot)
-              })
-              .catch(() => {
-                // ignore task-not-found race during start
-              })
-          }, 260)
+          void repository.scan
+            .start(createdLibrary.id)
+            .then(async () => {
+              await bootstrapScanSnapshot(createdLibrary.id)
+            })
+            .catch((error: unknown) => {
+              setActionError(`扫描启动失败：${getErrorMessage(error)}`)
+            })
         } catch (error) {
           failedPaths.push(`${path}：${getErrorMessage(error)}`)
         }
@@ -1369,7 +1399,14 @@ export function AppShell() {
         detail: failedPaths.join('；') || failureSummaryLabel,
       })
     },
-    [appendImportActivity, refreshWorkspace, repository, selectedLibraryId, updateImportActivity],
+    [
+      appendImportActivity,
+      bootstrapScanSnapshot,
+      refreshWorkspace,
+      repository,
+      selectedLibraryId,
+      updateImportActivity,
+    ],
   )
 
   const handleDropImport = useCallback(
@@ -1526,9 +1563,14 @@ export function AppShell() {
         setScanStats(nextStats)
 
         if (isActiveTaskProgress(scanSnapshot) && nextSnapshot !== null && !isActiveTaskProgress(nextSnapshot)) {
+          const nextSelection = await refreshSidebarNodes(
+            selectedLibraryId,
+            selectedSidebarNodeId,
+            selectedMediaSourceId,
+          )
           await loadLibrarySurface({
             libraryId: selectedLibraryId,
-            mediaSourceId: selectedMediaSourceId,
+            mediaSourceId: nextSelection.selectedMediaSourceId,
             requestedPageIndex: itemsPageIndex,
           })
         }
@@ -1553,9 +1595,49 @@ export function AppShell() {
   }, [
     itemsPageIndex,
     loadLibrarySurface,
+    refreshSidebarNodes,
     repository,
     scanSnapshot,
     selectedLibraryId,
+    selectedSidebarNodeId,
+    selectedMediaSourceId,
+  ])
+
+  useEffect(() => {
+    if (scanSnapshot === null || selectedLibraryId === null) {
+      completedScanSurfaceSyncTaskIdRef.current = null
+      return
+    }
+
+    if (isActiveTaskProgress(scanSnapshot)) {
+      return
+    }
+
+    if (completedScanSurfaceSyncTaskIdRef.current === scanSnapshot.taskId) {
+      return
+    }
+
+    completedScanSurfaceSyncTaskIdRef.current = scanSnapshot.taskId
+
+    void (async () => {
+      const nextSelection = await refreshSidebarNodes(
+        selectedLibraryId,
+        selectedSidebarNodeId,
+        selectedMediaSourceId,
+      )
+      await loadLibrarySurface({
+        libraryId: selectedLibraryId,
+        mediaSourceId: nextSelection.selectedMediaSourceId,
+        requestedPageIndex: itemsPageIndex,
+      })
+    })()
+  }, [
+    itemsPageIndex,
+    loadLibrarySurface,
+    refreshSidebarNodes,
+    scanSnapshot,
+    selectedLibraryId,
+    selectedSidebarNodeId,
     selectedMediaSourceId,
   ])
 
@@ -1871,6 +1953,7 @@ export function AppShell() {
               <button
                 className="mpx-btn header-logo-btn"
                 type="button"
+                data-testid="header-logo-trigger"
                 aria-haspopup="dialog"
                 aria-expanded={importTaskPanelOpen}
                 aria-controls="import-task-panel"
@@ -1908,7 +1991,13 @@ export function AppShell() {
           </div>
         </header>
 
-        <div className="app-workspace" style={workspaceStyle}>
+        <div
+          className="app-workspace"
+          style={workspaceStyle}
+          data-testid="workspace-root"
+          data-active-sidebar-node-id={selectedSidebarNodeId ?? ''}
+          data-active-media-source-id={selectedMediaSourceId ?? ''}
+        >
           <aside className="app-frame app-sidebar-root" data-slot="fg-sidebar-root">
             <section className="workspace-pane sidebar-frame">
               <header className="workspace-pane-header sidebar-header" data-slot="fg-sidebar-header">
@@ -1976,6 +2065,11 @@ export function AppShell() {
                           type="button"
                           role="treeitem"
                           aria-selected={isActive}
+                          data-testid="sidebar-tree-node"
+                          data-node-id={node.nodeId}
+                          data-node-type={node.nodeType}
+                          data-media-source-id={node.mediaSourceId ?? ''}
+                          data-has-direct-media-child={node.hasDirectMediaChild ? '1' : '0'}
                           style={{ paddingInlineStart: `${14 + node.depth * 14}px` }}
                           onClick={() => handleSidebarNodeSelect(node.nodeId)}
                         >
