@@ -173,9 +173,9 @@
 | `Phase 0` | 冻结增强项边界与前置条件 | `done` |
 | `Phase 1` | 滚轮翻页与页码预览状态链 | `done` |
 | `Phase 2` | ready-commit 翻页缓冲 | `done` |
-| `Phase 3` | gap snap 吸附策略 | `pending` |
+| `Phase 3` | gap snap 吸附策略 | `done` |
 | `Phase 4` | 缩略图分辨率自适应 | `done` |
-| `Phase 5` | 联调、验证、文档回填 | `in-progress` |
+| `Phase 5` | 联调、验证、文档回填 | `done` |
 
 ---
 
@@ -370,11 +370,11 @@
 
 ### 12.4 phase 完成后状态 check
 
-- [ ] 已明确并实现 snap 触发时机
-- [ ] splitter 拖动中不会实时 snap
-- [ ] resize / zoom / mount 后可触发 snap
-- [ ] snap 不会破坏三列最小宽度边界
-- [ ] 网格右侧多余空白明显减少
+- [x] 已明确并实现 snap 触发时机
+- [x] splitter 拖动中不会实时 snap
+- [x] resize / zoom / mount 后可触发 snap
+- [x] snap 不会破坏三列最小宽度边界
+- [x] 网格右侧多余空白明显减少
 
 ---
 

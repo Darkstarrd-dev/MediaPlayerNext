@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   clampNumber,
   readSessionNumber,
@@ -26,6 +26,11 @@ import {
   toThumbnailZoomLevel,
   type ThumbnailZoomLevel,
 } from './thumbnail-grid-layout'
+import {
+  computeGapSnapTargetWidth,
+  GAP_SNAP_MIN_ADJUST_PX,
+  resolveGapSnapPaneWidths,
+} from './thumbnail-grid-enhancements'
 import { useAppShellLayoutEffects } from './use-app-shell-layout-effects'
 
 export type DragTarget = 'left' | 'right'
@@ -171,6 +176,97 @@ export function useAppShellLayout() {
       }),
     [mainGridSize.height, mainGridSize.width, thumbnailZoomLevel],
   )
+
+  const minMainWidthPx = useMemo(() => {
+    const availableWidth = workspaceLayout.availableWidth
+    return Math.min(420, Math.max(280, Math.round(availableWidth * 0.34)))
+  }, [workspaceLayout.availableWidth])
+
+  const maxMainWidthPx = useMemo(() => {
+    const availableWidth = workspaceLayout.availableWidth
+    const minSidebarWidthPx = Math.min(220, Math.max(160, Math.round(availableWidth * 0.22)))
+    const minMetaWidthPx = Math.min(280, Math.max(200, Math.round(availableWidth * 0.24)))
+    return Math.max(minMainWidthPx, availableWidth - minSidebarWidthPx - minMetaWidthPx)
+  }, [minMainWidthPx, workspaceLayout.availableWidth])
+
+  const previousDragStateRef = useRef<DragState | null>(null)
+  const shouldTryGapSnapRef = useRef(true)
+
+  useEffect(() => {
+    if (dragState !== null) {
+      previousDragStateRef.current = dragState
+      return
+    }
+
+    if (previousDragStateRef.current !== null) {
+      shouldTryGapSnapRef.current = true
+      previousDragStateRef.current = null
+    }
+  }, [dragState])
+
+  useEffect(() => {
+    shouldTryGapSnapRef.current = true
+  }, [mainGridSize.width, thumbnailZoomLevel])
+
+  useEffect(() => {
+    if (!shouldTryGapSnapRef.current || dragState !== null) {
+      return
+    }
+
+    const targetMainWidthPx = computeGapSnapTargetWidth({
+      containerWidth: mainGridSize.width,
+      columns: thumbnailGridLayout.columns,
+      cellSizePx: thumbnailGridLayout.cellSizePx,
+      gapPx: thumbnailGridLayout.gapPx,
+      minMainWidthPx,
+      maxMainWidthPx,
+    })
+
+    if (targetMainWidthPx === null) {
+      shouldTryGapSnapRef.current = false
+      return
+    }
+
+    if (Math.abs(targetMainWidthPx - workspaceLayout.mainWidthPx) < GAP_SNAP_MIN_ADJUST_PX) {
+      shouldTryGapSnapRef.current = false
+      return
+    }
+
+    const snappedPaneWidths = resolveGapSnapPaneWidths({
+      availableWidth: workspaceLayout.availableWidth,
+      targetMainWidthPx,
+      currentSidebarWidthPx: workspaceLayout.sidebarWidthPx,
+      currentMetaWidthPx: workspaceLayout.metaWidthPx,
+    })
+
+    if (snappedPaneWidths === null) {
+      shouldTryGapSnapRef.current = false
+      return
+    }
+
+    const sidebarChanged = Math.abs(snappedPaneWidths.sidebarWidthPx - workspaceLayout.sidebarWidthPx) >= 1
+    const metaChanged = Math.abs(snappedPaneWidths.metaWidthPx - workspaceLayout.metaWidthPx) >= 1
+    if (!sidebarChanged && !metaChanged) {
+      shouldTryGapSnapRef.current = false
+      return
+    }
+
+    setSidebarWidthPx(snappedPaneWidths.sidebarWidthPx)
+    setMetaWidthPx(snappedPaneWidths.metaWidthPx)
+    shouldTryGapSnapRef.current = false
+  }, [
+    dragState,
+    mainGridSize.width,
+    maxMainWidthPx,
+    minMainWidthPx,
+    thumbnailGridLayout.cellSizePx,
+    thumbnailGridLayout.columns,
+    thumbnailGridLayout.gapPx,
+    workspaceLayout.availableWidth,
+    workspaceLayout.mainWidthPx,
+    workspaceLayout.metaWidthPx,
+    workspaceLayout.sidebarWidthPx,
+  ])
 
   const itemGridStyle = useMemo(
     () =>

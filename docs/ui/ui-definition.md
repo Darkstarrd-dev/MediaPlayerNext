@@ -526,3 +526,4 @@ Sidebar | Main | Metadata
 - `Main.main` 当前已接入滚轮翻页预览：滚轮输入先进入预览态，settle 后再触发真实翻页提交
 - `Main` 翻页链路当前已接入 `ready-commit`：页切换期间保留旧页，待新页 ready 后再 commit 到展示层
 - 缩略图 ensure 当前已接入 `profile` 自适应映射：根据格子尺寸与 `devicePixelRatio` 在 `grid-sm / grid-md / detail-md / detail-lg` 间选择
+- `Main` 当前已接入 `gap snap`：在 splitter commit、resize、zoom、首次挂载后尝试贴合网格列宽，拖动中不实时吸附，且继续遵守三列最小宽度边界
