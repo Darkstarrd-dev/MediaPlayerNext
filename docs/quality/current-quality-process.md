@@ -185,24 +185,23 @@ P2 当前用于暴露“不会立刻打断功能，但会持续侵蚀可维护�
 - `legacy`：旧入口兼容（不建议日常使用）
   - 命令：`npm run check:quality:legacy`
 
-### 5.5 最新分层验证快照（2026-03-12）
+### 5.5 最新分层验证快照（2026-03-12 11:28）
 
 - `fast`：通过
-  - `data/quality-gates/20260312-084055/rust-gates-fast/quality-gates-summary.json`
-- `standard`：失败（既有失败项）
-  - 失败项：`clippy`、`duplicate-deps`
-  - `data/quality-gates/20260312-084112/rust-gates-standard/quality-gates-summary.json`
-- `heavy`：失败（既有失败项）
-  - 失败项：`clippy`、`deny`、`duplicate-deps`
-  - `data/quality-gates/20260312-084137/rust-gates-heavy/quality-gates-summary.json`
-- `release`：失败（在 `heavy` 阶段即中断）
-  - 当前未进入 `check:release` / `e2e:desktop:doctor` / `e2e:desktop`
-  - `data/quality-gates/20260312-084417/rust-gates-heavy/quality-gates-summary.json`
+  - `data/quality-gates/20260312-101605/rust-gates-fast/quality-gates-summary.json`
+- `standard`：通过
+  - `data/quality-gates/20260312-102235/rust-gates-standard/quality-gates-summary.json`
+- `heavy`：通过
+  - `data/quality-gates/20260312-112356/rust-gates-heavy/quality-gates-summary.json`
+- `release`：失败（卡在 `check:release` 的 Tauri bundle 下载阶段）
+  - `check:quality:heavy` 已通过，但 `check:release` 在下载 WiX binaries 时 `Connection refused`
+  - `data/quality-gates/20260312-112636/release-verify/release-verify-summary.json`
 
 说明：
 
-- 分层命令链路已验证可执行
-- 当前主要阻塞不在分层框架本身，而是既有质量债务尚未收敛
+- 本轮已修复 `forbidden-edges` 元数据解析问题，`fast` 恢复通过
+- 本轮已收敛 `standard` 与 `heavy` 层阻塞项
+- 当前主要剩余阻塞点转为发布链路外部下载依赖（WiX bundler 下载）
 
 ## 6. 变更类型与必跑动作
 

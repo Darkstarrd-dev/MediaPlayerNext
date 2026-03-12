@@ -245,6 +245,15 @@ $worktreeStatus = if ([string]::IsNullOrWhiteSpace($gitStatusResult.Output)) { "
 
 $profileConfig = Build-ProfileConfig -ProfileName $Layer
 
+$localAdvisoryDbPath = $null
+$advisoryDbRoot = Join-Path $env:USERPROFILE ".cargo\advisory-dbs"
+if (Test-Path $advisoryDbRoot) {
+  $localAdvisoryDbPath = Get-ChildItem -Path $advisoryDbRoot -Directory -Filter "advisory-db-*" |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1 |
+    ForEach-Object { $_.FullName }
+}
+
 $gateResults = @()
 if ($profileConfig.runFmt) {
   $gateResults += Invoke-DirectGate -Name "fmt" -Priority "P0" -Executable $cargoRunner -Arguments @("fmt", "--all", "--check") -LogFileName "p0-fmt.log" -Details "Rust workspace format gate"
@@ -267,11 +276,21 @@ if ($profileConfig.runCoverage) {
 }
 
 if ($profileConfig.runDeny) {
-  $gateResults += Invoke-DirectGate -Name "deny" -Priority "P0" -Executable $cargoRunner -Arguments @("deny", "check", "advisories", "licenses", "bans", "sources") -LogFileName "p0-deny.log" -Details "cargo deny security and license gate"
+  $denyArguments = @("deny", "check", "advisories", "licenses", "bans", "sources")
+  if (-not [string]::IsNullOrWhiteSpace($localAdvisoryDbPath)) {
+    $denyArguments += "--disable-fetch"
+  }
+
+  $gateResults += Invoke-DirectGate -Name "deny" -Priority "P0" -Executable $cargoRunner -Arguments $denyArguments -LogFileName "p0-deny.log" -Details "cargo deny security and license gate"
 }
 
 if ($profileConfig.runAudit) {
-  $gateResults += Invoke-DirectGate -Name "audit" -Priority "P0" -Executable $cargoRunner -Arguments @("audit") -LogFileName "p0-audit.log" -Details "cargo audit RustSec gate"
+  $auditArguments = @("audit")
+  if (-not [string]::IsNullOrWhiteSpace($localAdvisoryDbPath)) {
+    $auditArguments += @("--no-fetch", "--db", $localAdvisoryDbPath)
+  }
+
+  $gateResults += Invoke-DirectGate -Name "audit" -Priority "P0" -Executable $cargoRunner -Arguments $auditArguments -LogFileName "p0-audit.log" -Details "cargo audit RustSec gate"
 }
 
 if ($profileConfig.runUdeps) {

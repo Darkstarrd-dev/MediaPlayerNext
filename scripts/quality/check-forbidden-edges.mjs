@@ -30,7 +30,27 @@ const allowedEdges = new Map([
   ["mediaplayernext", ["app-core", "media-db", "shared-model"]],
 ]);
 
-const metadata = JSON.parse(await readFile(metadataPath, "utf8"));
+function parseCargoMetadata(rawText) {
+  const trimmed = rawText.trim();
+  if (trimmed.length === 0) {
+    throw new Error("cargo metadata output is empty");
+  }
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    const jsonStart = rawText.indexOf("{");
+    const jsonEnd = rawText.lastIndexOf("}");
+
+    if (jsonStart === -1 || jsonEnd === -1 || jsonStart >= jsonEnd) {
+      throw new Error("cannot locate JSON payload in cargo metadata output");
+    }
+
+    return JSON.parse(rawText.slice(jsonStart, jsonEnd + 1));
+  }
+}
+
+const metadata = parseCargoMetadata(await readFile(metadataPath, "utf8"));
 const workspaceIds = new Set(metadata.workspace_members);
 const workspacePackages = metadata.packages.filter((item) => workspaceIds.has(item.id));
 const packageById = new Map(workspacePackages.map((item) => [item.id, item]));

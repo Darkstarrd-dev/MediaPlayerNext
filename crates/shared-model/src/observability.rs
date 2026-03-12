@@ -45,8 +45,7 @@ pub fn emit_external_process_log(log: &ExternalProcessLog) {
     match serde_json::to_string(log) {
         Ok(line) => eprintln!("{line}"),
         Err(error) => eprintln!(
-            "{{\"event\":\"external-process\",\"phase\":\"serialize_failed\",\"tool\":\"observability\",\"ok\":false,\"stderrExcerpt\":\"{}\"}}",
-            error
+            "{{\"event\":\"external-process\",\"phase\":\"serialize_failed\",\"tool\":\"observability\",\"ok\":false,\"stderrExcerpt\":\"{error}\"}}"
         ),
     }
 }
