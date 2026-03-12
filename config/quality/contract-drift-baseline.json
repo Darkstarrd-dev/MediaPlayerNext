@@ -1,0 +1,15 @@
+{
+  "updatedAt": "2026-03-12T22:50:00",
+  "ignoredContractCommandsMissingInRust": [
+    "playback_probe_command",
+    "subtitle_shutdown_command",
+    "thumbnail_get_command"
+  ],
+  "ignoredRustCommandsMissingInContracts": [
+    "clear_database_command",
+    "greet",
+    "read_runtime_info_command",
+    "runtime_smoke_check",
+    "set_runtime_storage_paths_command"
+  ]
+}

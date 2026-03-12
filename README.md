@@ -167,6 +167,8 @@ Current Tauri protocol DB rule:
 - `npm run check:release`
   - builds subtitle sidecar + Tauri bundle and verifies current release artifacts, including packaged sidecar resource presence
 - `npm run check:module-boundaries`
+- `npm run check:capabilities-drift`
+- `npm run check:contract-drift`
   - module size and boundary baseline gate
 
 Layer highlights:
@@ -333,9 +335,6 @@ Current validated tool versions for the Rust `1.88.0` project baseline:
    - `crates/app-core/src/archive.rs`（449 行）
    - `crates/app-core/src/asset.rs`（447 行）
    - `crates/app-core/src/scan.rs`（441 行）
-2. 补齐缺失门禁项
-   - `capabilities drift`
-   - `contract drift`
-3. 落地 CI 分层流水线与发布增强验收
+2. 落地 CI 分层流水线与发布增强验收
    - 分层工作流：`fast / standard / heavy / release`
    - 发布侧补充：installer/upgrade replay、signing/offline smoke

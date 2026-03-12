@@ -28,6 +28,8 @@
     "check:paths": "powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\release\\verify-resource-paths.ps1\"",
     "check:sidecar-package": "powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\release\\verify-sidecar-package.ps1\"",
     "check:debt": "powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\quality\\check-debt-delta.ps1\"",
+    "check:capabilities-drift": "powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\quality\\check-capabilities-drift.ps1\"",
+    "check:contract-drift": "node .\\scripts\\quality\\check-contract-drift.mjs",
     "check:module-boundaries": "powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\quality\\check-module-boundaries.ps1\"",
     "check:quality:fast": "powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\quality\\run-rust-gates.ps1\" -Layer fast",
     "check:quality:standard": "powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\quality\\run-rust-gates.ps1\" -Layer standard",

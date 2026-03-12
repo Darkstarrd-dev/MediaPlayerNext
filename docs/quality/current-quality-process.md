@@ -59,6 +59,8 @@ P0 当前用于阻断“代码无法稳定构建、测试或通过核心安全�
     - `module-boundaries`（模块体量与职责边界基线）
     - `cargo nextest run --workspace --all-features` 单轮
     - `debt-delta`
+    - `capabilities-drift`
+    - `contract-drift`
     - `duplicate-deps`
     - `forbidden-edges`
 - `npm run check:quality:heavy`
@@ -130,12 +132,18 @@ P2 当前用于暴露“不会立刻打断功能，但会持续侵蚀可维护�
   - 已包含 `udeps`
 - `npm run check:debt`
   - 对应 `scripts/quality/check-debt-delta.ps1`
+- `npm run check:capabilities-drift`
+  - 对应 `scripts/quality/check-capabilities-drift.ps1`
+- `npm run check:contract-drift`
+  - 对应 `scripts/quality/check-contract-drift.mjs`
 - `docs/benchmarks/`
   - 当前用于沉淀 benchmark baseline、回归记录与质量门禁记录
 
 当前已纳入 P2 口径的仓库能力：
 
 - Rust debt baseline 治理：`config/quality/debt-baseline.json`
+- Tauri capabilities drift 基线治理：`config/quality/capabilities-baseline.json`
+- contracts vs Tauri command drift 基线治理：`config/quality/contract-drift-baseline.json`
 - duplicate deps 基线治理：`config/quality/duplicate-deps-baseline.json`
 - `cargo +nightly udeps` 未使用依赖检查
 - benchmark baseline 文档化沉淀
@@ -308,8 +316,6 @@ P2 当前用于暴露“不会立刻打断功能，但会持续侵蚀可维护�
 以下项目已经明确是缺口，但尚未形成当前仓库的强制门禁：
 
 - 没有 CI / PR 模板 / release workflow 真正落库
-- 没有 capabilities drift 校验，当前只有存在性与打包完整性检查
-- 没有 contract drift 校验，当前 `packages/contracts` 与 Rust command 仍存在手工漂移风险
 - benchmark 还没有 compare + threshold gate
 - 还没有 binary size / `cargo bloat` / Go-No-Go 报告模板的当前版落地
 - 还没有离线安装、升级回放、签名等 release 级闭环

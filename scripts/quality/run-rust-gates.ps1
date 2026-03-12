@@ -22,6 +22,7 @@ $resolvedOutputRoot = $context.OutputRoot
 $cargoRunner = Join-Path $projectRoot "scripts\run-cargo-with-msvc.cmd"
 $cargoExe = Join-Path $env:USERPROFILE ".cargo\bin\cargo.exe"
 $nodeScriptPath = Join-Path $projectRoot "scripts\quality\check-forbidden-edges.mjs"
+$contractDriftScriptPath = Join-Path $projectRoot "scripts\quality\check-contract-drift.mjs"
 
 function Add-GateResult {
   param(
@@ -123,6 +124,8 @@ function Build-ProfileConfig {
         runClippy = $false
         runCheck = $true
         runModuleBoundaries = $true
+        runCapabilitiesDrift = $true
+        runContractDrift = $true
         nextestMode = "none"
         runCoverage = $false
         runDeny = $false
@@ -140,6 +143,8 @@ function Build-ProfileConfig {
         runClippy = $true
         runCheck = $true
         runModuleBoundaries = $true
+        runCapabilitiesDrift = $true
+        runContractDrift = $true
         nextestMode = "x1"
         runCoverage = $false
         runDeny = $false
@@ -157,6 +162,8 @@ function Build-ProfileConfig {
         runClippy = $true
         runCheck = $true
         runModuleBoundaries = $true
+        runCapabilitiesDrift = $true
+        runContractDrift = $true
         nextestMode = "x3"
         runCoverage = $true
         runDeny = $true
@@ -174,6 +181,8 @@ function Build-ProfileConfig {
         runClippy = $true
         runCheck = $true
         runModuleBoundaries = $true
+        runCapabilitiesDrift = $true
+        runContractDrift = $true
         nextestMode = "x3"
         runCoverage = $true
         runDeny = $true
@@ -273,6 +282,30 @@ if ($profileConfig.runCheck) {
 
 if ($profileConfig.runModuleBoundaries) {
   $gateResults += Invoke-PowerShellGate -Name "module-boundaries" -Priority "P1" -ScriptPath (Join-Path $projectRoot "scripts\quality\check-module-boundaries.ps1") -LogFileName "p1-module-boundaries-wrapper.log" -SummaryFileName "module-boundaries-summary.json" -Details "module size and boundary baseline gate"
+}
+
+if ($profileConfig.runCapabilitiesDrift) {
+  $gateResults += Invoke-PowerShellGate -Name "capabilities-drift" -Priority "P1" -ScriptPath (Join-Path $projectRoot "scripts\quality\check-capabilities-drift.ps1") -LogFileName "p1-capabilities-drift-wrapper.log" -SummaryFileName "capabilities-drift-summary.json" -Details "tauri capabilities baseline-delta gate"
+}
+
+if ($profileConfig.runContractDrift) {
+  $contractSummaryPath = Join-Path $resolvedOutputRoot "contract-drift-summary.json"
+  $contractLogPath = Join-Path $resolvedOutputRoot "p1-contract-drift.log"
+  $contractCommandResult = Invoke-LoggedCommand `
+    -Executable "node" `
+    -Arguments @($contractDriftScriptPath, "--summary", $contractSummaryPath) `
+    -WorkingDirectory $projectRoot `
+    -LogPath $contractLogPath
+  $gateResults += Add-GateResult `
+    -Name "contract-drift" `
+    -Priority "P1" `
+    -Passed ($contractCommandResult.ExitCode -eq 0) `
+    -Command $contractCommandResult.Command `
+    -ExitCode $contractCommandResult.ExitCode `
+    -DurationMs $contractCommandResult.DurationMs `
+    -LogPath $contractLogPath `
+    -Details "contracts request schema and tauri command drift gate" `
+    -Artifacts @($contractSummaryPath)
 }
 
 if ($profileConfig.nextestMode -ne "none") {

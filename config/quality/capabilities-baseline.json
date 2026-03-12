@@ -1,0 +1,19 @@
+{
+  "updatedAt": "2026-03-12T22:50:00",
+  "fileCount": 1,
+  "capabilities": [
+    {
+      "path": "src-tauri/capabilities/default.json",
+      "identifier": "default",
+      "windows": [
+        "main"
+      ],
+      "permissions": [
+        "clipboard-manager:allow-read-text",
+        "clipboard-x:default",
+        "core:default",
+        "dialog:default"
+      ]
+    }
+  ]
+}
