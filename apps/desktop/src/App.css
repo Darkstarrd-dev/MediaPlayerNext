@@ -1151,6 +1151,8 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 14px;
+  align-content: start;
+  justify-content: start;
 }
 
 .item-card-button {
@@ -1421,6 +1423,30 @@
 .pane-title-single {
   flex: 1;
   align-self: center;
+}
+
+.main-zoom-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--mpx-text-2);
+}
+
+.main-zoom-select {
+  min-width: 72px;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(119, 99, 71, 0.2);
+  background: rgba(255, 251, 245, 0.9);
+  color: var(--mpx-text-1);
+  font: inherit;
+}
+
+.main-zoom-select:disabled {
+  opacity: 0.5;
 }
 
 [data-slot='fg-main-main'] {

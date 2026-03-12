@@ -17,6 +17,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { consumeE2eDirectorySelection } from './e2e-test-bridge'
 import { ImportTaskPanel } from './ImportTaskPanel'
 import { SettingsIcon } from './SettingsIcon'
+import {
+  computeThumbnailGridLayout,
+  THUMBNAIL_ZOOM_LEVELS,
+  toThumbnailZoomLevel,
+  type ThumbnailZoomLevel,
+} from './thumbnail-grid-layout'
 import { useMediaRepository } from './use-media-repository'
 
 const DEFAULT_VIEWPORT_WIDTH = 1280
@@ -27,7 +33,9 @@ const DEFAULT_PANE_STACK_GAP_SCALE_COEFF = 1
 const DEFAULT_SPLITTER_WIDTH_SCALE_COEFF = 1
 const DEFAULT_SIDEBAR_WIDTH_PX = 300
 const DEFAULT_META_WIDTH_PX = 340
-const ITEMS_PREVIEW_LIMIT = 12
+const DEFAULT_THUMBNAIL_ZOOM_LEVEL: ThumbnailZoomLevel = 4
+const THUMBNAIL_GRID_GAP_PX = 14
+const THUMBNAIL_GRID_MIN_CELL_PX = 96
 
 const SETTINGS_STORAGE_KEYS = {
   settingsBackdropOpacity: 'mpnext.ui.settingsBackdropOpacity',
@@ -37,6 +45,7 @@ const SETTINGS_STORAGE_KEYS = {
   splitterWidthScaleCoeff: 'mpnext.ui.splitterWidthScaleCoeff',
   sidebarWidthPx: 'mpnext.ui.sidebarWidthPx',
   metaWidthPx: 'mpnext.ui.metaWidthPx',
+  thumbnailZoomLevel: 'mpnext.ui.thumbnailZoomLevel',
 } as const
 
 const ACTION_LABELS = {
@@ -288,6 +297,7 @@ export function AppShell() {
   const handlePasteImportRef = useRef<(text: string) => Promise<void>>(async () => undefined)
   const activeScanActivityTaskIdRef = useRef<string | null>(null)
   const activeScanActivityEntryIdRef = useRef<string | null>(null)
+  const [mainGridElement, setMainGridElement] = useState<HTMLDivElement | null>(null)
 
   const [importTaskPanelOpen, setImportTaskPanelOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -347,6 +357,17 @@ export function AppShell() {
   )
   const [dragState, setDragState] = useState<DragState | null>(null)
   const [dropImportActive, setDropImportActive] = useState(false)
+  const [mainGridSize, setMainGridSize] = useState({ width: 960, height: 640 })
+  const [thumbnailZoomLevel, setThumbnailZoomLevel] = useState<ThumbnailZoomLevel>(() =>
+    toThumbnailZoomLevel(
+      readSessionNumber(
+        SETTINGS_STORAGE_KEYS.thumbnailZoomLevel,
+        DEFAULT_THUMBNAIL_ZOOM_LEVEL,
+        THUMBNAIL_ZOOM_LEVELS[0],
+        THUMBNAIL_ZOOM_LEVELS[THUMBNAIL_ZOOM_LEVELS.length - 1],
+      ),
+    ),
+  )
 
   const [libraries, setLibraries] = useState<LibrarySummary[]>([])
   const [librariesLoading, setLibrariesLoading] = useState(false)
@@ -357,6 +378,8 @@ export function AppShell() {
   const [workspaceLoading, setWorkspaceLoading] = useState(false)
   const [workspaceError, setWorkspaceError] = useState<string | null>(null)
   const [items, setItems] = useState<ItemListEntry[]>([])
+  const [itemsPageIndex, setItemsPageIndex] = useState(1)
+  const [itemsHasNextPage, setItemsHasNextPage] = useState(false)
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null)
   const [selectedItemDetail, setSelectedItemDetail] = useState<ItemDetail | null>(null)
   const [itemDetailLoading, setItemDetailLoading] = useState(false)
@@ -431,6 +454,27 @@ export function AppShell() {
     [workspaceLayout.metaWidthPx, workspaceLayout.sidebarWidthPx],
   )
 
+  const thumbnailGridLayout = useMemo(
+    () =>
+      computeThumbnailGridLayout({
+        containerWidth: mainGridSize.width,
+        containerHeight: mainGridSize.height,
+        zoomLevel: thumbnailZoomLevel,
+        gapPx: THUMBNAIL_GRID_GAP_PX,
+        minCellSizePx: THUMBNAIL_GRID_MIN_CELL_PX,
+      }),
+    [mainGridSize.height, mainGridSize.width, thumbnailZoomLevel],
+  )
+
+  const itemGridStyle = useMemo(
+    () =>
+      ({
+        gridTemplateColumns: `repeat(${thumbnailGridLayout.columns}, minmax(0, ${thumbnailGridLayout.cellSizePx}px))`,
+        gap: `${thumbnailGridLayout.gapPx}px`,
+      }) as CSSProperties,
+    [thumbnailGridLayout.cellSizePx, thumbnailGridLayout.columns, thumbnailGridLayout.gapPx],
+  )
+
   const clearWorkspaceData = useCallback(() => {
     libraryLoadRequestIdRef.current += 1
     itemDetailRequestIdRef.current += 1
@@ -440,6 +484,8 @@ export function AppShell() {
     setWorkspaceError(null)
     setWorkspaceLoading(false)
     setItems([])
+    setItemsPageIndex(1)
+    setItemsHasNextPage(false)
     setSelectedAssetId(null)
     setSelectedItemDetail(null)
     setItemDetailError(null)
@@ -478,7 +524,7 @@ export function AppShell() {
   )
 
   const loadLibrarySurface = useCallback(
-    async (libraryId: string) => {
+    async (libraryId: string, requestedPageIndex: number) => {
       const requestId = libraryLoadRequestIdRef.current + 1
       libraryLoadRequestIdRef.current = requestId
 
@@ -486,7 +532,24 @@ export function AppShell() {
       setWorkspaceError(null)
 
       try {
-        const [detail, stats, snapshot, nextItems] = await Promise.all([
+        const pageSize = thumbnailGridLayout.pageSize
+        let resolvedPageIndex = Math.max(1, requestedPageIndex)
+
+        const readItemsPage = (pageIndex: number) =>
+          repository.items.list({
+            libraryId,
+            page: pageIndex,
+            pageSize,
+          })
+
+        let nextItems = await readItemsPage(resolvedPageIndex)
+
+        while (resolvedPageIndex > 1 && nextItems.length === 0) {
+          resolvedPageIndex -= 1
+          nextItems = await readItemsPage(resolvedPageIndex)
+        }
+
+        const [detail, stats, snapshot] = await Promise.all([
           repository.library.get(libraryId),
           repository.scan.stats(libraryId),
           repository.scan.snapshot(libraryId).catch((error: unknown) => {
@@ -495,11 +558,6 @@ export function AppShell() {
             }
 
             throw error
-          }),
-          repository.items.list({
-            libraryId,
-            page: 1,
-            pageSize: ITEMS_PREVIEW_LIMIT,
           }),
         ])
 
@@ -510,6 +568,8 @@ export function AppShell() {
         setSelectedLibraryDetail(detail)
         setScanStats(stats)
         setScanSnapshot(snapshot)
+        setItemsPageIndex(resolvedPageIndex)
+        setItemsHasNextPage(resolvedPageIndex === requestedPageIndex && nextItems.length === pageSize)
         setItems(nextItems)
         setItemThumbnailUrls({})
         setSelectedAssetId((currentAssetId) => {
@@ -529,6 +589,8 @@ export function AppShell() {
         setScanStats(null)
         setScanSnapshot(null)
         setItems([])
+        setItemsPageIndex(1)
+        setItemsHasNextPage(false)
         setSelectedAssetId(null)
         setItemThumbnailUrls({})
       } finally {
@@ -537,7 +599,7 @@ export function AppShell() {
         }
       }
     },
-    [repository],
+    [repository, thumbnailGridLayout.pageSize],
   )
 
   const refreshLibraries = useCallback(
@@ -574,10 +636,24 @@ export function AppShell() {
         return
       }
 
-      await loadLibrarySurface(nextSelectedLibraryId)
+      setItemsPageIndex(1)
+      await loadLibrarySurface(nextSelectedLibraryId, 1)
     },
     [clearWorkspaceData, loadLibrarySurface, refreshLibraries],
   )
+
+  const previousPageSizeRef = useRef(thumbnailGridLayout.pageSize)
+
+  useEffect(() => {
+    const previousPageSize = previousPageSizeRef.current
+    previousPageSizeRef.current = thumbnailGridLayout.pageSize
+
+    if (selectedLibraryId === null || previousPageSize === thumbnailGridLayout.pageSize) {
+      return
+    }
+
+    void loadLibrarySurface(selectedLibraryId, itemsPageIndex)
+  }, [itemsPageIndex, loadLibrarySurface, selectedLibraryId, thumbnailGridLayout.pageSize])
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -667,12 +743,14 @@ export function AppShell() {
       workspaceLayout.sidebarWidthPx.toString(),
     )
     window.sessionStorage.setItem(SETTINGS_STORAGE_KEYS.metaWidthPx, workspaceLayout.metaWidthPx.toString())
+    window.sessionStorage.setItem(SETTINGS_STORAGE_KEYS.thumbnailZoomLevel, thumbnailZoomLevel.toString())
   }, [
     layoutGapScaleCoeff,
     paneInnerGapScaleCoeff,
     paneStackGapScaleCoeff,
     settingsBackdropOpacity,
     splitterWidthScaleCoeff,
+    thumbnailZoomLevel,
     workspaceLayout.metaWidthPx,
     workspaceLayout.sidebarWidthPx,
   ])
@@ -735,6 +813,43 @@ export function AppShell() {
       window.removeEventListener('pointerup', handlePointerUp)
     }
   }, [dragState])
+
+  useEffect(() => {
+    if (mainGridElement === null) {
+      return
+    }
+
+    const updateGridSize = (width: number, height: number) => {
+      const nextWidth = Math.max(0, Math.round(width))
+      const nextHeight = Math.max(0, Math.round(height))
+
+      setMainGridSize((current) => {
+        if (current.width === nextWidth && current.height === nextHeight) {
+          return current
+        }
+
+        return {
+          width: nextWidth,
+          height: nextHeight,
+        }
+      })
+    }
+
+    const initialRect = mainGridElement.getBoundingClientRect()
+    updateGridSize(initialRect.width, initialRect.height)
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (!entry) {
+        return
+      }
+
+      updateGridSize(entry.contentRect.width, entry.contentRect.height)
+    })
+
+    observer.observe(mainGridElement)
+    return () => observer.disconnect()
+  }, [mainGridElement])
 
   useEffect(() => {
     if (selectedAssetId === null) {
@@ -827,7 +942,8 @@ export function AppShell() {
   const handleLibrarySelect = useCallback(
     (libraryId: string) => {
       setSelectedLibraryId(libraryId)
-      void loadLibrarySurface(libraryId)
+      setItemsPageIndex(1)
+      void loadLibrarySurface(libraryId, 1)
     },
     [loadLibrarySurface],
   )
@@ -1118,7 +1234,7 @@ export function AppShell() {
         setScanStats(nextStats)
 
         if (isActiveTaskProgress(scanSnapshot) && nextSnapshot !== null && !isActiveTaskProgress(nextSnapshot)) {
-          await loadLibrarySurface(selectedLibraryId)
+          await loadLibrarySurface(selectedLibraryId, itemsPageIndex)
         }
       } catch (error) {
         if (cancelled) {
@@ -1138,7 +1254,7 @@ export function AppShell() {
       cancelled = true
       window.clearInterval(timer)
     }
-  }, [loadLibrarySurface, repository, scanSnapshot, selectedLibraryId])
+  }, [itemsPageIndex, loadLibrarySurface, repository, scanSnapshot, selectedLibraryId])
 
   useEffect(() => {
     if (scanSnapshot === null) {
@@ -1345,26 +1461,34 @@ export function AppShell() {
     }
   }, [repository])
 
-  const selectedItemIndex = useMemo(
-    () => items.findIndex((item) => item.assetId === selectedAssetId),
-    [items, selectedAssetId],
+  const handleGoToItemsPage = useCallback(
+    (nextPageIndex: number) => {
+      if (selectedLibraryId === null || workspaceLoading) {
+        return
+      }
+
+      const normalizedPageIndex = Math.max(1, nextPageIndex)
+      setItemsPageIndex(normalizedPageIndex)
+      void loadLibrarySurface(selectedLibraryId, normalizedPageIndex)
+    },
+    [loadLibrarySurface, selectedLibraryId, workspaceLoading],
   )
 
-  const handleSelectPreviousItem = useCallback(() => {
-    if (selectedItemIndex <= 0) {
+  const handleGoPreviousItemsPage = useCallback(() => {
+    if (itemsPageIndex <= 1) {
       return
     }
 
-    setSelectedAssetId(items[selectedItemIndex - 1]?.assetId ?? null)
-  }, [items, selectedItemIndex])
+    handleGoToItemsPage(itemsPageIndex - 1)
+  }, [handleGoToItemsPage, itemsPageIndex])
 
-  const handleSelectNextItem = useCallback(() => {
-    if (selectedItemIndex < 0 || selectedItemIndex >= items.length - 1) {
+  const handleGoNextItemsPage = useCallback(() => {
+    if (!itemsHasNextPage) {
       return
     }
 
-    setSelectedAssetId(items[selectedItemIndex + 1]?.assetId ?? null)
-  }, [items, selectedItemIndex])
+    handleGoToItemsPage(itemsPageIndex + 1)
+  }, [handleGoToItemsPage, itemsHasNextPage, itemsPageIndex])
 
   const importBusy = actionBusy !== null || isActiveTaskProgress(scanSnapshot)
   const logoLoading = importBusy || librariesLoading || workspaceLoading
@@ -1396,9 +1520,14 @@ export function AppShell() {
   const mainFooterPrimary = selectedLibraryDetail === null
     ? '当前未选择媒体库'
     : selectedLibraryDetail.rootPath
-  const mainFooterSecondary = items.length === 0
+  const mainFooterSecondary = selectedLibraryDetail === null
     ? '当前作用域暂无条目'
-    : `当前预览 ${items.length} 个条目`
+    : `${thumbnailGridLayout.columns} 列 × ${thumbnailGridLayout.rows} 行 · 每页 ${thumbnailGridLayout.pageSize} 项 · 当前页 ${items.length} 项`
+  const mainFooterPageLabel = selectedLibraryDetail === null
+    ? '0 / 0'
+    : itemsHasNextPage
+      ? `${itemsPageIndex} / ?`
+      : `${itemsPageIndex} / ${itemsPageIndex}`
   const importActivitiesForPanel = importActivities.map((activity) => ({
     ...activity,
     createdAt: formatDateTime(activity.createdAt),
@@ -1520,10 +1649,34 @@ export function AppShell() {
           <section className="app-frame app-main-root" data-slot="fg-main-root">
             <section className="workspace-pane main-pane-frame">
               <header className="workspace-pane-header main-header" data-slot="fg-main-header">
-                {selectedLibraryDetail === null ? <div /> : <h2 className="pane-title-single">{resolvePathLeaf(selectedLibraryDetail.rootPath)}</h2>}
+                {selectedLibraryDetail === null ? (
+                  <div />
+                ) : (
+                  <h2 className="pane-title-single">{resolvePathLeaf(selectedLibraryDetail.rootPath)}</h2>
+                )}
+
+                <label className="main-zoom-control" aria-label="缩略图缩放级别">
+                  <span>缩放</span>
+                  <select
+                    className="main-zoom-select"
+                    value={thumbnailZoomLevel}
+                    onChange={(event) => setThumbnailZoomLevel(toThumbnailZoomLevel(Number(event.target.value)))}
+                    disabled={selectedLibraryId === null || workspaceLoading}
+                  >
+                    {THUMBNAIL_ZOOM_LEVELS.map((level) => (
+                      <option key={level} value={level}>
+                        {level}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </header>
 
-              <div className="workspace-pane-main main-pane-main" data-slot="fg-main-main">
+              <div
+                ref={setMainGridElement}
+                className="workspace-pane-main main-pane-main"
+                data-slot="fg-main-main"
+              >
                 {selectedLibraryId === null ? (
                   <div className="workspace-stage">
                     <span className="workspace-label">主工作区</span>
@@ -1545,7 +1698,7 @@ export function AppShell() {
                     <p>可以直接开始扫描，或回到导入面板登记新的本地路径。</p>
                   </div>
                 ) : (
-                  <div className="item-grid">
+                  <div className="item-grid" style={itemGridStyle}>
                     {items.map((item) => {
                       const isActive = item.assetId === selectedAssetId
                       const thumbnailUrl = itemThumbnailUrls[item.assetId] ?? null
@@ -1582,17 +1735,17 @@ export function AppShell() {
                   <button
                     className="mpx-btn pane-pagination-btn"
                     type="button"
-                    disabled={selectedItemIndex <= 0}
-                    onClick={handleSelectPreviousItem}
+                    disabled={selectedLibraryId === null || workspaceLoading || itemsPageIndex <= 1}
+                    onClick={handleGoPreviousItemsPage}
                   >
                     Prev
                   </button>
-                  <span>{selectedItemIndex < 0 ? '0 / 0' : `${selectedItemIndex + 1} / ${items.length}`}</span>
+                  <span>{mainFooterPageLabel}</span>
                   <button
                     className="mpx-btn pane-pagination-btn"
                     type="button"
-                    disabled={selectedItemIndex < 0 || selectedItemIndex >= items.length - 1}
-                    onClick={handleSelectNextItem}
+                    disabled={selectedLibraryId === null || workspaceLoading || !itemsHasNextPage}
+                    onClick={handleGoNextItemsPage}
                   >
                     Next
                   </button>

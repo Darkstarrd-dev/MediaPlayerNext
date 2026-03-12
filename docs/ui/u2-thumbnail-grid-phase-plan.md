@@ -160,6 +160,23 @@ pageSize = columns * rows
 - 这不是单纯“补一个下拉框”的任务
 - 必须按 `布局状态 -> 容器观测 -> 分页读取 -> footer 翻页 -> 文档回填` 的顺序推进
 
+### 5.3 实施回填（2026-03-12）
+
+本轮代码实施后，基础链路已接通：
+
+- `apps/desktop/src/app/thumbnail-grid-layout.ts` 已新增布局纯计算
+- `AppShell` 已接入：
+  - `thumbnailZoomLevel(1~7)`
+  - `ResizeObserver` 容器观测
+  - `pageSize = columns * rows`
+  - 页面级 `Prev / Next`
+- `Main.main` 的 grid 列模板已由布局结果驱动
+- 缩放或容器尺寸变化时，当前页会按新分页参数重读并做页码回退修正
+
+当前仍保留的一处首轮简化：
+
+- 由于 `items.list()` 仍不返回总数，Footer 页码当前采用 `current / ?`（存在下一页）或 `current / current`（已到末页）的临时展示策略
+
 ## 6. 建议文件落点
 
 首轮尽量保持最小改动，但建议把“纯计算”从 `AppShell` 中拆开，避免继续把大组件堆大。
@@ -185,11 +202,11 @@ pageSize = columns * rows
 | Phase | 目标 | 状态 |
 |---|---|---|
 | `Phase 0` | 冻结语义并建立实施文档 | `done` |
-| `Phase 1` | 建立缩略图网格布局纯计算层 | `pending` |
-| `Phase 2` | 接入 `Main.header` 缩放控件与容器尺寸观测 | `pending` |
-| `Phase 3` | 接入页面级分页读取与 Footer 翻页 | `pending` |
-| `Phase 4` | 联调缩放 / 分页 / 选中项同步并补样式 | `pending` |
-| `Phase 5` | 验证、日志、文档回填 | `pending` |
+| `Phase 1` | 建立缩略图网格布局纯计算层 | `done` |
+| `Phase 2` | 接入 `Main.header` 缩放控件与容器尺寸观测 | `done` |
+| `Phase 3` | 接入页面级分页读取与 Footer 翻页 | `done` |
+| `Phase 4` | 联调缩放 / 分页 / 选中项同步并补样式 | `done` |
+| `Phase 5` | 验证、日志、文档回填 | `done` |
 
 ---
 
@@ -278,10 +295,10 @@ containerSize -> layout -> pageSize
 
 ### 9.4 phase 完成后状态 check
 
-- [ ] 已新增独立的缩略图布局纯计算文件
-- [ ] 已有明确的 `zoomLevel -> rows` 首轮映射
-- [ ] 已能输出 `columns / rows / cellSizePx / pageSize`
-- [ ] 极小尺寸下不会出现 `0` 行或 `0` 列
+- [x] 已新增独立的缩略图布局纯计算文件
+- [x] 已有明确的 `zoomLevel -> rows` 首轮映射
+- [x] 已能输出 `columns / rows / cellSizePx / pageSize`
+- [x] 极小尺寸下不会出现 `0` 行或 `0` 列
 
 ---
 
@@ -329,11 +346,11 @@ containerSize -> layout -> pageSize
 
 ### 10.4 phase 完成后状态 check
 
-- [ ] `Main.header` 已出现 `1~7` 缩放下拉控件
-- [ ] `thumbnailZoomLevel` 默认值为 `4`
-- [ ] 网格容器尺寸已接入 `ResizeObserver`
-- [ ] 容器尺寸变化会触发布局重算
-- [ ] 缩放级别变化会触发布局重算
+- [x] `Main.header` 已出现 `1~7` 缩放下拉控件
+- [x] `thumbnailZoomLevel` 默认值为 `4`
+- [x] 网格容器尺寸已接入 `ResizeObserver`
+- [x] 容器尺寸变化会触发布局重算
+- [x] 缩放级别变化会触发布局重算
 
 ---
 
@@ -387,11 +404,11 @@ containerSize -> layout -> pageSize
 
 ### 11.4 phase 完成后状态 check
 
-- [ ] `items.list()` 已吃 `pageIndex / pageSize`
-- [ ] Footer 已从条目切换改为页面切换
-- [ ] 翻页会重新拉取当前页条目
-- [ ] 切页后选中项同步规则已固定
-- [ ] 固定常量 `ITEMS_PREVIEW_LIMIT` 已不再承担主分页语义
+- [x] `items.list()` 已吃 `pageIndex / pageSize`
+- [x] Footer 已从条目切换改为页面切换
+- [x] 翻页会重新拉取当前页条目
+- [x] 切页后选中项同步规则已固定
+- [x] 固定常量 `ITEMS_PREVIEW_LIMIT` 已不再承担主分页语义
 
 ---
 
@@ -435,11 +452,11 @@ containerSize -> layout -> pageSize
 
 ### 12.4 phase 完成后状态 check
 
-- [ ] Grid 列模板已由布局结果驱动
-- [ ] Header 标题与缩放控件布局稳定
-- [ ] Footer 分页区与路径信息可同时工作
-- [ ] 缩放或 resize 后不会落到非法页码
-- [ ] 极窄窗口下仍能保持最小可用布局
+- [x] Grid 列模板已由布局结果驱动
+- [x] Header 标题与缩放控件布局稳定
+- [x] Footer 分页区与路径信息可同时工作
+- [x] 缩放或 resize 后不会落到非法页码
+- [x] 极窄窗口下仍能保持最小可用布局
 
 ---
 
@@ -489,10 +506,10 @@ containerSize -> layout -> pageSize
 
 ### 13.4 phase 完成后状态 check
 
-- [ ] `npm run build:web` 已通过
-- [ ] 本计划文档已回填 phase/check 状态
-- [ ] `docs/ui/ui-definition.md` 已同步
-- [ ] `docs/logs/20260312.md` 已同步
+- [x] `npm run build:web` 已通过
+- [x] 本计划文档已回填 phase/check 状态
+- [x] `docs/ui/ui-definition.md` 已同步
+- [x] `docs/logs/20260312.md` 已同步
 
 ---
 

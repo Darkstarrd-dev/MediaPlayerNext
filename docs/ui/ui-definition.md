@@ -412,7 +412,7 @@ Sidebar | Main | Metadata
 |---|---|---|---|
 | `U0` | 背景层 + 共享壳层 + 四容器分隔 | 结构、变量合同、回落链、基础布局 | 已完成首轮 |
 | `U1` | `LibraryPanel` + `ScanPanel` | 基础操作流与状态展示 | 进行中 |
-| `U2` | `ItemsPanel` | 列表与缩略图主链路 | 待开始 |
+| `U2` | `ItemsPanel` | 列表与缩略图主链路 | 进行中 |
 | `U3` | `ArchivePanel` | 归档浏览与页序导航 | 待开始 |
 | `U4` | `DetailPanel` | 详情与基础元数据 | 待开始 |
 | `U5` | 播放/字幕相关面板回接 | 非当前优先级 | 暂缓 |
@@ -498,3 +498,5 @@ Sidebar | Main | Metadata
 - 当主界面处于导入或刷新中的 loading 状态时，`Header Logo` 文案会临时切为 `Loading`，结束后恢复 `MediaPlayerNext`
 - 已建立 `docs/ui/u2-thumbnail-grid-phase-plan.md`，用于后续按 phase 推进 `Main` 的缩略图分页、缩放级别与容器自适应实施
 - 已建立 `docs/ui/u2-thumbnail-grid-enhancement-phase-plan.md`，用于基础版完成后继续推进滚轮翻页、ready-commit、gap snap 与缩略图分辨率自适应
+- `U2` 基础版首轮已接通：`Main.header` 的 `1~7` 缩放下拉、容器 `ResizeObserver`、`pageSize = columns * rows` 的布局推导、页面级 `Prev / Next` 分页 footer
+- `Main` 条目读取当前已从固定 `page=1/pageSize=12` 切到页面级参数读取，并在缩放/容器尺寸变化后自动重算分页与刷新当前页
