@@ -246,7 +246,7 @@ Current validated tool versions for the Rust `1.88.0` project baseline:
 1. 继续拆分 `AppShell.tsx` 视图层（优先）
    - 在已低于 warning 线后，继续向目标线（`~300`）收敛，优先下沉剩余容器编排与装配参数
 2. 持续收口新增模块体积
-   - 当前 warning 仅剩 `styles/showcase.css`，下一步继续按样式模块拆分收口
+   - 前端侧 warning 已清零，下一步可继续压降 `targetLines`（例如 `showcase-core.css`、`AppShell.tsx`）
 3. 处理分层质量中的既有失败项
    - `clippy`
    - `deny`

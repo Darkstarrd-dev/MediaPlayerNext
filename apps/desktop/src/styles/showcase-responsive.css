@@ -1,0 +1,44 @@
+@media (max-width: 1280px) {
+  .fallback-flow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 960px) {
+  .matrix-table {
+    grid-template-columns: 1fr;
+  }
+
+  .matrix-head {
+    display: none;
+  }
+
+  .matrix-row {
+    display: grid;
+    gap: 1px;
+    padding: 1px;
+    border-radius: 16px;
+    background: rgba(119, 99, 71, 0.12);
+    overflow: hidden;
+  }
+
+  .fallback-flow {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .token-list,
+  .protocol-grid,
+  .kv-list {
+    grid-template-columns: 1fr;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+
+  .actions button {
+    width: 100%;
+  }
+}
