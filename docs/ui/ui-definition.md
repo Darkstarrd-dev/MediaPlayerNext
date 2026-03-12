@@ -496,3 +496,5 @@ Sidebar | Main | Metadata
 - `Main.header` 与 `Metadata.header` 当前已移除 `Workspace / Details / Metadata` 等骨架占位文案
 - `Main.main` 当前已移除说明型卡片，只保留缩略图网格；缩略图缺失时回退为占位块
 - 当主界面处于导入或刷新中的 loading 状态时，`Header Logo` 文案会临时切为 `Loading`，结束后恢复 `MediaPlayerNext`
+- 已建立 `docs/ui/u2-thumbnail-grid-phase-plan.md`，用于后续按 phase 推进 `Main` 的缩略图分页、缩放级别与容器自适应实施
+- 已建立 `docs/ui/u2-thumbnail-grid-enhancement-phase-plan.md`，用于基础版完成后继续推进滚轮翻页、ready-commit、gap snap 与缩略图分辨率自适应
