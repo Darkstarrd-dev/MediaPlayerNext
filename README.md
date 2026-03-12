@@ -172,6 +172,7 @@ Current Tauri protocol DB rule:
 - `npm run check:binary-size`
 - `npm run check:gate-durations`
 - `npm run check:cargo-bloat`
+- `npm run report:go-no-go`
   - module size and boundary baseline gate
 
 Layer highlights:
@@ -357,6 +358,10 @@ Current validated tool versions for the Rust `1.88.0` project baseline:
        - 新增 `config/quality/cargo-bloat-baseline.json`
        - 新增命令 `npm run check:cargo-bloat`
        - 当前验证：`text=11114906 bytes`，`file=15309210 bytes`
+26. Go/No-Go 自动报告脚本已落地
+       - 新增 `scripts/quality/generate-go-no-go-report.mjs`
+       - 新增命令 `npm run report:go-no-go`
+       - 当前产物：`data/quality-gates/20260312-231318/go-no-go/go-no-go-report.md`
 
 #### 待拆分 / 待完成
 
@@ -367,4 +372,4 @@ Current validated tool versions for the Rust `1.88.0` project baseline:
 2. 完善发布增强验收
    - installer/upgrade replay
    - signing/offline smoke
-3. 补业务路径 benchmark compare + threshold 与 Go/No-Go 自动化门禁
+3. 补业务路径 benchmark compare + threshold，并把 Go/No-Go 自动报告接入 release 流水线

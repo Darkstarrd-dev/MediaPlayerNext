@@ -142,6 +142,8 @@ P2 当前用于暴露“不会立刻打断功能，但会持续侵蚀可维护�
   - 对应 `scripts/quality/check-gate-duration-thresholds.mjs`
 - `npm run check:cargo-bloat`
   - 对应 `scripts/quality/check-cargo-bloat.ps1`
+- `npm run report:go-no-go`
+  - 对应 `scripts/quality/generate-go-no-go-report.mjs`
 - `docs/benchmarks/`
   - 当前用于沉淀 benchmark baseline、回归记录与质量门禁记录
 
@@ -326,7 +328,7 @@ P2 当前用于暴露“不会立刻打断功能，但会持续侵蚀可维护�
 
 - 已落库首版 `.github` workflows 与 PR 模板，但尚未收敛到完整发布治理（阈值、报告、升级回放）
 - 已新增质量门禁耗时 compare + threshold，但业务路径 benchmark 阈值门禁仍未脚本化
-- 已新增 Go/No-Go 报告模板与体积门禁脚本，但自动化报告门禁仍未接入发布流水线
+- 已新增 Go/No-Go 自动报告脚本与模板，但尚未强制接入 `check:quality:release` 流水线
 - 还没有离线安装、升级回放、签名等 release 级闭环
 
 ## 9. 当前阶段推进顺序
