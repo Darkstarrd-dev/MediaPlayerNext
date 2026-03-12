@@ -1,10 +1,16 @@
 pub mod archive;
+mod archive_index;
+mod archive_normalize;
+mod archive_resolve;
 pub mod asset;
+mod asset_catalog;
+mod asset_resolve;
 pub mod cli;
 pub mod content;
 pub mod diagnostics;
 pub mod library;
 pub mod playback;
+mod playback_runtime;
 pub mod ports;
 pub mod scan;
 pub mod subtitle_host;

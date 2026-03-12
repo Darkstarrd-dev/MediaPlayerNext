@@ -10,7 +10,6 @@ use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScanRunSummary {
@@ -41,13 +40,11 @@ pub fn register_library<L: LibraryRepository>(
             root_path.display()
         ));
     }
-
     let library_id = LibraryId(format!(
         "library_{:016x}",
         stable_hash(&root_path.display().to_string())
     ));
     let now = now_string();
-
     library_repository.upsert(&LibraryRecord {
         id: library_id.clone(),
         root_path: root_path.display().to_string(),
@@ -56,7 +53,6 @@ pub fn register_library<L: LibraryRepository>(
         created_at: now.clone(),
         updated_at: now,
     })?;
-
     Ok(library_id)
 }
 
@@ -78,10 +74,8 @@ where
     let library = library_repository
         .get(library_id)?
         .ok_or_else(|| anyhow!("library not found: {}", library_id.0))?;
-
     let task_id = scan_task_id_for_library(&library.id);
     let started_at = now_string();
-
     task_repository.upsert(&TaskRecord {
         id: task_id.clone(),
         task_type: TaskKind::Scan,
@@ -94,7 +88,6 @@ where
         started_at: Some(started_at.clone()),
         finished_at: None,
     })?;
-
     match run_scan_inner(
         source_repository,
         task_repository,
@@ -116,7 +109,6 @@ where
                 started_at: Some(started_at),
                 finished_at: Some(now_string()),
             })?;
-
             Err(error)
         }
     }
@@ -153,11 +145,9 @@ where
     if !library_repository.exists(library_id)? {
         return Err(anyhow!("library not found: {}", library_id.0));
     }
-
     let records = source_repository.list_by_library(library_id)?;
     let active_source_count = records.iter().filter(|item| item.exists).count() as u64;
     let missing_source_count = records.iter().filter(|item| !item.exists).count() as u64;
-
     Ok(ScanStatsSummary {
         library_id: library_id.0.clone(),
         source_count: source_repository.count_by_library(library_id)?,
@@ -178,7 +168,6 @@ where
     if !library_repository.exists(library_id)? {
         return Err(anyhow!("library not found: {}", library_id.0));
     }
-
     source_repository.list_by_library(library_id)
 }
 
@@ -205,7 +194,6 @@ where
     let mut inserted_or_updated = 0_u64;
     let mut skipped_unchanged = 0_u64;
     let mut seen_paths = HashSet::new();
-
     for (index, item) in discovered.iter().enumerate() {
         seen_paths.insert(item.normalized_path.clone());
         let source_id = SourceId(format!(
@@ -222,13 +210,11 @@ where
                     && existing.exists
                     && existing.fingerprint.as_deref() == Some(fingerprint.as_str())
             });
-
         if unchanged {
             skipped_unchanged += 1;
         } else {
             inserted_or_updated += 1;
         }
-
         source_repository.upsert(&SourceRecord {
             id: source_id,
             library_id: library.id.clone(),
@@ -256,20 +242,17 @@ where
             finished_at: None,
         })?;
     }
-
     let mut tombstoned = 0_u64;
     for existing in existing_by_path.values() {
         if seen_paths.contains(&existing.normalized_path) || !existing.exists {
             continue;
         }
-
         let mut missing_record = existing.clone();
         missing_record.exists = false;
         missing_record.last_seen_at = scan_time.clone();
         source_repository.upsert(&missing_record)?;
         tombstoned += 1;
     }
-
     task_repository.upsert(&TaskRecord {
         id: task_id.clone(),
         task_type: TaskKind::Scan,
@@ -284,7 +267,6 @@ where
         started_at: Some(started_at.to_string()),
         finished_at: Some(now_string()),
     })?;
-
     Ok(ScanRunSummary {
         library_id: library.id.0.clone(),
         discovered: total,
@@ -315,20 +297,20 @@ fn quick_fingerprint(normalized_path: &str, size: i64, mtime_ms: i64) -> String 
         stable_hash(&format!("{normalized_path}:{size}:{mtime_ms}"))
     )
 }
-
 #[cfg(test)]
 mod tests {
     use super::{register_library, resume_scan, run_scan, scan_snapshot, scan_stats, stable_hash};
     use crate::ports::{LibraryRepository, SourceRepository, TaskRepository};
+    #[path = "../scan_test_support.rs"]
+    mod support;
     use serde::Deserialize;
     use shared_model::{
         LibraryId, LibraryRecord, SourceId, SourceRecord, TaskId, TaskRecord, TaskState,
     };
-    use std::collections::HashMap;
     use std::fs;
     use std::path::Path;
+    use support::{MemoryRepos, MutableMemoryRepos};
     use tempfile::tempdir;
-
     #[derive(Debug, Deserialize, PartialEq, Eq)]
     #[serde(rename_all = "camelCase")]
     struct SnapshotExpectation {
@@ -337,210 +319,6 @@ mod tests {
         kind: String,
         exists: bool,
     }
-
-    #[derive(Default)]
-    struct MemoryRepos {
-        libraries: HashMap<String, LibraryRecord>,
-        sources: HashMap<String, SourceRecord>,
-        tasks: HashMap<String, TaskRecord>,
-    }
-
-    impl LibraryRepository for MemoryRepos {
-        fn exists(&self, library_id: &LibraryId) -> anyhow::Result<bool> {
-            Ok(self.libraries.contains_key(&library_id.0))
-        }
-
-        fn upsert(&self, _library: &LibraryRecord) -> anyhow::Result<()> {
-            unreachable!()
-        }
-
-        fn get(&self, library_id: &LibraryId) -> anyhow::Result<Option<LibraryRecord>> {
-            Ok(self.libraries.get(&library_id.0).cloned())
-        }
-    }
-
-    impl SourceRepository for MemoryRepos {
-        fn exists(&self, source_id: &SourceId) -> anyhow::Result<bool> {
-            Ok(self.sources.contains_key(&source_id.0))
-        }
-
-        fn upsert(&self, _source: &SourceRecord) -> anyhow::Result<()> {
-            unreachable!()
-        }
-
-        fn get(&self, source_id: &SourceId) -> anyhow::Result<Option<SourceRecord>> {
-            Ok(self.sources.get(&source_id.0).cloned())
-        }
-
-        fn count(&self) -> anyhow::Result<u64> {
-            Ok(self.sources.len() as u64)
-        }
-
-        fn count_by_library(&self, library_id: &LibraryId) -> anyhow::Result<u64> {
-            Ok(self
-                .sources
-                .values()
-                .filter(|item| item.library_id == *library_id)
-                .count() as u64)
-        }
-
-        fn list_by_library(&self, library_id: &LibraryId) -> anyhow::Result<Vec<SourceRecord>> {
-            let mut items: Vec<_> = self
-                .sources
-                .values()
-                .filter(|item| item.library_id == *library_id)
-                .cloned()
-                .collect();
-            items.sort_by(|left, right| left.normalized_path.cmp(&right.normalized_path));
-            Ok(items)
-        }
-    }
-
-    impl TaskRepository for MemoryRepos {
-        fn exists(&self, task_id: &TaskId) -> anyhow::Result<bool> {
-            Ok(self.tasks.contains_key(&task_id.0))
-        }
-
-        fn upsert(&self, _task: &TaskRecord) -> anyhow::Result<()> {
-            unreachable!()
-        }
-
-        fn get(&self, task_id: &TaskId) -> anyhow::Result<Option<TaskRecord>> {
-            Ok(self.tasks.get(&task_id.0).cloned())
-        }
-    }
-
-    struct MutableMemoryRepos {
-        inner: std::sync::Mutex<MemoryRepos>,
-    }
-
-    impl Default for MutableMemoryRepos {
-        fn default() -> Self {
-            Self {
-                inner: std::sync::Mutex::new(MemoryRepos::default()),
-            }
-        }
-    }
-
-    impl LibraryRepository for MutableMemoryRepos {
-        fn exists(&self, library_id: &LibraryId) -> anyhow::Result<bool> {
-            Ok(self
-                .inner
-                .lock()
-                .expect("lock")
-                .libraries
-                .contains_key(&library_id.0))
-        }
-
-        fn upsert(&self, library: &LibraryRecord) -> anyhow::Result<()> {
-            self.inner
-                .lock()
-                .expect("lock")
-                .libraries
-                .insert(library.id.0.clone(), library.clone());
-            Ok(())
-        }
-
-        fn get(&self, library_id: &LibraryId) -> anyhow::Result<Option<LibraryRecord>> {
-            Ok(self
-                .inner
-                .lock()
-                .expect("lock")
-                .libraries
-                .get(&library_id.0)
-                .cloned())
-        }
-    }
-
-    impl SourceRepository for MutableMemoryRepos {
-        fn exists(&self, source_id: &SourceId) -> anyhow::Result<bool> {
-            Ok(self
-                .inner
-                .lock()
-                .expect("lock")
-                .sources
-                .contains_key(&source_id.0))
-        }
-
-        fn upsert(&self, source: &SourceRecord) -> anyhow::Result<()> {
-            self.inner
-                .lock()
-                .expect("lock")
-                .sources
-                .insert(source.id.0.clone(), source.clone());
-            Ok(())
-        }
-
-        fn get(&self, source_id: &SourceId) -> anyhow::Result<Option<SourceRecord>> {
-            Ok(self
-                .inner
-                .lock()
-                .expect("lock")
-                .sources
-                .get(&source_id.0)
-                .cloned())
-        }
-
-        fn count(&self) -> anyhow::Result<u64> {
-            Ok(self.inner.lock().expect("lock").sources.len() as u64)
-        }
-
-        fn count_by_library(&self, library_id: &LibraryId) -> anyhow::Result<u64> {
-            Ok(self
-                .inner
-                .lock()
-                .expect("lock")
-                .sources
-                .values()
-                .filter(|item| item.library_id == *library_id)
-                .count() as u64)
-        }
-
-        fn list_by_library(&self, library_id: &LibraryId) -> anyhow::Result<Vec<SourceRecord>> {
-            let mut items: Vec<_> = self
-                .inner
-                .lock()
-                .expect("lock")
-                .sources
-                .values()
-                .filter(|item| item.library_id == *library_id)
-                .cloned()
-                .collect();
-            items.sort_by(|left, right| left.normalized_path.cmp(&right.normalized_path));
-            Ok(items)
-        }
-    }
-
-    impl TaskRepository for MutableMemoryRepos {
-        fn exists(&self, task_id: &TaskId) -> anyhow::Result<bool> {
-            Ok(self
-                .inner
-                .lock()
-                .expect("lock")
-                .tasks
-                .contains_key(&task_id.0))
-        }
-
-        fn upsert(&self, task: &TaskRecord) -> anyhow::Result<()> {
-            self.inner
-                .lock()
-                .expect("lock")
-                .tasks
-                .insert(task.id.0.clone(), task.clone());
-            Ok(())
-        }
-
-        fn get(&self, task_id: &TaskId) -> anyhow::Result<Option<TaskRecord>> {
-            Ok(self
-                .inner
-                .lock()
-                .expect("lock")
-                .tasks
-                .get(&task_id.0)
-                .cloned())
-        }
-    }
-
     #[test]
     fn registers_library_and_scans_files() {
         let repos = MutableMemoryRepos::default();
@@ -554,7 +332,6 @@ mod tests {
             register_library(&repos, Path::new(temp.path())).expect("library should register");
         let summary = run_scan(&repos, &repos, &repos, &library_id).expect("scan should succeed");
         let stats = scan_stats(&repos, &repos, &library_id).expect("stats should succeed");
-
         assert_eq!(summary.discovered, 2);
         assert_eq!(summary.inserted_or_updated, 2);
         assert_eq!(summary.skipped_unchanged, 0);
@@ -574,7 +351,6 @@ mod tests {
         let chapter_path = nested.join("chapter.cbz");
         std::fs::write(&cover_path, b"png").expect("fixture should be written");
         std::fs::write(&chapter_path, b"zip").expect("fixture should be written");
-
         let library_id =
             register_library(&repos, Path::new(temp.path())).expect("library should register");
         let first_summary =
@@ -585,7 +361,6 @@ mod tests {
             run_scan(&repos, &repos, &repos, &library_id).expect("second scan should succeed");
         let snapshot = scan_snapshot(&repos, &repos, &library_id).expect("snapshot should succeed");
         let stats = scan_stats(&repos, &repos, &library_id).expect("stats should succeed");
-
         assert_eq!(first_summary.inserted_or_updated, 2);
         assert_eq!(second_summary.skipped_unchanged, 1);
         assert_eq!(second_summary.tombstoned, 1);
@@ -601,14 +376,11 @@ mod tests {
     fn records_failed_task_when_scan_root_disappears() {
         let repos = MutableMemoryRepos::default();
         let temp = tempdir().expect("tempdir should be created");
-
         let library_id =
             register_library(&repos, Path::new(temp.path())).expect("library should register");
         std::fs::remove_dir_all(temp.path()).expect("tempdir should be removed before scan");
-
         let error = run_scan(&repos, &repos, &repos, &library_id).expect_err("scan should fail");
         assert!(!error.to_string().is_empty());
-
         let task_id = TaskId(format!("task_scan_{:016x}", stable_hash(&library_id.0)));
         let task = TaskRepository::get(&repos, &task_id)
             .expect("task should be queryable")
@@ -623,31 +395,26 @@ mod tests {
         let repos = MutableMemoryRepos::default();
         let temp = tempdir().expect("tempdir should be created");
         std::fs::write(temp.path().join("cover.png"), b"png").expect("fixture should be written");
-
         let library_id =
             register_library(&repos, Path::new(temp.path())).expect("library should register");
         let first =
             run_scan(&repos, &repos, &repos, &library_id).expect("first scan should succeed");
         let resumed =
             resume_scan(&repos, &repos, &repos, &library_id).expect("resume scan should succeed");
-
         assert_eq!(first.discovered, 1);
         assert_eq!(resumed.skipped_unchanged, 1);
     }
-
     #[test]
     fn matches_workspace_scan_smoke_snapshot_fixture() {
         let repos = MutableMemoryRepos::default();
         let fixture_root = workspace_root().join("docs/fixtures/small-fixture/scan-smoke");
         let expectation_path =
             workspace_root().join("docs/fixtures/small-fixture/scan-smoke.expected.json");
-
         let library_id =
             register_library(&repos, &fixture_root).expect("workspace fixture should register");
         run_scan(&repos, &repos, &repos, &library_id)
             .expect("workspace fixture scan should succeed");
         let snapshot = scan_snapshot(&repos, &repos, &library_id).expect("snapshot should succeed");
-
         let reduced: Vec<SnapshotExpectation> = snapshot
             .into_iter()
             .map(|item| SnapshotExpectation {
@@ -657,15 +424,12 @@ mod tests {
                 exists: item.exists,
             })
             .collect();
-
         let expected: Vec<SnapshotExpectation> = serde_json::from_str(
             &fs::read_to_string(expectation_path).expect("snapshot fixture should be readable"),
         )
         .expect("snapshot fixture should deserialize");
-
         assert_eq!(reduced, expected);
     }
-
     fn workspace_root() -> std::path::PathBuf {
         Path::new(env!("CARGO_MANIFEST_DIR"))
             .parent()

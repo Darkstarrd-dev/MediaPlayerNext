@@ -6,7 +6,6 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::Duration;
 use tempfile::tempdir;
-
 #[test]
 fn talks_to_mock_sidecar_and_persists_session_flow() -> Result<()> {
     let temp = tempdir()?;
@@ -204,7 +203,6 @@ fn mock_sidecar_script() -> &'static str {
     r#"import { createInterface } from 'node:readline';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-
 const args = process.argv.slice(2);
 const sessionsRoot = args[args.indexOf('--sessions-root') + 1];
 await mkdir(sessionsRoot, { recursive: true });
@@ -221,7 +219,6 @@ for await (const line of rl) {
   if (!line.trim()) {
     continue;
   }
-
   const request = JSON.parse(line);
   let response;
   switch (request.type) {

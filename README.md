@@ -270,26 +270,72 @@ Current validated tool versions for the Rust `1.88.0` project baseline:
      - `src-tauri/src/subtitle_sidecar/wire.rs`
      - `src-tauri/src/subtitle_sidecar/tests.rs`
    - `debt-delta totalOccurrenceCount` 已从 `392` 继续降到 `367`
-8. 本轮质量门禁结果
-    - `npm run build:web`：通过
-    - `npm run check`：通过
-    - `npm run check:module-boundaries`：通过
-    - `npm run check:debt`：通过
-    - `npm run check:quality:fast`：通过
+8. `archive.rs` 已完成第一轮归档规范化逻辑下沉
+    - 新增 `crates/app-core/src/archive_normalize.rs`
+    - `archive` 领域规范化主流程与 ID 生成辅助已迁到新模块
+    - `crates/app-core/src/archive.rs` 行数已从 `1139` 降到 `901`
+    - frozen debt 仍在，但体量已进入持续下降区间
+9. `archive.rs` 已完成第二轮读取/定位链路拆分
+   - 新增 `crates/app-core/src/archive_resolve.rs`
+   - `read/resolve` 相关结构与函数从 `archive.rs` 下沉到独立模块
+   - `crates/app-core/src/archive.rs` 行数已从 `901` 继续降到 `812`
+   - `debt-delta` 保持 `baselineMatched=true`，未新增 debt path
+10. `asset.rs` 已完成首轮解析链路拆分
+     - 新增 `crates/app-core/src/asset_resolve.rs`
+     - `resolve_asset` 主链路已下沉，`asset.rs` 通过 re-export 保持原 API
+     - `crates/app-core/src/asset.rs` 行数已从 `895` 降到 `826`
+     - `debt-delta` 保持 `baselineMatched=true`，未新增 debt path
+11. `archive.rs` 已完成第三轮索引/快照链路拆分
+     - 新增 `crates/app-core/src/archive_index.rs`
+     - `index_library_archives` 与 `archive_snapshot` 已下沉并通过 re-export 保持 API
+     - `crates/app-core/src/archive.rs` 行数已从 `812` 继续降到 `678`
+12. `asset.rs` 已完成第二轮目录构建/快照链路拆分
+     - 新增 `crates/app-core/src/asset_catalog.rs`
+     - `ensure_media_assets_for_library` 与 `asset_snapshot_for_library` 已下沉并保持 API 不变
+     - `crates/app-core/src/asset.rs` 行数已从 `826` 继续降到 `657`
+13. `playback.rs` 已完成运行时链路拆分并退出 frozen debt
+     - 新增 `crates/app-core/src/playback_runtime.rs`
+     - `resolve_media_asset_path` 对外 API 保持兼容，`probe/open` 内部链路下沉
+      - `crates/app-core/src/playback.rs` 行数已从 `618` 降到 `472`，降到 hardMax 以内
+14. `archive/asset` 已完成测试支撑下沉并继续降体积
+      - 新增测试支撑文件：`crates/app-core/src/archive/archive_test_support.rs`、`crates/app-core/src/asset/asset_test_support.rs`
+      - `archive.rs` 行数已从 `678` 继续降到 `463`
+      - `asset.rs` 行数已从 `657` 继续降到 `472`
+15. `scan/thumbnail` 已完成测试支撑下沉并退出 frozen debt
+      - 新增测试支撑文件：`crates/app-core/src/scan/scan_test_support.rs`、`crates/app-core/src/thumbnail/thumbnail_test_support.rs`
+      - `scan.rs` 行数已从 `677` 降到 `476`
+      - `thumbnail.rs` 行数已从 `611` 降到 `398`
+      - `module-boundaries` 中 `frozenDebtFileCount` 已降到 `0`
+16. 本轮质量门禁结果
+        - `npm run build:web`：通过
+        - `npm run check`：通过
+        - `npm run check:module-boundaries`：通过
+        - `npm run check:debt`：通过
+        - `npm run check:quality:fast`：通过
+17. `subtitle_sidecar` 测试文件 warning 已压线
+       - `src-tauri/src/subtitle_sidecar/tests.rs` 已从 `403` 收敛到 `400`
+       - `module-boundaries` 的 warning 文件已从 `5` 降到 `4`
+18. app-core warning 已完成清零
+       - `archive.rs`：`463 -> 449`
+       - `asset.rs`：`472 -> 447`
+       - `scan.rs`：`476 -> 441`
+       - `playback.rs`：通过测试支撑下沉降到 `272`
+       - 新增 `crates/app-core/src/playback/playback_test_support.rs` 与 `crates/app-core/src/playback_test_support.rs`
+       - `module-boundaries` 最新结果：`warningCount=0`、`frozenDebtFileCount=0`
+19. 最新快速质量门禁（20260312-224200）
+       - `check:quality:fast` 全部通过（`5/5`）
+       - `debt-delta`：`baselineMatched=true`、`addedEntries=[]`
+       - `totalOccurrenceCount` 进一步降到 `270`
 
 #### 待拆分 / 待完成
 
-1. 继续处理 Rust frozen debt 文件（当前优先）
-   - `crates/app-core/src/archive.rs`
-   - `crates/app-core/src/asset.rs`
-   - `crates/app-core/src/scan.rs`
-   - `crates/app-core/src/playback.rs`
-   - `crates/app-core/src/thumbnail.rs`
-2. 收口新拆分文件的 warning
-   - `src-tauri/src/subtitle_sidecar/tests.rs` 当前 `line-warning`（403 行）
-3. 补齐缺失门禁项
+1. 继续压缩 top-large `rust-domain` 文件到 `targetLines=350`
+   - `crates/app-core/src/archive.rs`（449 行）
+   - `crates/app-core/src/asset.rs`（447 行）
+   - `crates/app-core/src/scan.rs`（441 行）
+2. 补齐缺失门禁项
    - `capabilities drift`
    - `contract drift`
-4. 落地 CI 分层流水线与发布增强验收
+3. 落地 CI 分层流水线与发布增强验收
    - 分层工作流：`fast / standard / heavy / release`
    - 发布侧补充：installer/upgrade replay、signing/offline smoke

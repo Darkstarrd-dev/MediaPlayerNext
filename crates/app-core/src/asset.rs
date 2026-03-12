@@ -1,16 +1,11 @@
-use crate::ports::{
-    ArchiveEntryRepository, ArchiveRepository, AssetRepository, LibraryRepository, SourceRepository,
-};
-use anyhow::{anyhow, Result};
+pub use crate::asset_catalog::{asset_snapshot_for_library, ensure_media_assets_for_library};
+pub use crate::asset_resolve::resolve_asset;
 use serde::Serialize;
-use shared_model::{
-    ArchiveEntryId, AssetId, LibraryId, MediaAssetRecord, MediaSourceKind, SourceId, SourceKind,
-};
+use shared_model::{ArchiveEntryId, AssetId, SourceId};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetEnsureSummary {
@@ -67,275 +62,32 @@ pub enum AssetResolution {
     ArchiveEntry(ResolvedArchiveEntryAsset),
 }
 
-pub fn ensure_media_assets_for_library<L, S, A, E, R>(
-    library_repository: &L,
-    source_repository: &S,
-    archive_repository: &A,
-    archive_entry_repository: &E,
-    asset_repository: &R,
-    library_id: &LibraryId,
-) -> Result<AssetEnsureSummary>
-where
-    L: LibraryRepository,
-    S: SourceRepository,
-    A: ArchiveRepository,
-    E: ArchiveEntryRepository,
-    R: AssetRepository,
-{
-    if !library_repository.exists(library_id)? {
-        return Err(anyhow!("library not found: {}", library_id.0));
-    }
-
-    let mut ensured_assets = 0_u64;
-    let mut file_assets = 0_u64;
-    let mut archive_entry_assets = 0_u64;
-    let mut skipped_sources = 0_u64;
-    let mut skipped_archive_entries = 0_u64;
-
-    for source in source_repository.list_by_library(library_id)? {
-        if !source.exists {
-            skipped_sources += 1;
-            continue;
-        }
-
-        match source.kind {
-            SourceKind::Image => {
-                let asset = MediaAssetRecord {
-                    id: asset_id_from_file_source(&source.id),
-                    source_kind: MediaSourceKind::File,
-                    source_ref_id: source.id.0.clone(),
-                    mime: file_mime_from_extension(&source.ext),
-                    width: None,
-                    height: None,
-                    duration_ms: None,
-                    codec_info_json: None,
-                    orientation: None,
-                    created_at: now_string(),
-                };
-                asset_repository.upsert(&asset)?;
-                ensured_assets += 1;
-                file_assets += 1;
-            }
-            SourceKind::Archive => {
-                let Some(archive) = archive_repository.get_by_source(&source.id)? else {
-                    skipped_sources += 1;
-                    continue;
-                };
-
-                for entry in archive_entry_repository.list_by_archive(&archive.id)? {
-                    if !entry.media_kind.eq_ignore_ascii_case("image") {
-                        skipped_archive_entries += 1;
-                        continue;
-                    }
-
-                    let asset = MediaAssetRecord {
-                        id: asset_id_from_archive_entry(&entry.id),
-                        source_kind: MediaSourceKind::ArchiveEntry,
-                        source_ref_id: entry.id.0.clone(),
-                        mime: file_mime_from_path(&entry.entry_path),
-                        width: entry.width,
-                        height: entry.height,
-                        duration_ms: None,
-                        codec_info_json: None,
-                        orientation: None,
-                        created_at: now_string(),
-                    };
-                    asset_repository.upsert(&asset)?;
-                    ensured_assets += 1;
-                    archive_entry_assets += 1;
-                }
-            }
-            _ => {
-                skipped_sources += 1;
-            }
-        }
-    }
-
-    Ok(AssetEnsureSummary {
-        library_id: library_id.0.clone(),
-        ensured_assets,
-        file_assets,
-        archive_entry_assets,
-        skipped_sources,
-        skipped_archive_entries,
-    })
-}
-
-pub fn asset_snapshot_for_library<L, S, A, E>(
-    library_repository: &L,
-    source_repository: &S,
-    archive_repository: &A,
-    archive_entry_repository: &E,
-    library_id: &LibraryId,
-) -> Result<Vec<AssetSnapshotItem>>
-where
-    L: LibraryRepository,
-    S: SourceRepository,
-    A: ArchiveRepository,
-    E: ArchiveEntryRepository,
-{
-    if !library_repository.exists(library_id)? {
-        return Err(anyhow!("library not found: {}", library_id.0));
-    }
-
-    let mut items = Vec::new();
-
-    for source in source_repository.list_by_library(library_id)? {
-        if !source.exists {
-            continue;
-        }
-
-        match source.kind {
-            SourceKind::Image => items.push(AssetSnapshotItem {
-                asset_id: asset_id_from_file_source(&source.id).0,
-                source_kind: "file".to_string(),
-                source_ref_id: source.id.0.clone(),
-                library_id: library_id.0.clone(),
-                source_id: source.id.0,
-                archive_id: None,
-                entry_path: None,
-                mime: file_mime_from_extension(&source.ext),
-            }),
-            SourceKind::Archive => {
-                let Some(archive) = archive_repository.get_by_source(&source.id)? else {
-                    continue;
-                };
-
-                for entry in archive_entry_repository.list_by_archive(&archive.id)? {
-                    if !entry.media_kind.eq_ignore_ascii_case("image") {
-                        continue;
-                    }
-
-                    items.push(AssetSnapshotItem {
-                        asset_id: asset_id_from_archive_entry(&entry.id).0,
-                        source_kind: "archive_entry".to_string(),
-                        source_ref_id: entry.id.0.clone(),
-                        library_id: library_id.0.clone(),
-                        source_id: source.id.0.clone(),
-                        archive_id: Some(archive.id.0.clone()),
-                        entry_path: Some(entry.entry_path.clone()),
-                        mime: file_mime_from_path(&entry.entry_path),
-                    });
-                }
-            }
-            _ => {}
-        }
-    }
-
-    items.sort_by(|left, right| {
-        left.source_kind
-            .cmp(&right.source_kind)
-            .then(left.source_id.cmp(&right.source_id))
-            .then(left.entry_path.cmp(&right.entry_path))
-    });
-    Ok(items)
-}
-
-pub fn resolve_asset<L, S, A, E, R>(
-    library_repository: &L,
-    source_repository: &S,
-    archive_repository: &A,
-    archive_entry_repository: &E,
-    asset_repository: &R,
-    asset_id: &AssetId,
-) -> Result<AssetResolution>
-where
-    L: LibraryRepository,
-    S: SourceRepository,
-    A: ArchiveRepository,
-    E: ArchiveEntryRepository,
-    R: AssetRepository,
-{
-    let asset = asset_repository
-        .get(asset_id)?
-        .ok_or_else(|| anyhow!("asset not found: {}", asset_id.0))?;
-
-    match asset.source_kind {
-        MediaSourceKind::File => {
-            let source_id = SourceId(asset.source_ref_id.clone());
-            let source = source_repository
-                .get(&source_id)?
-                .ok_or_else(|| anyhow!("source not found: {}", source_id.0))?;
-            let library = library_repository
-                .get(&source.library_id)?
-                .ok_or_else(|| anyhow!("library not found: {}", source.library_id.0))?;
-            let file_path = source_path_from_library(&library.root_path, &source.normalized_path);
-
-            Ok(AssetResolution::File(ResolvedFileAsset {
-                asset_id: asset.id.0,
-                source_id: source.id.0,
-                library_id: library.id.0,
-                mime: asset.mime,
-                file_path: file_path.display().to_string(),
-            }))
-        }
-        MediaSourceKind::ArchiveEntry => {
-            let archive_entry_id = ArchiveEntryId(asset.source_ref_id.clone());
-            let entry = archive_entry_repository
-                .get(&archive_entry_id)?
-                .ok_or_else(|| anyhow!("archive entry not found: {}", archive_entry_id.0))?;
-            let archive = archive_repository
-                .get(&entry.archive_id)?
-                .ok_or_else(|| anyhow!("archive not found: {}", entry.archive_id.0))?;
-            let source_id = archive.source_id.clone();
-            let source = source_repository
-                .get(&source_id)?
-                .ok_or_else(|| anyhow!("source not found: {}", source_id.0))?;
-            let library = library_repository
-                .get(&source.library_id)?
-                .ok_or_else(|| anyhow!("library not found: {}", source.library_id.0))?;
-            let archive_path =
-                source_path_from_library(&library.root_path, &source.normalized_path);
-
-            Ok(AssetResolution::ArchiveEntry(ResolvedArchiveEntryAsset {
-                asset_id: asset.id.0,
-                archive_entry_id: entry.id.0,
-                archive_id: archive.id.0,
-                source_id: source.id.0,
-                library_id: library.id.0,
-                mime: asset.mime,
-                archive_path: archive_path.display().to_string(),
-                entry_path: entry.entry_path,
-            }))
-        }
-        MediaSourceKind::NormalizedFile => Err(anyhow!(
-            "normalized_file asset resolution is not implemented yet"
-        )),
-    }
-}
-
-fn source_path_from_library(library_root: &str, normalized_source_path: &str) -> PathBuf {
+pub(crate) fn source_path_from_library(
+    library_root: &str,
+    normalized_source_path: &str,
+) -> PathBuf {
     let candidate = PathBuf::from(normalized_source_path);
     if candidate.is_absolute() {
         return candidate;
     }
-
     Path::new(library_root).join(normalized_source_path)
 }
 
-fn asset_id_from_file_source(source_id: &SourceId) -> AssetId {
+pub(crate) fn file_asset_id_from_source(source_id: &SourceId) -> AssetId {
     AssetId(format!(
         "asset_{:016x}",
         stable_hash(&format!("file::{}", source_id.0))
     ))
 }
 
-fn asset_id_from_archive_entry(entry_id: &ArchiveEntryId) -> AssetId {
+pub(crate) fn archive_entry_asset_id_from_entry(entry_id: &ArchiveEntryId) -> AssetId {
     AssetId(format!(
         "asset_{:016x}",
         stable_hash(&format!("archive_entry::{}", entry_id.0))
     ))
 }
 
-pub fn file_asset_id_from_source(source_id: &SourceId) -> AssetId {
-    asset_id_from_file_source(source_id)
-}
-
-pub fn archive_entry_asset_id_from_entry(entry_id: &ArchiveEntryId) -> AssetId {
-    asset_id_from_archive_entry(entry_id)
-}
-
-fn file_mime_from_path(path: &str) -> String {
+pub(crate) fn file_mime_from_path(path: &str) -> String {
     let extension = Path::new(path)
         .extension()
         .and_then(|value| value.to_str())
@@ -343,7 +95,7 @@ fn file_mime_from_path(path: &str) -> String {
     file_mime_from_extension(extension)
 }
 
-fn file_mime_from_extension(extension: &str) -> String {
+pub(crate) fn file_mime_from_extension(extension: &str) -> String {
     match extension.to_ascii_lowercase().as_str() {
         "jpg" | "jpeg" => "image/jpeg",
         "png" => "image/png",
@@ -361,14 +113,13 @@ fn stable_hash(value: &str) -> u64 {
     hasher.finish()
 }
 
-fn now_string() -> String {
+pub(crate) fn now_string() -> String {
     let millis = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_millis();
     millis.to_string()
 }
-
 #[cfg(test)]
 mod tests {
     use super::{
@@ -379,199 +130,13 @@ mod tests {
         ArchiveEntryRepository, ArchiveRepository, AssetRepository, LibraryRepository,
         SourceRepository,
     };
+    #[path = "../asset_test_support.rs"]
+    mod support;
     use shared_model::{
-        ArchiveEntryId, ArchiveEntryRecord, ArchiveId, ArchiveRecord, AssetId, LibraryId,
-        LibraryRecord, MediaAssetRecord, SourceId, SourceKind, SourceRecord,
+        ArchiveEntryId, ArchiveEntryRecord, ArchiveId, ArchiveRecord, LibraryId, LibraryRecord,
+        MediaAssetRecord, SourceId, SourceKind, SourceRecord,
     };
-    use std::collections::HashMap;
-    use std::sync::Mutex;
-
-    #[derive(Default)]
-    struct MemoryRepos {
-        libraries: Mutex<HashMap<String, LibraryRecord>>,
-        sources: Mutex<HashMap<String, SourceRecord>>,
-        archives: Mutex<HashMap<String, ArchiveRecord>>,
-        archive_entries: Mutex<HashMap<String, Vec<ArchiveEntryRecord>>>,
-        assets: Mutex<HashMap<String, MediaAssetRecord>>,
-    }
-
-    impl LibraryRepository for MemoryRepos {
-        fn exists(&self, library_id: &LibraryId) -> anyhow::Result<bool> {
-            Ok(self
-                .libraries
-                .lock()
-                .expect("lock")
-                .contains_key(&library_id.0))
-        }
-
-        fn upsert(&self, library: &LibraryRecord) -> anyhow::Result<()> {
-            self.libraries
-                .lock()
-                .expect("lock")
-                .insert(library.id.0.clone(), library.clone());
-            Ok(())
-        }
-
-        fn get(&self, library_id: &LibraryId) -> anyhow::Result<Option<LibraryRecord>> {
-            Ok(self
-                .libraries
-                .lock()
-                .expect("lock")
-                .get(&library_id.0)
-                .cloned())
-        }
-    }
-
-    impl SourceRepository for MemoryRepos {
-        fn exists(&self, source_id: &SourceId) -> anyhow::Result<bool> {
-            Ok(self
-                .sources
-                .lock()
-                .expect("lock")
-                .contains_key(&source_id.0))
-        }
-
-        fn upsert(&self, source: &SourceRecord) -> anyhow::Result<()> {
-            self.sources
-                .lock()
-                .expect("lock")
-                .insert(source.id.0.clone(), source.clone());
-            Ok(())
-        }
-
-        fn get(&self, source_id: &SourceId) -> anyhow::Result<Option<SourceRecord>> {
-            Ok(self
-                .sources
-                .lock()
-                .expect("lock")
-                .get(&source_id.0)
-                .cloned())
-        }
-
-        fn count(&self) -> anyhow::Result<u64> {
-            Ok(self.sources.lock().expect("lock").len() as u64)
-        }
-
-        fn count_by_library(&self, library_id: &LibraryId) -> anyhow::Result<u64> {
-            Ok(self
-                .sources
-                .lock()
-                .expect("lock")
-                .values()
-                .filter(|item| item.library_id == *library_id)
-                .count() as u64)
-        }
-
-        fn list_by_library(&self, library_id: &LibraryId) -> anyhow::Result<Vec<SourceRecord>> {
-            let mut items = self
-                .sources
-                .lock()
-                .expect("lock")
-                .values()
-                .filter(|item| item.library_id == *library_id)
-                .cloned()
-                .collect::<Vec<_>>();
-            items.sort_by(|left, right| left.normalized_path.cmp(&right.normalized_path));
-            Ok(items)
-        }
-    }
-
-    impl ArchiveRepository for MemoryRepos {
-        fn exists(&self, archive_id: &ArchiveId) -> anyhow::Result<bool> {
-            Ok(self
-                .archives
-                .lock()
-                .expect("lock")
-                .contains_key(&archive_id.0))
-        }
-
-        fn upsert(&self, archive: &ArchiveRecord) -> anyhow::Result<()> {
-            self.archives
-                .lock()
-                .expect("lock")
-                .insert(archive.id.0.clone(), archive.clone());
-            Ok(())
-        }
-
-        fn get(&self, archive_id: &ArchiveId) -> anyhow::Result<Option<ArchiveRecord>> {
-            Ok(self
-                .archives
-                .lock()
-                .expect("lock")
-                .get(&archive_id.0)
-                .cloned())
-        }
-
-        fn get_by_source(&self, source_id: &SourceId) -> anyhow::Result<Option<ArchiveRecord>> {
-            Ok(self
-                .archives
-                .lock()
-                .expect("lock")
-                .values()
-                .find(|item| item.source_id == *source_id)
-                .cloned())
-        }
-    }
-
-    impl ArchiveEntryRepository for MemoryRepos {
-        fn replace_for_archive(
-            &self,
-            archive_id: &ArchiveId,
-            entries: &[ArchiveEntryRecord],
-        ) -> anyhow::Result<()> {
-            self.archive_entries
-                .lock()
-                .expect("lock")
-                .insert(archive_id.0.clone(), entries.to_vec());
-            Ok(())
-        }
-
-        fn get(
-            &self,
-            archive_entry_id: &ArchiveEntryId,
-        ) -> anyhow::Result<Option<ArchiveEntryRecord>> {
-            Ok(self
-                .archive_entries
-                .lock()
-                .expect("lock")
-                .values()
-                .flat_map(|items| items.iter())
-                .find(|item| item.id == *archive_entry_id)
-                .cloned())
-        }
-
-        fn list_by_archive(
-            &self,
-            archive_id: &ArchiveId,
-        ) -> anyhow::Result<Vec<ArchiveEntryRecord>> {
-            Ok(self
-                .archive_entries
-                .lock()
-                .expect("lock")
-                .get(&archive_id.0)
-                .cloned()
-                .unwrap_or_default())
-        }
-    }
-
-    impl AssetRepository for MemoryRepos {
-        fn exists(&self, asset_id: &AssetId) -> anyhow::Result<bool> {
-            Ok(self.assets.lock().expect("lock").contains_key(&asset_id.0))
-        }
-
-        fn upsert(&self, asset: &MediaAssetRecord) -> anyhow::Result<()> {
-            self.assets
-                .lock()
-                .expect("lock")
-                .insert(asset.id.0.clone(), asset.clone());
-            Ok(())
-        }
-
-        fn get(&self, asset_id: &AssetId) -> anyhow::Result<Option<MediaAssetRecord>> {
-            Ok(self.assets.lock().expect("lock").get(&asset_id.0).cloned())
-        }
-    }
-
+    use support::MemoryRepos;
     #[test]
     fn ensures_file_and_archive_entry_assets_for_library() {
         let repos = MemoryRepos::default();
@@ -584,7 +149,6 @@ mod tests {
             updated_at: "1".to_string(),
         };
         LibraryRepository::upsert(&repos, &library).expect("library should exist");
-
         let image_source = SourceRecord {
             id: SourceId("source_image".to_string()),
             library_id: library.id.clone(),
@@ -613,7 +177,6 @@ mod tests {
         };
         SourceRepository::upsert(&repos, &image_source).expect("image source should exist");
         SourceRepository::upsert(&repos, &archive_source).expect("archive source should exist");
-
         let archive = ArchiveRecord {
             id: ArchiveId("archive_primary".to_string()),
             source_id: archive_source.id.clone(),
@@ -657,11 +220,9 @@ mod tests {
             ],
         )
         .expect("entries should exist");
-
         let summary =
             ensure_media_assets_for_library(&repos, &repos, &repos, &repos, &repos, &library.id)
                 .expect("asset ensure should succeed");
-
         assert_eq!(summary.ensured_assets, 2);
         assert_eq!(summary.file_assets, 1);
         assert_eq!(summary.archive_entry_assets, 1);
@@ -676,7 +237,6 @@ mod tests {
         )
         .expect("archive entry asset should exist"));
     }
-
     #[test]
     fn builds_asset_snapshot_for_library() {
         let repos = MemoryRepos::default();
@@ -736,7 +296,6 @@ mod tests {
             uncompressed_size: Some(20),
             crc32: Some(1),
         };
-
         LibraryRepository::upsert(&repos, &library).expect("library should exist");
         SourceRepository::upsert(&repos, &image_source).expect("image source should exist");
         SourceRepository::upsert(&repos, &archive_source).expect("archive source should exist");
@@ -746,7 +305,6 @@ mod tests {
 
         let snapshot = asset_snapshot_for_library(&repos, &repos, &repos, &repos, &library.id)
             .expect("asset snapshot should succeed");
-
         assert_eq!(snapshot.len(), 2);
         assert!(snapshot.iter().any(|item| item.source_kind == "file"));
         assert!(snapshot
@@ -754,7 +312,6 @@ mod tests {
             .any(|item| item.source_kind == "archive_entry"
                 && item.entry_path.as_deref() == Some("001-cover.png")));
     }
-
     #[test]
     fn resolves_file_and_archive_entry_assets() {
         let repos = MemoryRepos::default();
@@ -814,14 +371,12 @@ mod tests {
             uncompressed_size: Some(20),
             crc32: Some(1),
         };
-
         LibraryRepository::upsert(&repos, &library).expect("library should exist");
         SourceRepository::upsert(&repos, &image_source).expect("image source should exist");
         SourceRepository::upsert(&repos, &archive_source).expect("archive source should exist");
         ArchiveRepository::upsert(&repos, &archive).expect("archive should exist");
         ArchiveEntryRepository::replace_for_archive(&repos, &archive.id, &[entry.clone()])
             .expect("entry should exist");
-
         AssetRepository::upsert(
             &repos,
             &MediaAssetRecord {
@@ -854,7 +409,6 @@ mod tests {
             },
         )
         .expect("archive asset should exist");
-
         let file_resolution = resolve_asset(
             &repos,
             &repos,
@@ -873,7 +427,6 @@ mod tests {
             &archive_entry_asset_id_from_entry(&entry.id),
         )
         .expect("archive asset should resolve");
-
         match file_resolution {
             AssetResolution::File(file) => {
                 assert_eq!(file.source_id, image_source.id.0);
@@ -881,7 +434,6 @@ mod tests {
             }
             other => panic!("unexpected resolution: {other:?}"),
         }
-
         match archive_resolution {
             AssetResolution::ArchiveEntry(item) => {
                 assert_eq!(item.archive_id, archive.id.0);
