@@ -17,6 +17,9 @@ describe('数据库管理自动验收', () => {
   it('读取当前路径，并在取消清除时保持状态不变', async () => {
     await openDatabaseSettingsPage()
 
+    await waitForText(selectors.databaseSqlPath, runtimeContext.initialDatabasePath)
+    await waitForText(selectors.databaseThumbnailPath, runtimeContext.initialThumbnailCacheDir)
+
     const initialPaths = await readDatabasePaths()
     assert.equal(path.normalize(initialPaths.databasePath), path.normalize(runtimeContext.initialDatabasePath))
     assert.equal(
