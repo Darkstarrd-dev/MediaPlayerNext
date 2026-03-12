@@ -7,6 +7,7 @@ import type {
 import { useCallback, useEffect, useRef } from 'react'
 import type { MediaRepository } from '../repositories/media-repository'
 import { getErrorMessage, isTaskNotFoundError } from './app-shell-utils'
+import { useAppShellBootstrapScanSnapshot } from './use-app-shell-bootstrap-scan-snapshot'
 
 interface RefreshWorkspaceOptions {
   preferredLibraryId?: string | null
@@ -71,26 +72,10 @@ export function useAppShellWorkspaceData(params: UseAppShellWorkspaceDataParams)
     refreshSidebarNodes,
   } = params
 
-  const bootstrapScanSnapshot = useCallback(
-    async (libraryId: string): Promise<void> => {
-      for (let attempt = 0; attempt < 24; attempt += 1) {
-        try {
-          const snapshot = await repository.scan.snapshot(libraryId)
-          setScanSnapshot(snapshot)
-          return
-        } catch (error) {
-          if (!isTaskNotFoundError(error)) {
-            throw error
-          }
-        }
-
-        await new Promise<void>((resolve) => {
-          window.setTimeout(resolve, 250)
-        })
-      }
-    },
-    [repository, setScanSnapshot],
-  )
+  const bootstrapScanSnapshot = useAppShellBootstrapScanSnapshot({
+    repository,
+    setScanSnapshot,
+  })
 
   const loadLibrarySurface = useCallback(
     async (options: {

@@ -206,7 +206,7 @@ Current validated tool versions for the Rust `1.88.0` project baseline:
 #### 已完成进度（2026-03-12）
 
 1. `AppShell.tsx` 单体继续拆分并显著降体积
-   - 已从历史大文件基线持续下降到当前约 `1288` 行
+   - 已从历史大文件基线持续下降到当前约 `398` 行（已低于 warning 线 `400`）
    - 已拆出并接入：
      - `use-app-shell-layout*`
      - `use-app-shell-workspace-cursor.ts`
@@ -218,6 +218,24 @@ Current validated tool versions for the Rust `1.88.0` project baseline:
      - `use-app-shell-import-listeners.ts`
      - `use-app-shell-directory-picker.ts`
      - `use-app-shell-scan-state.ts`
+     - `app-shell-sidebar-pane.tsx`
+     - `app-shell-main-pane.tsx`
+     - `app-shell-metadata-pane.tsx`
+     - `app-shell-header.tsx`
+     - `app-shell-settings-panel.tsx`
+     - `app-shell-clear-database-dialog.tsx`
+     - `app-shell-settings-ui-page.tsx`
+     - `app-shell-settings-database-page.tsx`
+     - `app-shell-settings-types.ts`
+     - `use-app-shell-database-settings.ts`
+     - `use-app-shell-view-state.ts`
+     - `app-shell-workspace.tsx`
+     - `app-shell-panels.tsx`
+     - `use-app-shell-workspace-state.ts`
+     - `use-app-shell-workspace-navigation.ts`
+     - `use-app-shell-overlay-escape.ts`
+     - `app-shell-import-batch.ts`
+     - `use-app-shell-bootstrap-scan-snapshot.ts`
 2. 本轮质量门禁结果
    - `npm run build:web`：通过
    - `npm run check:module-boundaries`：通过
@@ -226,9 +244,9 @@ Current validated tool versions for the Rust `1.88.0` project baseline:
 #### 待拆分 / 待完成
 
 1. 继续拆分 `AppShell.tsx` 视图层（优先）
-   - 将 Sidebar/Main/Metadata 的 JSX 渲染段继续下沉为更小的渲染模块，进一步降低 `react-container` 风险
+   - 在已低于 warning 线后，继续向目标线（`~300`）收敛，优先下沉剩余容器编排与装配参数
 2. 持续收口新增模块体积
-   - 新增 hook 保持在 `react-module` 硬上限内（`<=300` 行），避免“从一个大文件拆出多个超限文件”
+   - 当前 warning 仅剩 `styles/showcase.css`，下一步继续按样式模块拆分收口
 3. 处理分层质量中的既有失败项
    - `clippy`
    - `deny`
