@@ -315,9 +315,9 @@ P2 当前用于暴露“不会立刻打断功能，但会持续侵蚀可维护�
 
 以下项目已经明确是缺口，但尚未形成当前仓库的强制门禁：
 
-- 没有 CI / PR 模板 / release workflow 真正落库
+- 已落库首版 `.github` workflows 与 PR 模板，但尚未收敛到完整发布治理（阈值、报告、升级回放）
 - benchmark 还没有 compare + threshold gate
-- 还没有 binary size / `cargo bloat` / Go-No-Go 报告模板的当前版落地
+- 已新增 Go/No-Go 报告模板，但还没有 binary size / `cargo bloat` / 自动化报告门禁
 - 还没有离线安装、升级回放、签名等 release 级闭环
 
 ## 9. 当前阶段推进顺序

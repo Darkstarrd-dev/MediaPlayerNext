@@ -1,0 +1,39 @@
+name: quality-fast
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  fast:
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: setup rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: install dependencies
+        run: npm ci
+
+      - name: quality fast
+        run: npm run check:quality:fast
+
+      - name: contracts
+        run: npm run test:contracts
+
+      - name: build web
+        run: npm run build:web

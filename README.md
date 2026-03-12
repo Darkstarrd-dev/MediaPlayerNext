@@ -328,6 +328,18 @@ Current validated tool versions for the Rust `1.88.0` project baseline:
        - `check:quality:fast` 全部通过（`5/5`）
        - `debt-delta`：`baselineMatched=true`、`addedEntries=[]`
        - `totalOccurrenceCount` 进一步降到 `270`
+20. 质量缺口收口：`capabilities-drift / contract-drift` 已落地
+       - 新增 `scripts/quality/check-capabilities-drift.ps1` + `config/quality/capabilities-baseline.json`
+       - 新增 `scripts/quality/check-contract-drift.mjs` + `config/quality/contract-drift-baseline.json`
+       - `run-rust-gates.ps1` 分层门禁已接入两项 drift gate（P1）
+21. `.github` 首版工作流与 PR 模板已落库
+       - `quality-fast.yml`（main push/PR）
+       - `quality-standard.yml`（PR + workflow_dispatch）
+       - `release-verify.yml`（workflow_dispatch）
+       - `pull_request_template.md`
+22. benchmark 与发布评审文档模板已补齐
+       - `docs/benchmarks/benchmark-threshold-policy.md`
+       - `docs/quality/release-go-no-go-template.md`
 
 #### 待拆分 / 待完成
 
@@ -335,6 +347,7 @@ Current validated tool versions for the Rust `1.88.0` project baseline:
    - `crates/app-core/src/archive.rs`（449 行）
    - `crates/app-core/src/asset.rs`（447 行）
    - `crates/app-core/src/scan.rs`（441 行）
-2. 落地 CI 分层流水线与发布增强验收
-   - 分层工作流：`fast / standard / heavy / release`
-   - 发布侧补充：installer/upgrade replay、signing/offline smoke
+2. 完善发布增强验收
+   - installer/upgrade replay
+   - signing/offline smoke
+3. 补 benchmark compare + threshold 与 binary size / `cargo bloat` 自动化门禁

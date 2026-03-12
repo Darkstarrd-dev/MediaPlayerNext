@@ -19,6 +19,9 @@
 - `docs/quality/layered-quality-pipeline-phase-plan.md`
   - 分层质量流水线执行计划，按 phase 推进命令分层与脚本重构
   - 作为后续质量命令改造的执行型文档
+- `docs/quality/release-go-no-go-template.md`
+  - 发布前 Go/No-Go 评审模板
+  - 统一记录门禁产物、风险审计与发布结论
 - `docs/ui/source-ui-known-data.md`
   - 源项目 UI 已知数据、锚点、变量与文档位置记录
   - 仅作迁移参考，不作为新项目定义
@@ -46,6 +49,7 @@
   - contracts、repository surface、transport boundary 等参考文档
 - `docs/benchmarks/`
   - benchmark 与验证记录
+  - benchmark 阈值策略：`docs/benchmarks/benchmark-threshold-policy.md`
 - `docs/fixtures/`
   - fixtures 与 golden 说明
 - `docs/runtime/`

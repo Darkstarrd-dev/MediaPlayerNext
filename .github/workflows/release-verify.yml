@@ -1,0 +1,31 @@
+name: release-verify
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: setup rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: install dependencies
+        run: npm ci
+
+      - name: quality heavy
+        run: npm run check:quality:heavy
+
+      - name: release verify
+        run: npm run check:release
