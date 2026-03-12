@@ -5,6 +5,7 @@ export const itemSourceKindSchema = z.enum(["file", "archive_entry"]);
 
 export const itemsListQuerySchema = z.object({
   libraryId: libraryIdSchema,
+  sourceId: sourceIdSchema.optional(),
   page: z.number().int().positive().optional(),
   pageSize: z.number().int().positive().optional(),
 });

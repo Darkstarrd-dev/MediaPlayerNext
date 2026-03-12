@@ -7,6 +7,7 @@ import type {
   ItemListEntry,
   ItemsListQuery,
   LibraryDetail,
+  SidebarNodeSummary,
   LibrarySummary,
   PlaybackSession,
   RuntimeInfo,
@@ -19,6 +20,7 @@ import type {
   TaskProgress,
   ThumbnailEnsureResult,
   ThumbnailProfile,
+  WorkspaceCursor,
 } from '@mediaplayernext/contracts'
 
 export interface RuntimeSmokeCheckInput {
@@ -112,6 +114,10 @@ export async function invokeLibraryGet(libraryId: string): Promise<LibraryDetail
   return invoke<LibraryDetail>('library_get_command', withArgAliases({ libraryId }))
 }
 
+export async function invokeLibraryNodes(libraryId: string): Promise<SidebarNodeSummary[]> {
+  return invoke<SidebarNodeSummary[]>('library_nodes_command', withArgAliases({ libraryId }))
+}
+
 export async function invokeLibraryRemove(libraryId: string): Promise<void> {
   return invoke<void>('library_remove_command', withArgAliases({ libraryId }))
 }
@@ -134,6 +140,14 @@ export async function invokeScanSnapshot(libraryId: string): Promise<TaskProgres
 
 export async function invokeItemsList(query: ItemsListQuery): Promise<ItemListEntry[]> {
   return invoke<ItemListEntry[]>('items_list_command', withArgAliases(query))
+}
+
+export async function invokeWorkspaceCursorRead(): Promise<WorkspaceCursor | null> {
+  return invoke<WorkspaceCursor | null>('workspace_cursor_read_command')
+}
+
+export async function invokeWorkspaceCursorWrite(cursor: WorkspaceCursor): Promise<void> {
+  return invoke<void>('workspace_cursor_write_command', withArgAliases({ cursor }))
 }
 
 export async function invokeItemDetail(assetId: string): Promise<ItemDetail> {

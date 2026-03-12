@@ -773,6 +773,48 @@ impl ThumbnailRepository for SqliteRepositories<'_> {
 
         Ok(record)
     }
+
+    fn get_ready_by_asset_profile(
+        &self,
+        asset_id: &AssetId,
+        profile: &str,
+    ) -> Result<Option<ThumbnailRecord>> {
+        let record = self
+            .connection
+            .query_row(
+                "
+                select thumbnail_key, asset_id, profile, width, height, format,
+                       disk_path, byte_size, state, updated_at
+                from thumbnails
+                where asset_id = :asset_id
+                  and profile = :profile
+                  and state = 'ready'
+                order by updated_at desc
+                limit 1
+                ",
+                named_params! {
+                    ":asset_id": asset_id.0,
+                    ":profile": profile,
+                },
+                |row| {
+                    Ok(ThumbnailRecord {
+                        thumbnail_key: ThumbnailKey(row.get::<_, String>(0)?),
+                        asset_id: AssetId(row.get::<_, String>(1)?),
+                        profile: row.get(2)?,
+                        width: row.get(3)?,
+                        height: row.get(4)?,
+                        format: row.get(5)?,
+                        disk_path: row.get(6)?,
+                        byte_size: row.get(7)?,
+                        state: row.get(8)?,
+                        updated_at: row.get(9)?,
+                    })
+                },
+            )
+            .optional()?;
+
+        Ok(record)
+    }
 }
 
 fn source_kind_to_db(kind: &SourceKind) -> &'static str {

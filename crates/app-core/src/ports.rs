@@ -59,6 +59,13 @@ pub trait ThumbnailRepository {
     fn exists(&self, thumbnail_key: &ThumbnailKey) -> anyhow::Result<bool>;
     fn upsert(&self, thumbnail: &ThumbnailRecord) -> anyhow::Result<()>;
     fn get(&self, thumbnail_key: &ThumbnailKey) -> anyhow::Result<Option<ThumbnailRecord>>;
+    fn get_ready_by_asset_profile(
+        &self,
+        _asset_id: &AssetId,
+        _profile: &str,
+    ) -> anyhow::Result<Option<ThumbnailRecord>> {
+        Ok(None)
+    }
 }
 
 pub trait SubtitleHostPort {

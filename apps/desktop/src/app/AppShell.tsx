@@ -4,9 +4,10 @@ import type {
   LibraryDetail,
   LibrarySummary,
   RuntimeInfo,
-  ScanRunResult,
   ScanStats,
+  SidebarNodeSummary,
   TaskProgress,
+  WorkspaceCursor,
 } from '@mediaplayernext/contracts'
 import { open as openDialog } from '@tauri-apps/plugin-dialog'
 import { readText as readClipboardText } from '@tauri-apps/plugin-clipboard-manager'
@@ -200,10 +201,6 @@ function isActiveTaskProgress(task: TaskProgress | null): boolean {
   return task.state === 'queued' || task.state === 'running'
 }
 
-function formatScanRunResult(result: ScanRunResult): string {
-  return `扫描完成：发现 ${result.discovered} 项，写入 ${result.insertedOrUpdated} 项，跳过 ${result.skippedUnchanged} 项。`
-}
-
 function resolvePathLeaf(path: string): string {
   const normalizedPath = path.replace(/[\\/]+$/, '')
   const segments = normalizedPath.split(/[\\/]/).filter((segment) => segment.length > 0)
@@ -238,6 +235,20 @@ function resolveLibrarySelection(
   }
 
   return libraries[0]?.id ?? null
+}
+
+function resolveSidebarNodeSelection(
+  nodes: SidebarNodeSummary[],
+  preferredNodeId?: string | null,
+): string | null {
+  if (preferredNodeId !== undefined && preferredNodeId !== null) {
+    const matchedNode = nodes.find((node) => node.nodeId === preferredNodeId)
+    if (matchedNode) {
+      return matchedNode.nodeId
+    }
+  }
+
+  return nodes[0]?.nodeId ?? null
 }
 
 function normalizePathBatch(paths: string[]): string[] {
@@ -372,10 +383,14 @@ export function AppShell() {
   const [libraries, setLibraries] = useState<LibrarySummary[]>([])
   const [librariesLoading, setLibrariesLoading] = useState(false)
   const [selectedLibraryId, setSelectedLibraryId] = useState<string | null>(null)
+  const [sidebarNodes, setSidebarNodes] = useState<SidebarNodeSummary[]>([])
+  const [sidebarNodesLoading, setSidebarNodesLoading] = useState(false)
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [selectedLibraryDetail, setSelectedLibraryDetail] = useState<LibraryDetail | null>(null)
   const [scanStats, setScanStats] = useState<ScanStats | null>(null)
   const [scanSnapshot, setScanSnapshot] = useState<TaskProgress | null>(null)
-  const [workspaceLoading, setWorkspaceLoading] = useState(false)
+  const [workspaceRefreshing, setWorkspaceRefreshing] = useState(false)
+  const [workspaceHydrated, setWorkspaceHydrated] = useState(false)
   const [workspaceError, setWorkspaceError] = useState<string | null>(null)
   const [items, setItems] = useState<ItemListEntry[]>([])
   const [itemsPageIndex, setItemsPageIndex] = useState(1)
@@ -479,10 +494,14 @@ export function AppShell() {
     libraryLoadRequestIdRef.current += 1
     itemDetailRequestIdRef.current += 1
     setSelectedLibraryDetail(null)
+    setSidebarNodes([])
+    setSelectedNodeId(null)
+    setSidebarNodesLoading(false)
     setScanStats(null)
     setScanSnapshot(null)
     setWorkspaceError(null)
-    setWorkspaceLoading(false)
+    setWorkspaceRefreshing(false)
+    setWorkspaceHydrated(false)
     setItems([])
     setItemsPageIndex(1)
     setItemsHasNextPage(false)
@@ -524,11 +543,17 @@ export function AppShell() {
   )
 
   const loadLibrarySurface = useCallback(
-    async (libraryId: string, requestedPageIndex: number) => {
+    async (options: {
+      libraryId: string
+      nodeId: string | null
+      requestedPageIndex: number
+      preferredAssetId?: string | null
+    }) => {
+      const { libraryId, nodeId, requestedPageIndex, preferredAssetId } = options
       const requestId = libraryLoadRequestIdRef.current + 1
       libraryLoadRequestIdRef.current = requestId
 
-      setWorkspaceLoading(true)
+      setWorkspaceRefreshing(true)
       setWorkspaceError(null)
 
       try {
@@ -538,6 +563,7 @@ export function AppShell() {
         const readItemsPage = (pageIndex: number) =>
           repository.items.list({
             libraryId,
+            sourceId: nodeId ?? undefined,
             page: pageIndex,
             pageSize,
           })
@@ -571,8 +597,24 @@ export function AppShell() {
         setItemsPageIndex(resolvedPageIndex)
         setItemsHasNextPage(resolvedPageIndex === requestedPageIndex && nextItems.length === pageSize)
         setItems(nextItems)
-        setItemThumbnailUrls({})
+        setWorkspaceHydrated(true)
+        setItemThumbnailUrls((current) => {
+          const allowedAssetIds = new Set(nextItems.map((item) => item.assetId))
+          const next: Record<string, string> = {}
+
+          for (const [assetId, url] of Object.entries(current)) {
+            if (allowedAssetIds.has(assetId)) {
+              next[assetId] = url
+            }
+          }
+
+          return next
+        })
         setSelectedAssetId((currentAssetId) => {
+          if (preferredAssetId && nextItems.some((item) => item.assetId === preferredAssetId)) {
+            return preferredAssetId
+          }
+
           if (currentAssetId !== null && nextItems.some((item) => item.assetId === currentAssetId)) {
             return currentAssetId
           }
@@ -585,21 +627,24 @@ export function AppShell() {
         }
 
         setWorkspaceError(getErrorMessage(error))
-        setSelectedLibraryDetail(null)
-        setScanStats(null)
-        setScanSnapshot(null)
-        setItems([])
-        setItemsPageIndex(1)
-        setItemsHasNextPage(false)
-        setSelectedAssetId(null)
-        setItemThumbnailUrls({})
+
+        if (!workspaceHydrated) {
+          setSelectedLibraryDetail(null)
+          setScanStats(null)
+          setScanSnapshot(null)
+          setItems([])
+          setItemsPageIndex(1)
+          setItemsHasNextPage(false)
+          setSelectedAssetId(null)
+          setItemThumbnailUrls({})
+        }
       } finally {
         if (libraryLoadRequestIdRef.current === requestId) {
-          setWorkspaceLoading(false)
+          setWorkspaceRefreshing(false)
         }
       }
     },
-    [repository, thumbnailGridLayout.pageSize],
+    [repository, thumbnailGridLayout.pageSize, workspaceHydrated],
   )
 
   const refreshLibraries = useCallback(
@@ -627,8 +672,39 @@ export function AppShell() {
     [clearWorkspaceData, repository],
   )
 
+  const refreshSidebarNodes = useCallback(
+    async (libraryId: string, preferredNodeId?: string | null): Promise<string | null> => {
+      setSidebarNodesLoading(true)
+      setSidebarNodes([])
+      setSelectedNodeId(null)
+
+      try {
+        const nextNodes = await repository.library.nodes(libraryId)
+        const nextSelectedNodeId = resolveSidebarNodeSelection(nextNodes, preferredNodeId)
+
+        setSidebarNodes(nextNodes)
+        setSelectedNodeId(nextSelectedNodeId)
+        return nextSelectedNodeId
+      } catch (error) {
+        setSidebarNodes([])
+        setSelectedNodeId(null)
+        setWorkspaceError(getErrorMessage(error))
+        return null
+      } finally {
+        setSidebarNodesLoading(false)
+      }
+    },
+    [repository],
+  )
+
   const refreshWorkspace = useCallback(
-    async (preferredLibraryId?: string | null) => {
+    async (options?: {
+      preferredLibraryId?: string | null
+      preferredNodeId?: string | null
+      preferredPageIndex?: number
+      preferredAssetId?: string | null
+    }) => {
+      const preferredLibraryId = options?.preferredLibraryId
       const nextSelectedLibraryId = await refreshLibraries(preferredLibraryId)
 
       if (nextSelectedLibraryId === null) {
@@ -636,10 +712,18 @@ export function AppShell() {
         return
       }
 
-      setItemsPageIndex(1)
-      await loadLibrarySurface(nextSelectedLibraryId, 1)
+      const nextSelectedNodeId = await refreshSidebarNodes(nextSelectedLibraryId, options?.preferredNodeId)
+      const nextPageIndex = Math.max(1, options?.preferredPageIndex ?? 1)
+
+      setItemsPageIndex(nextPageIndex)
+      await loadLibrarySurface({
+        libraryId: nextSelectedLibraryId,
+        nodeId: nextSelectedNodeId,
+        requestedPageIndex: nextPageIndex,
+        preferredAssetId: options?.preferredAssetId,
+      })
     },
-    [clearWorkspaceData, loadLibrarySurface, refreshLibraries],
+    [clearWorkspaceData, loadLibrarySurface, refreshLibraries, refreshSidebarNodes],
   )
 
   const previousPageSizeRef = useRef(thumbnailGridLayout.pageSize)
@@ -652,8 +736,18 @@ export function AppShell() {
       return
     }
 
-    void loadLibrarySurface(selectedLibraryId, itemsPageIndex)
-  }, [itemsPageIndex, loadLibrarySurface, selectedLibraryId, thumbnailGridLayout.pageSize])
+    void loadLibrarySurface({
+      libraryId: selectedLibraryId,
+      nodeId: selectedNodeId,
+      requestedPageIndex: itemsPageIndex,
+    })
+  }, [
+    itemsPageIndex,
+    loadLibrarySurface,
+    selectedLibraryId,
+    selectedNodeId,
+    thumbnailGridLayout.pageSize,
+  ])
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -673,8 +767,43 @@ export function AppShell() {
   }, [])
 
   useEffect(() => {
-    void refreshWorkspace()
-  }, [refreshWorkspace])
+    let cancelled = false
+
+    const hydrateWorkspace = async (): Promise<void> => {
+      try {
+        const cursor = await repository.database.readWorkspaceCursor()
+        if (cancelled) {
+          return
+        }
+
+        const normalizedCursor: WorkspaceCursor = {
+          selectedLibraryId: cursor?.selectedLibraryId ?? null,
+          selectedNodeId: cursor?.selectedNodeId ?? null,
+          itemsPageIndex: Math.max(1, cursor?.itemsPageIndex ?? 1),
+          selectedAssetId: cursor?.selectedAssetId ?? null,
+        }
+
+        await refreshWorkspace({
+          preferredLibraryId: normalizedCursor.selectedLibraryId,
+          preferredNodeId: normalizedCursor.selectedNodeId,
+          preferredPageIndex: normalizedCursor.itemsPageIndex ?? 1,
+          preferredAssetId: normalizedCursor.selectedAssetId,
+        })
+      } catch {
+        if (cancelled) {
+          return
+        }
+
+        await refreshWorkspace()
+      }
+    }
+
+    void hydrateWorkspace()
+
+    return () => {
+      cancelled = true
+    }
+  }, [refreshWorkspace, repository])
 
   useEffect(() => {
     const root = document.documentElement
@@ -753,6 +882,36 @@ export function AppShell() {
     thumbnailZoomLevel,
     workspaceLayout.metaWidthPx,
     workspaceLayout.sidebarWidthPx,
+  ])
+
+  useEffect(() => {
+    if (!workspaceHydrated) {
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      void repository.database
+        .writeWorkspaceCursor({
+          selectedLibraryId,
+          selectedNodeId,
+          itemsPageIndex,
+          selectedAssetId,
+        })
+        .catch(() => {
+          // ignore workspace cursor persistence failure
+        })
+    }, 180)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [
+    itemsPageIndex,
+    repository,
+    selectedAssetId,
+    selectedLibraryId,
+    selectedNodeId,
+    workspaceHydrated,
   ])
 
   useEffect(() => {
@@ -897,30 +1056,49 @@ export function AppShell() {
 
     let disposed = false
 
-    void Promise.all(
-      items.map(async (item) => {
-        if (item.thumbnailKey) {
-          return [item.assetId, repository.urls.thumbnail(item.thumbnailKey)] as const
+    const visibleAssetIds = new Set(items.map((item) => item.assetId))
+    setItemThumbnailUrls((current) => {
+      const next: Record<string, string> = {}
+      for (const [assetId, url] of Object.entries(current)) {
+        if (visibleAssetIds.has(assetId)) {
+          next[assetId] = url
         }
+      }
+      return next
+    })
 
-        try {
-          const ensuredThumbnail = await repository.thumbnail.ensure(item.assetId, 'grid-md')
-          return [item.assetId, repository.urls.thumbnail(ensuredThumbnail.thumbnailKey)] as const
-        } catch {
-          return null
-        }
-      }),
-    ).then((entries) => {
+    const applyThumbnailUrl = (assetId: string, thumbnailUrl: string) => {
       if (disposed) {
         return
       }
 
-      setItemThumbnailUrls(
-        Object.fromEntries(
-          entries.filter((entry): entry is readonly [string, string] => entry !== null),
-        ),
-      )
-    })
+      setItemThumbnailUrls((current) => {
+        if (current[assetId] === thumbnailUrl) {
+          return current
+        }
+
+        return {
+          ...current,
+          [assetId]: thumbnailUrl,
+        }
+      })
+    }
+
+    for (const item of items) {
+      if (item.thumbnailKey) {
+        applyThumbnailUrl(item.assetId, repository.urls.thumbnail(item.thumbnailKey))
+        continue
+      }
+
+      void repository.thumbnail
+        .ensure(item.assetId, 'grid-md')
+        .then((ensuredThumbnail) => {
+          applyThumbnailUrl(item.assetId, repository.urls.thumbnail(ensuredThumbnail.thumbnailKey))
+        })
+        .catch(() => {
+          // ignore missing thumbnail and keep placeholder
+        })
+    }
 
     return () => {
       disposed = true
@@ -941,11 +1119,29 @@ export function AppShell() {
 
   const handleLibrarySelect = useCallback(
     (libraryId: string) => {
-      setSelectedLibraryId(libraryId)
-      setItemsPageIndex(1)
-      void loadLibrarySurface(libraryId, 1)
+      void refreshWorkspace({
+        preferredLibraryId: libraryId,
+        preferredPageIndex: 1,
+      })
     },
-    [loadLibrarySurface],
+    [refreshWorkspace],
+  )
+
+  const handleSidebarNodeSelect = useCallback(
+    (nodeId: string) => {
+      if (selectedLibraryId === null) {
+        return
+      }
+
+      setSelectedNodeId(nodeId)
+      setItemsPageIndex(1)
+      void loadLibrarySurface({
+        libraryId: selectedLibraryId,
+        nodeId,
+        requestedPageIndex: 1,
+      })
+    },
+    [loadLibrarySurface, selectedLibraryId],
   )
 
   const handleAddLibrary = useCallback(
@@ -973,12 +1169,24 @@ export function AppShell() {
         const createdLibrary = await repository.library.add({ rootPath })
 
         if (shouldScanAfterAdd) {
-          const runResult = await repository.scan.start(createdLibrary.id)
-          setActionMessage(`已登记并扫描：${formatScanRunResult(runResult)}`)
+          setActionMessage(`已登记并启动扫描：${createdLibrary.rootPath}`)
           updateImportActivity(activityId, {
             status: 'completed',
             detail: `已登记并启动扫描：${createdLibrary.rootPath}`,
           })
+          void repository.scan.start(createdLibrary.id).catch((error: unknown) => {
+            setActionError(`扫描启动失败：${getErrorMessage(error)}`)
+          })
+          window.setTimeout(() => {
+            void repository.scan
+              .snapshot(createdLibrary.id)
+              .then((nextSnapshot) => {
+                setScanSnapshot(nextSnapshot)
+              })
+              .catch(() => {
+                // ignore task-not-found race during start
+              })
+          }, 260)
         } else {
           setActionMessage(`已登记媒体库：${createdLibrary.rootPath}`)
           updateImportActivity(activityId, {
@@ -988,7 +1196,10 @@ export function AppShell() {
         }
 
         setImportRootPath('')
-        await refreshWorkspace(createdLibrary.id)
+        await refreshWorkspace({
+          preferredLibraryId: createdLibrary.id,
+          preferredPageIndex: 1,
+        })
       } catch (error) {
         setActionError(getErrorMessage(error))
         updateImportActivity(activityId, {
@@ -1035,7 +1246,19 @@ export function AppShell() {
         try {
           const createdLibrary = await repository.library.add({ rootPath: path })
           successLibraries.push(createdLibrary)
-          await repository.scan.start(createdLibrary.id)
+          void repository.scan.start(createdLibrary.id).catch((error: unknown) => {
+            setActionError(`扫描启动失败：${getErrorMessage(error)}`)
+          })
+          window.setTimeout(() => {
+            void repository.scan
+              .snapshot(createdLibrary.id)
+              .then((nextSnapshot) => {
+                setScanSnapshot(nextSnapshot)
+              })
+              .catch(() => {
+                // ignore task-not-found race during start
+              })
+          }, 260)
         } catch (error) {
           failedPaths.push(`${path}：${getErrorMessage(error)}`)
         }
@@ -1043,7 +1266,10 @@ export function AppShell() {
 
       try {
         const preferredLibraryId = successLibraries.at(-1)?.id ?? selectedLibraryId
-        await refreshWorkspace(preferredLibraryId)
+        await refreshWorkspace({
+          preferredLibraryId,
+          preferredPageIndex: 1,
+        })
       } finally {
         setActionBusy(null)
       }
@@ -1234,7 +1460,11 @@ export function AppShell() {
         setScanStats(nextStats)
 
         if (isActiveTaskProgress(scanSnapshot) && nextSnapshot !== null && !isActiveTaskProgress(nextSnapshot)) {
-          await loadLibrarySurface(selectedLibraryId, itemsPageIndex)
+          await loadLibrarySurface({
+            libraryId: selectedLibraryId,
+            nodeId: selectedNodeId,
+            requestedPageIndex: itemsPageIndex,
+          })
         }
       } catch (error) {
         if (cancelled) {
@@ -1254,7 +1484,14 @@ export function AppShell() {
       cancelled = true
       window.clearInterval(timer)
     }
-  }, [itemsPageIndex, loadLibrarySurface, repository, scanSnapshot, selectedLibraryId])
+  }, [
+    itemsPageIndex,
+    loadLibrarySurface,
+    repository,
+    scanSnapshot,
+    selectedLibraryId,
+    selectedNodeId,
+  ])
 
   useEffect(() => {
     if (scanSnapshot === null) {
@@ -1463,15 +1700,19 @@ export function AppShell() {
 
   const handleGoToItemsPage = useCallback(
     (nextPageIndex: number) => {
-      if (selectedLibraryId === null || workspaceLoading) {
+      if (selectedLibraryId === null) {
         return
       }
 
       const normalizedPageIndex = Math.max(1, nextPageIndex)
       setItemsPageIndex(normalizedPageIndex)
-      void loadLibrarySurface(selectedLibraryId, normalizedPageIndex)
+      void loadLibrarySurface({
+        libraryId: selectedLibraryId,
+        nodeId: selectedNodeId,
+        requestedPageIndex: normalizedPageIndex,
+      })
     },
-    [loadLibrarySurface, selectedLibraryId, workspaceLoading],
+    [loadLibrarySurface, selectedLibraryId, selectedNodeId],
   )
 
   const handleGoPreviousItemsPage = useCallback(() => {
@@ -1491,7 +1732,7 @@ export function AppShell() {
   }, [handleGoToItemsPage, itemsHasNextPage, itemsPageIndex])
 
   const importBusy = actionBusy !== null || isActiveTaskProgress(scanSnapshot)
-  const logoLoading = importBusy || librariesLoading || workspaceLoading
+  const logoLoading = importBusy || librariesLoading || workspaceRefreshing
   const logoButtonState = importTaskPanelOpen
     ? 'fg-header-logo-state-open'
     : importBusy
@@ -1503,6 +1744,7 @@ export function AppShell() {
       ? '扫描进行中'
       : null
   const selectedLibrarySummary = libraries.find((library) => library.id === selectedLibraryId) ?? null
+  const selectedSidebarNode = sidebarNodes.find((node) => node.nodeId === selectedNodeId) ?? null
   const scanStateLabel = scanSnapshot === null ? '未建立任务' : formatTaskStateLabel(scanSnapshot.state)
   const scanSummary = scanSnapshot === null
     ? '当前媒体库尚未执行扫描。'
@@ -1516,10 +1758,10 @@ export function AppShell() {
     : selectedLibraryDetail?.rootPath ?? 'Caption / 摘要预留，后续根据选中项显示真实内容。'
   const sidebarFooterText = selectedLibraryDetail === null
     ? '尚未选择媒体库。'
-    : `${selectedLibraryDetail.libraryType} · 活跃源 ${scanStats?.activeSourceCount ?? 0} · 缺失源 ${scanStats?.missingSourceCount ?? 0}`
+    : `${selectedLibraryDetail.libraryType} · 节点 ${sidebarNodes.length} · 活跃源 ${scanStats?.activeSourceCount ?? 0}`
   const mainFooterPrimary = selectedLibraryDetail === null
     ? '当前未选择媒体库'
-    : selectedLibraryDetail.rootPath
+    : selectedSidebarNode?.normalizedPath ?? selectedLibraryDetail.rootPath
   const mainFooterSecondary = selectedLibraryDetail === null
     ? '当前作用域暂无条目'
     : `${thumbnailGridLayout.columns} 列 × ${thumbnailGridLayout.rows} 行 · 每页 ${thumbnailGridLayout.pageSize} 项 · 当前页 ${items.length} 项`
@@ -1602,34 +1844,82 @@ export function AppShell() {
             <section className="workspace-pane sidebar-frame">
               <header className="workspace-pane-header sidebar-header" data-slot="fg-sidebar-header">
                 <div className="pane-title-stack sidebar-title-stack">
-                  <h2>媒体库</h2>
+                  <h2>直属节点</h2>
+                  <span className="sidebar-selected-library">
+                    {selectedLibrarySummary === null
+                      ? '未选择媒体库'
+                      : resolvePathLeaf(selectedLibrarySummary.rootPath)}
+                  </span>
                 </div>
+
+                <label className="sidebar-library-select-wrap" aria-label="切换媒体库">
+                  <span>媒体库</span>
+                  <select
+                    className="sidebar-library-select"
+                    value={selectedLibraryId ?? ''}
+                    onChange={(event) => {
+                      const nextLibraryId = event.target.value.trim()
+                      if (nextLibraryId.length === 0) {
+                        return
+                      }
+
+                      handleLibrarySelect(nextLibraryId)
+                    }}
+                    disabled={librariesLoading || libraries.length === 0}
+                  >
+                    {libraries.map((library) => (
+                      <option key={library.id} value={library.id}>
+                        {resolvePathLeaf(library.rootPath)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </header>
 
               <div className="workspace-pane-main sidebar-main-shell" data-slot="fg-sidebar-main">
-                <div className="sidebar-tree" role="tree" aria-label="媒体库节点树">
-                  {libraries.map((library) => {
-                    const isActive = library.id === selectedLibraryId
+                {selectedLibraryId === null ? (
+                  <section className="workspace-stage compact">
+                    <span className="workspace-label">Sidebar</span>
+                    <strong>等待导入媒体库</strong>
+                    <p>导入后将显示当前媒体库的直属节点列表。</p>
+                  </section>
+                ) : sidebarNodesLoading && sidebarNodes.length === 0 ? (
+                  <section className="workspace-stage compact">
+                    <span className="workspace-label">Sidebar</span>
+                    <strong>正在读取直属节点</strong>
+                    <p>当前媒体库的首层节点正在同步，请稍候。</p>
+                  </section>
+                ) : sidebarNodes.length === 0 ? (
+                  <section className="workspace-stage compact">
+                    <span className="workspace-label">Sidebar</span>
+                    <strong>当前媒体库暂无直属节点</strong>
+                    <p>可以先执行扫描，或继续导入新的本地路径。</p>
+                  </section>
+                ) : (
+                  <div className="sidebar-tree" role="tree" aria-label="直属媒体节点列表">
+                    {sidebarNodes.map((node) => {
+                      const isActive = node.nodeId === selectedNodeId
 
-                    return (
-                      <button
-                        key={library.id}
-                        className={`sidebar-tree-node ${isActive ? 'is-active' : ''}`}
-                        type="button"
-                        role="treeitem"
-                        aria-selected={isActive}
-                        onClick={() => handleLibrarySelect(library.id)}
-                      >
-                        <span className="sidebar-tree-node-rail" aria-hidden="true" />
-                        <span className="sidebar-tree-node-dot" aria-hidden="true" />
-                        <span className="sidebar-tree-node-copy">
-                          <strong>{resolvePathLeaf(library.rootPath)}</strong>
-                          <span>{library.rootPath}</span>
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
+                      return (
+                        <button
+                          key={node.nodeId}
+                          className={`sidebar-tree-node ${isActive ? 'is-active' : ''}`}
+                          type="button"
+                          role="treeitem"
+                          aria-selected={isActive}
+                          onClick={() => handleSidebarNodeSelect(node.nodeId)}
+                        >
+                          <span className="sidebar-tree-node-rail" aria-hidden="true" />
+                          <span className="sidebar-tree-node-dot" aria-hidden="true" />
+                          <span className="sidebar-tree-node-copy">
+                            <strong>{node.label}</strong>
+                            <span>{node.normalizedPath}</span>
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
 
               <footer className="workspace-pane-footer sidebar-footer" data-slot="fg-sidebar-footer">
@@ -1661,7 +1951,7 @@ export function AppShell() {
                     className="main-zoom-select"
                     value={thumbnailZoomLevel}
                     onChange={(event) => setThumbnailZoomLevel(toThumbnailZoomLevel(Number(event.target.value)))}
-                    disabled={selectedLibraryId === null || workspaceLoading}
+                    disabled={selectedLibraryId === null}
                   >
                     {THUMBNAIL_ZOOM_LEVELS.map((level) => (
                       <option key={level} value={level}>
@@ -1683,7 +1973,7 @@ export function AppShell() {
                     <strong>等待导入媒体库</strong>
                     <p>完成路径登记后，这里会按当前媒体库快照显示条目预览，并与 Sidebar/Metadata 同步刷新。</p>
                   </div>
-                ) : workspaceLoading ? (
+                ) : !workspaceHydrated && workspaceRefreshing ? (
                   <div className="workspace-stage">
                     <span className="workspace-label">主工作区</span>
                     <strong>正在刷新快照</strong>
@@ -1751,7 +2041,7 @@ export function AppShell() {
                   <button
                     className="mpx-btn pane-pagination-btn"
                     type="button"
-                    disabled={selectedLibraryId === null || workspaceLoading || itemsPageIndex <= 1}
+                    disabled={selectedLibraryId === null || itemsPageIndex <= 1}
                     onClick={handleGoPreviousItemsPage}
                   >
                     Prev
@@ -1760,7 +2050,7 @@ export function AppShell() {
                   <button
                     className="mpx-btn pane-pagination-btn"
                     type="button"
-                    disabled={selectedLibraryId === null || workspaceLoading || !itemsHasNextPage}
+                    disabled={selectedLibraryId === null || !itemsHasNextPage}
                     onClick={handleGoNextItemsPage}
                   >
                     Next

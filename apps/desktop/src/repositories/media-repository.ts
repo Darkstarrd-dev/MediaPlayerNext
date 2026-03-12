@@ -12,6 +12,7 @@ import type {
   RuntimeInfo,
   ScanRunResult,
   ScanStats,
+  SidebarNodeSummary,
   SetRuntimeStoragePathsInput,
   SubtitleHost,
   SubtitleProgress,
@@ -20,6 +21,7 @@ import type {
   ThumbnailEnsureResult,
   ThumbnailProgressEvent,
   ThumbnailProfile,
+  WorkspaceCursor,
 } from '@mediaplayernext/contracts'
 import type {
   RuntimeSmokeCheckInput,
@@ -34,12 +36,15 @@ export interface MediaRepository {
     readRuntimeInfo(): Promise<RuntimeInfo>
     setStoragePaths(input: SetRuntimeStoragePathsInput): Promise<RuntimeInfo>
     clear(): Promise<void>
+    readWorkspaceCursor(): Promise<WorkspaceCursor | null>
+    writeWorkspaceCursor(cursor: WorkspaceCursor): Promise<void>
   }
   library: {
     list(): Promise<LibrarySummary[]>
     add(input: AddLibraryInput): Promise<LibraryDetail>
     get(libraryId: string): Promise<LibraryDetail>
     remove(libraryId: string): Promise<void>
+    nodes(libraryId: string): Promise<SidebarNodeSummary[]>
   }
   scan: {
     start(libraryId: string): Promise<ScanRunResult>

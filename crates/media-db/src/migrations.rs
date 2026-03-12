@@ -15,6 +15,10 @@ const MIGRATIONS: &[Migration] = &[
         version: 2,
         sql: include_str!("migrations/0002_init_archive_and_thumb.sql"),
     },
+    Migration {
+        version: 3,
+        sql: include_str!("migrations/0003_init_app_state.sql"),
+    },
 ];
 
 pub fn latest_schema_version() -> i32 {
@@ -181,6 +185,15 @@ fn validate_schema(connection: &Connection) -> Result<()> {
             "id",
         )?;
         ensure_foreign_key_exists(connection, "thumbnails", "asset_id", "media_assets", "id")?;
+    }
+
+    if version >= 3 {
+        ensure_table_columns(
+            connection,
+            "app_state",
+            &["state_key", "state_json", "updated_at"],
+        )?;
+        ensure_index_exists(connection, "idx_app_state_updated_at")?;
     }
 
     ensure_foreign_key_integrity(connection)?;

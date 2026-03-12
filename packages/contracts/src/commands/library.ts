@@ -13,3 +13,7 @@ export const libraryGetRequestSchema = z.object({
 export const libraryRemoveRequestSchema = z.object({
   libraryId: libraryIdSchema,
 });
+
+export const libraryNodesRequestSchema = z.object({
+  libraryId: libraryIdSchema,
+});

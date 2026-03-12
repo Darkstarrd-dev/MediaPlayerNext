@@ -10,6 +10,7 @@ import {
   invokeLibraryAdd,
   invokeLibraryGet,
   invokeLibraryList,
+  invokeLibraryNodes,
   invokeLibraryRemove,
   invokePlaybackOpen,
   invokePlaybackSeek,
@@ -27,6 +28,8 @@ import {
   invokeSubtitleStartSession,
   invokeSubtitleStopSession,
   invokeThumbnailEnsure,
+  invokeWorkspaceCursorRead,
+  invokeWorkspaceCursorWrite,
 } from '../adapters/tauri/commands'
 import {
   buildArchiveEntryUrl,
@@ -51,12 +54,15 @@ export function createTauriMediaRepository(): MediaRepository {
       readRuntimeInfo: invokeReadRuntimeInfo,
       setStoragePaths: invokeSetRuntimeStoragePaths,
       clear: invokeClearDatabase,
+      readWorkspaceCursor: invokeWorkspaceCursorRead,
+      writeWorkspaceCursor: invokeWorkspaceCursorWrite,
     },
     library: {
       list: invokeLibraryList,
       add: async (input) => invokeLibraryAdd(input.rootPath),
       get: invokeLibraryGet,
       remove: invokeLibraryRemove,
+      nodes: invokeLibraryNodes,
     },
     scan: {
       start: invokeScanStart,

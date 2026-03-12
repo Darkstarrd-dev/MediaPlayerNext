@@ -5,12 +5,10 @@ pub mod subtitle_sidecar;
 use anyhow::{Context, Error};
 use app_core::archive::read_archive_entry;
 use app_core::archive::{
-    archive_snapshot, index_library_archives, normalize_archive_source, normalize_archive_status,
+    archive_snapshot, normalize_archive_source, normalize_archive_status,
     resolve_archive_entry_location, ArchiveNormalizeSummary,
 };
-use app_core::asset::{
-    asset_snapshot_for_library, ensure_media_assets_for_library, resolve_asset, AssetResolution,
-};
+use app_core::asset::{asset_snapshot_for_library, resolve_asset, AssetResolution};
 use app_core::library::{get_library, list_libraries, remove_library};
 use app_core::playback::{
     open_playback_session, playback_seek, playback_status, resolve_media_asset_path,
@@ -27,19 +25,24 @@ use app_core::thumbnail::{ensure_thumbnail_for_asset, get_thumbnail, parse_thumb
 use media_db::{DatabaseLocation, MediaDatabase};
 use runtime_check::{run_runtime_smoke_check, RuntimeSmokeCheckResult};
 use runtime_storage::{resolve_database_path, resolve_runtime_storage_paths, RuntimeInfoPayload};
-use serde::Deserialize;
+use rusqlite::{named_params, OptionalExtension};
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use shared_model::{
     AppError, AppErrorCode, ArchiveEntryId, AssetId, LibraryId, LibraryRecord, PlaybackSessionId,
-    PlaybackSessionSummary, SourceId, SubtitleSessionId, TaskProgress, TaskRecord, ThumbnailKey,
+    PlaybackSessionSummary, SourceId, SourceKind, SubtitleSessionId, TaskProgress, TaskRecord,
+    ThumbnailKey,
 };
 use std::env;
 use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::http::{header::CONTENT_TYPE, Response, StatusCode, Uri};
 use tauri::AppHandle;
 
 const ERROR_CODE_HEADER: &str = "x-mediaplayernext-error-code";
 const ERROR_RETRIABLE_HEADER: &str = "x-mediaplayernext-error-retriable";
+const WORKSPACE_CURSOR_STATE_KEY: &str = "workspace_cursor_v1";
+const SIDEBAR_THUMBNAIL_PROFILE: &str = "grid-md";
 type CommandResult<T> = Result<T, AppError>;
 
 #[derive(Debug, Default, Deserialize)]
@@ -61,6 +64,26 @@ struct CommandEnvironment {
     thumbnail_cache_root: PathBuf,
     normalize_root: PathBuf,
     playback_sessions_root: PathBuf,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct WorkspaceCursorPayload {
+    selected_library_id: Option<String>,
+    selected_node_id: Option<String>,
+    items_page_index: Option<u32>,
+    selected_asset_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SidebarNodePayload {
+    node_id: String,
+    library_id: String,
+    source_id: String,
+    label: String,
+    normalized_path: String,
+    kind: String,
 }
 
 #[tauri::command]
@@ -192,6 +215,89 @@ fn library_remove_command(app: tauri::AppHandle, library_id: String) -> CommandR
 }
 
 #[tauri::command]
+fn library_nodes_command(
+    app: tauri::AppHandle,
+    library_id: String,
+) -> CommandResult<Vec<SidebarNodePayload>> {
+    with_command_environment(&app, |environment| {
+        let repositories = environment.database.repositories();
+        let nodes = app_core::ports::SourceRepository::list_by_library(
+            &repositories,
+            &LibraryId(library_id.clone()),
+        )?
+        .into_iter()
+        .filter(|source| source.exists)
+        .map(|source| SidebarNodePayload {
+            node_id: source.id.0.clone(),
+            library_id: source.library_id.0,
+            source_id: source.id.0,
+            label: source.file_name,
+            normalized_path: source.normalized_path,
+            kind: source_kind_label(&source.kind).to_string(),
+        })
+        .collect();
+
+        Ok(nodes)
+    })
+    .map_err(|error| map_backend_command_error("library_nodes_command", "library", error))
+}
+
+#[tauri::command]
+fn workspace_cursor_read_command(
+    app: tauri::AppHandle,
+) -> CommandResult<Option<WorkspaceCursorPayload>> {
+    with_command_environment(&app, |environment| {
+        let state_json = environment
+            .database
+            .connection()
+            .query_row(
+                "select state_json from app_state where state_key = :state_key limit 1",
+                named_params! { ":state_key": WORKSPACE_CURSOR_STATE_KEY },
+                |row| row.get::<_, String>(0),
+            )
+            .optional()?;
+
+        match state_json {
+            Some(value) => {
+                let parsed = serde_json::from_str::<WorkspaceCursorPayload>(&value)?;
+                Ok(Some(parsed))
+            }
+            None => Ok(None),
+        }
+    })
+    .map_err(|error| map_backend_command_error("workspace_cursor_read_command", "workspace", error))
+}
+
+#[tauri::command]
+fn workspace_cursor_write_command(
+    app: tauri::AppHandle,
+    cursor: WorkspaceCursorPayload,
+) -> CommandResult<()> {
+    with_command_environment(&app, |environment| {
+        let state_json = serde_json::to_string(&cursor)?;
+        environment.database.connection().execute(
+            "
+            insert into app_state (state_key, state_json, updated_at)
+            values (:state_key, :state_json, :updated_at)
+            on conflict(state_key) do update set
+              state_json = excluded.state_json,
+              updated_at = excluded.updated_at
+            ",
+            named_params! {
+                ":state_key": WORKSPACE_CURSOR_STATE_KEY,
+                ":state_json": state_json,
+                ":updated_at": now_epoch_millis_string(),
+            },
+        )?;
+
+        Ok(())
+    })
+    .map_err(|error| {
+        map_backend_command_error("workspace_cursor_write_command", "workspace", error)
+    })
+}
+
+#[tauri::command]
 fn scan_start_command(app: tauri::AppHandle, library_id: String) -> CommandResult<ScanRunSummary> {
     with_command_environment(&app, |environment| {
         let repositories = environment.database.repositories();
@@ -276,28 +382,13 @@ struct ItemDetailPayload {
 fn items_list_command(
     app: tauri::AppHandle,
     library_id: String,
+    source_id: Option<String>,
     page: Option<u32>,
     page_size: Option<u32>,
 ) -> CommandResult<Vec<ItemListEntryPayload>> {
     with_command_environment(&app, |environment| {
         let repositories = environment.database.repositories();
         let library_id = LibraryId(library_id);
-        let _ = index_library_archives(
-            &repositories,
-            &repositories,
-            &repositories,
-            &repositories,
-            &library_id,
-        )?;
-        let _ = ensure_media_assets_for_library(
-            &repositories,
-            &repositories,
-            &repositories,
-            &repositories,
-            &repositories,
-            &library_id,
-        )?;
-
         let snapshot = asset_snapshot_for_library(
             &repositories,
             &repositories,
@@ -305,6 +396,15 @@ fn items_list_command(
             &repositories,
             &library_id,
         )?;
+
+        let filtered_snapshot = match source_id {
+            Some(expected_source_id) => snapshot
+                .into_iter()
+                .filter(|item| item.source_id == expected_source_id)
+                .collect::<Vec<_>>(),
+            None => snapshot,
+        };
+
         let offset = page
             .zip(page_size)
             .map(|(page_value, page_size_value)| {
@@ -313,24 +413,34 @@ fn items_list_command(
             .unwrap_or(0);
         let limit = page_size
             .map(|value| value as usize)
-            .unwrap_or(snapshot.len());
+            .unwrap_or(filtered_snapshot.len());
 
-        Ok(snapshot
+        filtered_snapshot
             .into_iter()
             .skip(offset)
             .take(limit)
-            .map(|item| ItemListEntryPayload {
-                asset_id: item.asset_id,
-                source_kind: item.source_kind,
-                source_ref_id: item.source_ref_id,
-                library_id: item.library_id,
-                source_id: item.source_id,
-                archive_id: item.archive_id,
-                entry_path: item.entry_path,
-                mime: item.mime,
-                thumbnail_key: None,
+            .map(|item| {
+                let thumbnail_key =
+                    app_core::ports::ThumbnailRepository::get_ready_by_asset_profile(
+                        &repositories,
+                        &AssetId(item.asset_id.clone()),
+                        SIDEBAR_THUMBNAIL_PROFILE,
+                    )?
+                    .map(|record| record.thumbnail_key.0);
+
+                Ok(ItemListEntryPayload {
+                    thumbnail_key,
+                    asset_id: item.asset_id,
+                    source_kind: item.source_kind,
+                    source_ref_id: item.source_ref_id,
+                    library_id: item.library_id,
+                    source_id: item.source_id,
+                    archive_id: item.archive_id,
+                    entry_path: item.entry_path,
+                    mime: item.mime,
+                })
             })
-            .collect())
+            .collect()
     })
     .map_err(|error| map_backend_command_error("items_list_command", "items", error))
 }
@@ -567,6 +677,8 @@ pub fn run() {
             read_runtime_info_command,
             set_runtime_storage_paths_command,
             clear_database_command,
+            workspace_cursor_read_command,
+            workspace_cursor_write_command,
             subtitle_ping_command,
             subtitle_health_command,
             subtitle_start_session_command,
@@ -576,6 +688,7 @@ pub fn run() {
             library_add_command,
             library_get_command,
             library_remove_command,
+            library_nodes_command,
             scan_start_command,
             scan_resume_command,
             scan_stats_command,
@@ -971,9 +1084,10 @@ fn map_subtitle_command_error(command: &str, error: Error) -> AppError {
         || message.contains("spawn subtitle sidecar")
     {
         AppErrorCode::ExternalToolError
-    } else if message.contains("subtitle sidecar entry missing") {
-        AppErrorCode::NotFound
-    } else if message.contains("not found") || message.contains("missing") {
+    } else if message.contains("subtitle sidecar entry missing")
+        || message.contains("not found")
+        || message.contains("missing")
+    {
         AppErrorCode::NotFound
     } else if message.contains("unsupported") {
         AppErrorCode::InvalidArgument
@@ -1116,6 +1230,24 @@ fn task_progress_from_record(task: TaskRecord) -> TaskProgress {
         message: task.message,
         error_code: task.error_code,
     }
+}
+
+fn source_kind_label(kind: &SourceKind) -> &'static str {
+    match kind {
+        SourceKind::Image => "image",
+        SourceKind::Video => "video",
+        SourceKind::Archive => "archive",
+        SourceKind::Audio => "audio",
+        SourceKind::Other => "other",
+    }
+}
+
+fn now_epoch_millis_string() -> String {
+    let millis = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis();
+    millis.to_string()
 }
 
 fn load_runtime_paths(config_path: &Path) -> RuntimePaths {
