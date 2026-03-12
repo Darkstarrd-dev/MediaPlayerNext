@@ -166,11 +166,13 @@ Current Tauri protocol DB rule:
   - legacy compatibility entry (not recommended for daily use)
 - `npm run check:release`
   - builds subtitle sidecar + Tauri bundle and verifies current release artifacts, including packaged sidecar resource presence
+- `npm run check:module-boundaries`
+  - module size and boundary baseline gate
 
 Layer highlights:
 
 - `fast`
-  - `fmt`, `check`, `debt-delta`, `forbidden-edges`
+  - `fmt`, `check`, `module-boundaries`, `debt-delta`, `forbidden-edges`
 - `standard`
   - `fast` + `clippy`, `nextest x1`, `duplicate-deps`
 - `heavy`

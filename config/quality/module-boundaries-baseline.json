@@ -1,0 +1,77 @@
+{
+  "updatedAt": "2026-03-12T15:21:00",
+  "policy": "No new oversized modules and no growth on existing oversized files/metrics; only allow reductions within the baseline.",
+  "scope": {
+    "roots": [
+      "apps/desktop/src",
+      "src-tauri/src",
+      "crates"
+    ],
+    "include": [
+      "**/*.ts",
+      "**/*.tsx",
+      "**/*.css",
+      "**/*.rs"
+    ]
+  },
+  "frozenFiles": [
+    {
+      "path": "apps/desktop/src/app/AppShell.tsx",
+      "category": "react-container",
+      "maxLines": 2608,
+      "maxHookUsages": 74
+    },
+    {
+      "path": "apps/desktop/src/App.css",
+      "category": "css-module",
+      "maxLines": 1914
+    },
+    {
+      "path": "src-tauri/src/lib.rs",
+      "category": "rust-tauri-adapter",
+      "maxLines": 2104,
+      "maxTauriCommandAnnotations": 31
+    },
+    {
+      "path": "src-tauri/src/subtitle_sidecar.rs",
+      "category": "rust-tauri-adapter",
+      "maxLines": 959
+    },
+    {
+      "path": "src-tauri/src/runtime_storage.rs",
+      "category": "rust-tauri-adapter",
+      "maxLines": 461
+    },
+    {
+      "path": "crates/media-db/src/repositories.rs",
+      "category": "rust-repository-adapter",
+      "maxLines": 1256,
+      "maxImplForCount": 9
+    },
+    {
+      "path": "crates/app-core/src/archive.rs",
+      "category": "rust-domain",
+      "maxLines": 1139
+    },
+    {
+      "path": "crates/app-core/src/asset.rs",
+      "category": "rust-domain",
+      "maxLines": 895
+    },
+    {
+      "path": "crates/app-core/src/scan.rs",
+      "category": "rust-domain",
+      "maxLines": 677
+    },
+    {
+      "path": "crates/app-core/src/playback.rs",
+      "category": "rust-domain",
+      "maxLines": 618
+    },
+    {
+      "path": "crates/app-core/src/thumbnail.rs",
+      "category": "rust-domain",
+      "maxLines": 611
+    }
+  ]
+}

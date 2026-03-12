@@ -56,6 +56,7 @@ P0 当前用于阻断“代码无法稳定构建、测试或通过核心安全�
     - `cargo fmt --all --check`
     - `cargo clippy --workspace --all-targets --all-features -- -D warnings`
     - `cargo check --workspace --all-targets --locked`
+    - `module-boundaries`（模块体量与职责边界基线）
     - `cargo nextest run --workspace --all-features` 单轮
     - `debt-delta`
     - `duplicate-deps`
@@ -93,6 +94,7 @@ P1 当前用于阻断“构建虽能通过，但宿主边界、资源打包或�
 
 - `npm run check:quality`
   - 默认 `standard` 层已包含 `forbidden-edges`
+  - 默认 `standard` 层已包含 `module-boundaries`
 - `npm run check:quality:legacy`
   - 兼容层包含 `tauri-build`（release verify）
 - `npm run check:release`
@@ -110,6 +112,7 @@ P1 当前用于阻断“构建虽能通过，但宿主边界、资源打包或�
 当前已纳入 P1 口径的仓库能力：
 
 - workspace forbidden edges 校验：`scripts/quality/check-forbidden-edges.mjs`
+- 模块体量与职责边界基线校验：`scripts/quality/check-module-boundaries.ps1`
 - Tauri 打包、sidecar 资源、capability 文件存在性校验
 - 数据库管理桌面 E2E：读取路径、目录切换、清除数据库确认流、运行时路径回落
 - Tauri 自动化 E2E 基线：`tauri-driver + WebdriverIO`
@@ -185,10 +188,10 @@ P2 当前用于暴露“不会立刻打断功能，但会持续侵蚀可维护�
 - `legacy`：旧入口兼容（不建议日常使用）
   - 命令：`npm run check:quality:legacy`
 
-### 5.5 最新分层验证快照（2026-03-12 11:48）
+### 5.5 最新分层验证快照（2026-03-12 16:09）
 
 - `fast`：通过
-  - `data/quality-gates/20260312-101605/rust-gates-fast/quality-gates-summary.json`
+  - `data/quality-gates/20260312-160901/rust-gates-fast/quality-gates-summary.json`
 - `standard`：通过
   - `data/quality-gates/20260312-102235/rust-gates-standard/quality-gates-summary.json`
 - `heavy`：通过
@@ -199,7 +202,9 @@ P2 当前用于暴露“不会立刻打断功能，但会持续侵蚀可维护�
 
 说明：
 
-- 本轮已修复 `forbidden-edges` 元数据解析问题，`fast` 恢复通过
+- 本轮已接入 `module-boundaries`（模块体量与职责边界）门禁，并采用 baseline freeze 防止继续膨胀
+- 已按优先级先收敛 `module-boundaries`（`AppShell`/`src-tauri lib`）再收敛 `debt-delta`（`content.rs`）
+- 已继续推进 `crates/media-db` repository 拆分，`repositories.rs` 从单文件 impl 聚合改为按仓储职责分文件 include
 - 本轮已收敛 `standard` 与 `heavy` 层阻塞项
 - `release` 相关阻塞已解除；当前分层命令可完整跑通
 

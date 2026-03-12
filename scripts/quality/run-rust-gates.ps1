@@ -122,6 +122,7 @@ function Build-ProfileConfig {
         runFmt = $true
         runClippy = $false
         runCheck = $true
+        runModuleBoundaries = $true
         nextestMode = "none"
         runCoverage = $false
         runDeny = $false
@@ -138,6 +139,7 @@ function Build-ProfileConfig {
         runFmt = $true
         runClippy = $true
         runCheck = $true
+        runModuleBoundaries = $true
         nextestMode = "x1"
         runCoverage = $false
         runDeny = $false
@@ -154,6 +156,7 @@ function Build-ProfileConfig {
         runFmt = $true
         runClippy = $true
         runCheck = $true
+        runModuleBoundaries = $true
         nextestMode = "x3"
         runCoverage = $true
         runDeny = $true
@@ -170,6 +173,7 @@ function Build-ProfileConfig {
         runFmt = $true
         runClippy = $true
         runCheck = $true
+        runModuleBoundaries = $true
         nextestMode = "x3"
         runCoverage = $true
         runDeny = $true
@@ -265,6 +269,10 @@ if ($profileConfig.runClippy) {
 
 if ($profileConfig.runCheck) {
   $gateResults += Invoke-DirectGate -Name "check" -Priority "P0" -Executable $cargoRunner -Arguments @("check", "--workspace", "--all-targets", "--locked") -LogFileName "p0-check.log" -Details "Rust workspace compile gate"
+}
+
+if ($profileConfig.runModuleBoundaries) {
+  $gateResults += Invoke-PowerShellGate -Name "module-boundaries" -Priority "P1" -ScriptPath (Join-Path $projectRoot "scripts\quality\check-module-boundaries.ps1") -LogFileName "p1-module-boundaries-wrapper.log" -SummaryFileName "module-boundaries-summary.json" -Details "module size and boundary baseline gate"
 }
 
 if ($profileConfig.nextestMode -ne "none") {

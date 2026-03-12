@@ -40,7 +40,10 @@ pub struct MediaSourceSnapshotItem {
     pub cover_asset_id: Option<String>,
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "跨 repository 同步入口当前保留显式参数，后续模块拆分时再收敛"
+)]
 pub fn sync_library_content<L, S, A, E, R, M, I>(
     library_repository: &L,
     source_repository: &S,
@@ -257,7 +260,6 @@ where
     Ok(snapshot)
 }
 
-#[allow(clippy::too_many_arguments)]
 pub fn asset_snapshot_for_media_source<M, I, R, A, E>(
     media_source_repository: &M,
     image_item_repository: &I,
