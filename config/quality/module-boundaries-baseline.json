@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-03-12T15:21:00",
+  "updatedAt": "2026-03-12T20:40:00",
   "policy": "No new oversized modules and no growth on existing oversized files/metrics; only allow reductions within the baseline.",
   "scope": {
     "roots": [
@@ -36,11 +36,6 @@
       "path": "src-tauri/src/subtitle_sidecar.rs",
       "category": "rust-tauri-adapter",
       "maxLines": 959
-    },
-    {
-      "path": "src-tauri/src/runtime_storage.rs",
-      "category": "rust-tauri-adapter",
-      "maxLines": 461
     },
     {
       "path": "crates/media-db/src/repositories.rs",

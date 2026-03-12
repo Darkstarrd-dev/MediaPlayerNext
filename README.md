@@ -236,21 +236,53 @@ Current validated tool versions for the Rust `1.88.0` project baseline:
      - `use-app-shell-overlay-escape.ts`
      - `app-shell-import-batch.ts`
      - `use-app-shell-bootstrap-scan-snapshot.ts`
-2. 本轮质量门禁结果
-   - `npm run build:web`：通过
-   - `npm run check:module-boundaries`：通过
-   - `npm run check:quality:fast`：通过
+2. `runtime_storage` 已完成首轮结构拆分（Rust 侧）
+   - 原 `src-tauri/src/runtime_storage.rs` 已拆为目录模块：
+     - `src-tauri/src/runtime_storage/mod.rs`
+     - `src-tauri/src/runtime_storage/config.rs`
+     - `src-tauri/src/runtime_storage/defaults.rs`
+     - `src-tauri/src/runtime_storage/filesystem.rs`
+   - 对外行为保持一致，仅做结构拆分与测试写法收敛
+   - `module-boundaries` 冻结债文件数已从 `8` 降到 `7`
+   - `debt-delta` 总计数已从 `411` 降到 `396`
+3. `src-tauri/src/lib.rs` 已完成一轮协议层拆分
+   - 新增 `src-tauri/src/app_protocol.rs`，收口 `thumb/media/archive` 协议响应与错误响应构建
+   - `lib.rs` 当前行数已进一步降到 `1187`（较 baseline `2104` 持续下降）
+   - 本轮未改命令语义，仅做适配层结构拆分
+4. `lib.rs` 的 Tauri 命令已开始按领域拆分
+   - 新增 `src-tauri/src/tauri_commands.rs`（greet + runtime storage 相关命令）
+   - 新增 `src-tauri/src/tauri_subtitle_commands.rs`（subtitle 相关命令）
+   - `lib.rs` 的 `tauriCommandAnnotations` 已从 `31` 降到 `21`
+5. `lib.rs` 命令域拆分第二轮已完成（workspace/scan/media/playback）
+   - 新增 `src-tauri/src/tauri_workspace_commands.rs`
+   - 新增 `src-tauri/src/tauri_scan_commands.rs`
+   - 新增 `src-tauri/src/tauri_media_commands.rs`
+   - 新增 `src-tauri/src/tauri_playback_commands.rs`
+   - `lib.rs` 当前行数已进一步降到 `397`，`tauriCommandAnnotations` 已降到 `0`
+6. baseline 与 frozen 记录已完成同步清理
+   - `config/quality/module-boundaries-baseline.json` 已移除失效项 `src-tauri/src/runtime_storage.rs`
+   - `module-boundaries` 的 `missingFrozenFileCount` 已从 `1` 归零到 `0`
+   - `frozenDebtFileCount` 已从 `7` 降到 `6`
+7. 本轮质量门禁结果
+    - `npm run build:web`：通过
+    - `npm run check`：通过
+    - `npm run check:module-boundaries`：通过
+    - `npm run check:debt`：通过
+    - `npm run check:quality:fast`：通过
 
 #### 待拆分 / 待完成
 
-1. 继续拆分 `AppShell.tsx` 视图层（优先）
-   - 在已低于 warning 线后，继续向目标线（`~300`）收敛，优先下沉剩余容器编排与装配参数
-2. 持续收口新增模块体积
-   - 前端侧 warning 已清零，下一步可继续压降 `targetLines`（例如 `showcase-core.css`、`AppShell.tsx`）
-3. 处理分层质量中的既有失败项
-   - `clippy`
-   - `deny`
-   - `duplicate-deps`
+1. 继续拆分 `src-tauri/src/lib.rs`（当前优先）
+   - 重点继续切 `tauri::command` 注册与命令实现分层，降低 `tauriCommandAnnotations` 与文件体积
+2. 继续处理 Rust frozen debt 文件
+   - `src-tauri/src/subtitle_sidecar.rs`
+   - `crates/app-core/src/archive.rs`
+   - `crates/app-core/src/asset.rs`
+   - `crates/app-core/src/scan.rs`
+   - `crates/app-core/src/playback.rs`
+   - `crates/app-core/src/thumbnail.rs`
+3. 继续拆分 `src-tauri/src/subtitle_sidecar.rs`
+   - 当前 Rust adapter 最大 frozen 文件之一（959 行），可按命令域与运行时封装继续切分
 4. 补齐缺失门禁项
    - `capabilities drift`
    - `contract drift`
