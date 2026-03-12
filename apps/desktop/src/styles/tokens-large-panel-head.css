@@ -1,0 +1,15 @@
+:root {
+  --mpx-large-panel-head-border-width: var(--mpx-large-panel-section-border-width);
+  --mpx-large-panel-head-border-color: var(--mpx-large-panel-section-border-color);
+  --mpx-large-panel-head-fill-start: rgba(255, 252, 247, 0.88);
+  --mpx-large-panel-head-fill-end: rgba(241, 232, 220, 0.8);
+  --mpx-large-panel-head-fill-angle: 180deg;
+  --mpx-large-panel-head-bg: linear-gradient(
+    var(--mpx-large-panel-head-fill-angle),
+    var(--mpx-large-panel-head-fill-start),
+    var(--mpx-large-panel-head-fill-end)
+  );
+  --mpx-large-panel-head-text: var(--mpx-text-1);
+  --mpx-large-panel-head-padding-y: 14px;
+  --mpx-large-panel-head-padding-x: 18px;
+}

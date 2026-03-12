@@ -1,0 +1,26 @@
+:root {
+  --mpx-dialog-panel-width: min(520px, 92vw);
+  --mpx-dialog-panel-max-width: 92vw;
+  --mpx-dialog-panel-height: auto;
+  --mpx-dialog-panel-max-height: 80vh;
+  --mpx-dialog-panel-border-width: 1px;
+  --mpx-dialog-panel-root-border-color: rgba(112, 92, 68, 0.18);
+  --mpx-dialog-panel-border-color: var(--mpx-dialog-panel-root-border-color);
+  --mpx-dialog-panel-radius: 18px;
+  --mpx-dialog-panel-root-fill-start: rgba(255, 252, 247, 0.96);
+  --mpx-dialog-panel-root-fill-end: rgba(244, 236, 225, 0.92);
+  --mpx-dialog-panel-root-fill-angle: 180deg;
+  --mpx-dialog-panel-fill-start: var(--mpx-dialog-panel-root-fill-start);
+  --mpx-dialog-panel-fill-end: var(--mpx-dialog-panel-root-fill-end);
+  --mpx-dialog-panel-fill-angle: var(--mpx-dialog-panel-root-fill-angle);
+  --mpx-dialog-panel-bg: linear-gradient(
+    var(--mpx-dialog-panel-fill-angle),
+    var(--mpx-dialog-panel-fill-start),
+    var(--mpx-dialog-panel-fill-end)
+  );
+  --mpx-dialog-panel-shadow:
+    0 14px 28px rgba(94, 72, 46, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.44);
+  --mpx-dialog-panel-padding: 16px;
+  --mpx-dialog-panel-gap: 14px;
+}

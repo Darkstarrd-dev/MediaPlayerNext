@@ -1,0 +1,30 @@
+:root {
+  --mpx-large-panel-width: min(1120px, 90vw);
+  --mpx-large-panel-height: min(780px, 88vh);
+  --mpx-large-panel-max-width: 90vw;
+  --mpx-large-panel-max-height: 88vh;
+  --mpx-large-panel-border-width: 1px;
+  --mpx-large-panel-border-color: rgba(112, 92, 68, 0.18);
+  --mpx-large-panel-radius: 24px;
+  --mpx-large-panel-fill-start: rgba(255, 252, 246, 0.98);
+  --mpx-large-panel-fill-end: rgba(241, 233, 220, 0.96);
+  --mpx-large-panel-fill-angle: 180deg;
+  --mpx-large-panel-fill: linear-gradient(
+    var(--mpx-large-panel-fill-angle),
+    var(--mpx-large-panel-fill-start),
+    var(--mpx-large-panel-fill-end)
+  );
+  --mpx-large-panel-bg: var(--mpx-large-panel-fill);
+  --mpx-large-panel-shadow:
+    0 26px 60px rgba(83, 62, 36, 0.16),
+    0 0 0 1px rgba(255, 255, 255, 0.46);
+  --mpx-large-panel-shell-columns: minmax(220px, 0.3fr) minmax(0, 1fr);
+  --mpx-large-panel-shell-no-side-columns: 1fr;
+  --mpx-large-panel-shell-gap: 14px;
+  --mpx-large-panel-shell-padding: 16px;
+  --mpx-large-panel-section-border-width: 1px;
+  --mpx-large-panel-section-border-color: rgba(112, 92, 68, 0.12);
+  --mpx-large-panel-section-fill-start: rgba(255, 251, 245, 0.84);
+  --mpx-large-panel-section-fill-end: rgba(246, 238, 228, 0.78);
+  --mpx-large-panel-section-fill-angle: 180deg;
+}

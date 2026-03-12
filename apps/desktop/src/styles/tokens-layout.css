@@ -1,0 +1,14 @@
+:root {
+  --mpx-layout-padding: 24px;
+  --mpx-splitter-width: 14px;
+  --mpx-layout-gap-scale: 1;
+  --mpx-layout-gap-px: 24px;
+  --mpx-pane-inner-gap-scale: 1;
+  --mpx-pane-inner-padding-px: 20px;
+  --mpx-pane-stack-gap-scale: 1;
+  --mpx-pane-stack-gap-px: 15px;
+  --mpx-pane-section-gap-px: 15px;
+  --mpx-pane-header-height-px: 68px;
+  --mpx-pane-footer-height-px: 48px;
+  --mpx-splitter-width-scale: 1;
+}

@@ -1,0 +1,148 @@
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  position: relative;
+  min-height: 100vh;
+  color: var(--mpx-text-1);
+  background: var(--mpx-bg-app-fill);
+  overflow: hidden;
+}
+
+.app-drag-import-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: color-mix(in srgb, var(--mpx-bg-tooltip) 22%, transparent);
+  pointer-events: none;
+}
+
+.app-drag-import-card {
+  width: min(520px, 92vw);
+  display: grid;
+  gap: 12px;
+  padding: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255, 252, 246, 0.96), rgba(241, 233, 220, 0.94));
+  box-shadow:
+    0 22px 52px rgba(31, 24, 18, 0.18),
+    0 0 0 1px rgba(255, 255, 255, 0.48);
+  text-align: center;
+}
+
+.app-drag-import-card strong {
+  color: var(--mpx-text-1);
+  font-size: 26px;
+}
+
+.app-drag-import-card p {
+  margin: 0;
+  color: var(--mpx-text-2);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.app-background-layer {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at top left, rgba(255, 244, 214, 0.48), transparent 26%),
+    radial-gradient(circle at right 12% top 10%, rgba(70, 126, 132, 0.18), transparent 24%),
+    radial-gradient(circle at center bottom, rgba(184, 141, 84, 0.12), transparent 34%),
+    linear-gradient(160deg, #f3ecdf 0%, var(--mpx-bg-app-fill) 48%, #e4d7c1 100%);
+  pointer-events: none;
+}
+
+.app-chrome {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  row-gap: var(--mpx-layout-padding);
+  height: 100vh;
+  padding: var(--mpx-layout-padding);
+}
+
+.app-frame {
+  border: 1px solid var(--mpx-container-frame-border-color);
+  border-radius: var(--mpx-container-frame-radius);
+  background: var(--mpx-container-frame-fill);
+  box-shadow: var(--mpx-container-frame-shadow);
+  backdrop-filter: blur(18px);
+}
+
+.mpx-large-panel {
+  width: var(--mpx-large-panel-width);
+  height: var(--mpx-large-panel-height);
+  max-width: var(--mpx-large-panel-max-width);
+  max-height: var(--mpx-large-panel-max-height);
+  border: var(--mpx-large-panel-border-width) solid var(--mpx-large-panel-border-color);
+  border-radius: var(--mpx-large-panel-radius);
+  background: var(--mpx-large-panel-bg);
+  box-shadow: var(--mpx-large-panel-shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mpx-large-panel-head {
+  border-bottom: var(--mpx-large-panel-head-border-width) solid var(--mpx-large-panel-head-border-color);
+  padding: var(--mpx-large-panel-head-padding-y) var(--mpx-large-panel-head-padding-x);
+  background: var(--mpx-large-panel-head-bg);
+  color: var(--mpx-large-panel-head-text);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.mpx-large-panel-head-spacer {
+  width: 1px;
+  height: 1px;
+}
+
+.mpx-large-panel-shell {
+  min-height: 0;
+  flex: 1;
+  display: grid;
+  grid-template-columns: var(--mpx-large-panel-shell-columns);
+  gap: var(--mpx-large-panel-shell-gap);
+  padding: var(--mpx-large-panel-shell-padding);
+}
+
+.mpx-large-panel-shell.is-no-side {
+  grid-template-columns: var(--mpx-large-panel-shell-no-side-columns);
+}
+
+.mpx-large-panel-side {
+  min-width: 0;
+  border: var(--mpx-large-panel-side-border-width) solid var(--mpx-large-panel-side-border-color);
+  border-radius: var(--mpx-large-panel-side-radius);
+  background: var(--mpx-large-panel-side-bg);
+  padding: var(--mpx-large-panel-side-padding);
+  display: flex;
+  flex-direction: column;
+  gap: var(--mpx-large-panel-side-gap);
+}
+
+.mpx-large-panel-main {
+  min-width: 0;
+  min-height: 0;
+  border: var(--mpx-large-panel-main-border-width) solid var(--mpx-large-panel-main-border-color);
+  border-radius: var(--mpx-large-panel-main-radius);
+  background: var(--mpx-large-panel-main-bg);
+  padding: var(--mpx-large-panel-main-padding-y) var(--mpx-large-panel-main-padding-x);
+  overflow: auto;
+}
+
+@media (max-width: 1280px) {
+  .mpx-large-panel-shell {
+    grid-template-columns: 1fr;
+  }
+}

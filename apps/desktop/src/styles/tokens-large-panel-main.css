@@ -1,0 +1,15 @@
+:root {
+  --mpx-large-panel-main-border-width: var(--mpx-large-panel-section-border-width);
+  --mpx-large-panel-main-border-color: var(--mpx-large-panel-section-border-color);
+  --mpx-large-panel-main-fill-start: rgba(255, 252, 247, 0.82);
+  --mpx-large-panel-main-fill-end: rgba(249, 243, 236, 0.76);
+  --mpx-large-panel-main-fill-angle: var(--mpx-large-panel-section-fill-angle);
+  --mpx-large-panel-main-bg: linear-gradient(
+    var(--mpx-large-panel-main-fill-angle),
+    var(--mpx-large-panel-main-fill-start),
+    var(--mpx-large-panel-main-fill-end)
+  );
+  --mpx-large-panel-main-radius: 18px;
+  --mpx-large-panel-main-padding-y: 16px;
+  --mpx-large-panel-main-padding-x: 18px;
+}

@@ -1,0 +1,33 @@
+:root {
+  --mpx-btn-variant-default-border: rgba(108, 90, 66, 0.2);
+  --mpx-btn-variant-default-bg-idle: linear-gradient(180deg, rgba(255, 253, 249, 0.98), rgba(240, 232, 220, 0.94));
+  --mpx-btn-variant-default-bg-hover: linear-gradient(180deg, rgba(255, 253, 249, 1), rgba(233, 240, 237, 0.96));
+  --mpx-btn-variant-default-bg-active: linear-gradient(180deg, rgba(233, 240, 237, 0.98), rgba(218, 229, 225, 0.98));
+  --mpx-btn-variant-default-bg-pressed: linear-gradient(180deg, rgba(221, 232, 228, 0.98), rgba(207, 221, 216, 0.98));
+  --mpx-btn-variant-default-text-idle: var(--mpx-text-1);
+  --mpx-btn-variant-default-text-active: #1d504d;
+  --mpx-btn-variant-default-text-pressed: #153f3c;
+  --mpx-btn-variant-default-text-merged: #143936;
+  --mpx-btn-variant-default-text-disabled: rgba(94, 79, 62, 0.48);
+  --mpx-btn-variant-default-shadow-idle:
+    0 10px 18px rgba(92, 71, 45, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  --mpx-btn-variant-default-shadow-hover:
+    0 14px 22px rgba(40, 95, 100, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.84);
+  --mpx-btn-variant-default-shadow-active:
+    inset 0 2px 4px rgba(40, 95, 100, 0.14),
+    0 4px 10px rgba(92, 71, 45, 0.08);
+  --mpx-btn-variant-default-shadow-pressed:
+    inset 0 3px 6px rgba(40, 95, 100, 0.16),
+    0 2px 6px rgba(92, 71, 45, 0.06);
+  --mpx-btn-variant-default-transform-hover: translateY(-1px);
+  --mpx-btn-variant-default-transform-active: translateY(0);
+  --mpx-btn-variant-default-transform-pressed: translateY(1px);
+  --mpx-btn-variant-default-danger-hover-bg: linear-gradient(180deg, rgba(253, 239, 235, 0.98), rgba(248, 223, 214, 0.98));
+  --mpx-btn-variant-default-danger-hover-border: rgba(169, 74, 56, 0.28);
+  --mpx-btn-variant-default-danger-hover-text: #8c2f23;
+  --mpx-btn-variant-default-danger-hover-shadow:
+    0 12px 18px rgba(169, 74, 56, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}

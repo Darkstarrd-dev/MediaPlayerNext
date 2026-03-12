@@ -1,0 +1,28 @@
+:root {
+  --mpx-bg-app-fill: #ebe3d3;
+  --mpx-container-frame-fill-start: rgba(255, 250, 242, 0.96);
+  --mpx-container-frame-fill-end: rgba(244, 235, 223, 0.94);
+  --mpx-container-frame-fill-angle: 180deg;
+  --mpx-container-frame-fill: linear-gradient(
+    var(--mpx-container-frame-fill-angle),
+    var(--mpx-container-frame-fill-start) 0%,
+    var(--mpx-container-frame-fill-end) 100%
+  );
+  --mpx-container-frame-border-color: rgba(119, 99, 71, 0.18);
+  --mpx-container-frame-edge-color: rgba(255, 255, 255, 0.82);
+  --mpx-container-frame-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.44),
+    0 20px 50px rgba(92, 71, 45, 0.14),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.72);
+  --mpx-container-frame-radius: 26px;
+
+  --mpx-text-1: #2d241b;
+  --mpx-text-2: #5e4f3e;
+  --mpx-text-3: #8a7762;
+  --mpx-accent: #285f64;
+  --mpx-accent-soft: rgba(40, 95, 100, 0.14);
+  --mpx-bg-tooltip: #1f1812;
+  --mpx-status-ready: #2d7a57;
+  --mpx-status-planned: #b6742b;
+  --mpx-settings-backdrop-opacity: 18%;
+}

@@ -1,0 +1,15 @@
+:root {
+  --mpx-large-panel-side-border-width: var(--mpx-large-panel-section-border-width);
+  --mpx-large-panel-side-border-color: var(--mpx-large-panel-section-border-color);
+  --mpx-large-panel-side-fill-start: var(--mpx-large-panel-section-fill-start);
+  --mpx-large-panel-side-fill-end: var(--mpx-large-panel-section-fill-end);
+  --mpx-large-panel-side-fill-angle: var(--mpx-large-panel-section-fill-angle);
+  --mpx-large-panel-side-bg: linear-gradient(
+    var(--mpx-large-panel-side-fill-angle),
+    var(--mpx-large-panel-side-fill-start),
+    var(--mpx-large-panel-side-fill-end)
+  );
+  --mpx-large-panel-side-radius: 18px;
+  --mpx-large-panel-side-padding: 14px;
+  --mpx-large-panel-side-gap: 10px;
+}

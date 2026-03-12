@@ -13,8 +13,8 @@ import { open as openDialog } from '@tauri-apps/plugin-dialog'
 import { readText as readClipboardText } from '@tauri-apps/plugin-clipboard-manager'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { hasFiles as clipboardHasFiles, readFiles as readClipboardFiles } from 'tauri-plugin-clipboard-x-api'
-import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { PointerEvent as ReactPointerEvent } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { consumeE2eDirectorySelection } from './e2e-test-bridge'
 import { ImportTaskPanel } from './ImportTaskPanel'
 import { SettingsIcon } from './SettingsIcon'
@@ -28,44 +28,17 @@ import {
   isTaskNotFoundError,
   normalizePathBatch,
   parseClipboardPaths,
-  readSessionNumber,
   resolveItemDisplayLabel,
   resolveItemLocation,
   resolveLibrarySelection,
   resolvePathLeaf,
-  resolveSpacingPx,
-  resolveWorkspaceWidths,
 } from './app-shell-utils'
 import {
-  computeThumbnailGridLayout,
   THUMBNAIL_ZOOM_LEVELS,
   toThumbnailZoomLevel,
-  type ThumbnailZoomLevel,
 } from './thumbnail-grid-layout'
+import { useAppShellLayout, type DragTarget } from './use-app-shell-layout'
 import { useMediaRepository } from './use-media-repository'
-
-const DEFAULT_VIEWPORT_WIDTH = 1280
-const DEFAULT_SETTINGS_BACKDROP_OPACITY = 18
-const DEFAULT_LAYOUT_GAP_SCALE_COEFF = 1
-const DEFAULT_PANE_INNER_GAP_SCALE_COEFF = 1
-const DEFAULT_PANE_STACK_GAP_SCALE_COEFF = 1
-const DEFAULT_SPLITTER_WIDTH_SCALE_COEFF = 1
-const DEFAULT_SIDEBAR_WIDTH_PX = 300
-const DEFAULT_META_WIDTH_PX = 340
-const DEFAULT_THUMBNAIL_ZOOM_LEVEL: ThumbnailZoomLevel = 4
-const THUMBNAIL_GRID_GAP_PX = 14
-const THUMBNAIL_GRID_MIN_CELL_PX = 96
-
-const SETTINGS_STORAGE_KEYS = {
-  settingsBackdropOpacity: 'mpnext.ui.settingsBackdropOpacity',
-  layoutGapScaleCoeff: 'mpnext.ui.layoutGapScaleCoeff',
-  paneInnerGapScaleCoeff: 'mpnext.ui.paneInnerGapScaleCoeff',
-  paneStackGapScaleCoeff: 'mpnext.ui.paneStackGapScaleCoeff',
-  splitterWidthScaleCoeff: 'mpnext.ui.splitterWidthScaleCoeff',
-  sidebarWidthPx: 'mpnext.ui.sidebarWidthPx',
-  metaWidthPx: 'mpnext.ui.metaWidthPx',
-  thumbnailZoomLevel: 'mpnext.ui.thumbnailZoomLevel',
-} as const
 
 const ACTION_LABELS = {
   addLibrary: '登记媒体库',
@@ -83,17 +56,9 @@ const DATABASE_ACTION_LABELS = {
   clearDatabase: '清除数据库',
 } as const
 
-type DragTarget = 'left' | 'right'
 type ActionKind = keyof typeof ACTION_LABELS
 type DatabaseActionKind = keyof typeof DATABASE_ACTION_LABELS
 type SettingsPage = 'ui' | 'database'
-
-interface DragState {
-  target: DragTarget
-  startX: number
-  startSidebarWidthPx: number
-  startMetaWidthPx: number
-}
 
 type ImportActivityStatus = 'running' | 'completed' | 'failed'
 
@@ -163,77 +128,32 @@ export function AppShell() {
   const activeScanActivityTaskIdRef = useRef<string | null>(null)
   const activeScanActivityEntryIdRef = useRef<string | null>(null)
   const completedScanSurfaceSyncTaskIdRef = useRef<string | null>(null)
-  const [mainGridElement, setMainGridElement] = useState<HTMLDivElement | null>(null)
-
   const [importTaskPanelOpen, setImportTaskPanelOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsPage, setSettingsPage] = useState<SettingsPage>('ui')
   const [clearDatabaseDialogOpen, setClearDatabaseDialogOpen] = useState(false)
-  const [viewportWidth, setViewportWidth] = useState(DEFAULT_VIEWPORT_WIDTH)
-  const [settingsBackdropOpacity, setSettingsBackdropOpacity] = useState(() =>
-    readSessionNumber(
-      SETTINGS_STORAGE_KEYS.settingsBackdropOpacity,
-      DEFAULT_SETTINGS_BACKDROP_OPACITY,
-      0,
-      100,
-    ),
-  )
-  const [layoutGapScaleCoeff, setLayoutGapScaleCoeff] = useState(() =>
-    readSessionNumber(
-      SETTINGS_STORAGE_KEYS.layoutGapScaleCoeff,
-      DEFAULT_LAYOUT_GAP_SCALE_COEFF,
-      0,
-      3,
-    ),
-  )
-  const [paneInnerGapScaleCoeff, setPaneInnerGapScaleCoeff] = useState(() =>
-    readSessionNumber(
-      SETTINGS_STORAGE_KEYS.paneInnerGapScaleCoeff,
-      DEFAULT_PANE_INNER_GAP_SCALE_COEFF,
-      0,
-      2,
-    ),
-  )
-  const [paneStackGapScaleCoeff, setPaneStackGapScaleCoeff] = useState(() =>
-    readSessionNumber(
-      SETTINGS_STORAGE_KEYS.paneStackGapScaleCoeff,
-      DEFAULT_PANE_STACK_GAP_SCALE_COEFF,
-      0,
-      2,
-    ),
-  )
-  const [splitterWidthScaleCoeff, setSplitterWidthScaleCoeff] = useState(() =>
-    readSessionNumber(
-      SETTINGS_STORAGE_KEYS.splitterWidthScaleCoeff,
-      DEFAULT_SPLITTER_WIDTH_SCALE_COEFF,
-      0.5,
-      2,
-    ),
-  )
-  const [sidebarWidthPx, setSidebarWidthPx] = useState(() =>
-    readSessionNumber(
-      SETTINGS_STORAGE_KEYS.sidebarWidthPx,
-      DEFAULT_SIDEBAR_WIDTH_PX,
-      160,
-      640,
-    ),
-  )
-  const [metaWidthPx, setMetaWidthPx] = useState(() =>
-    readSessionNumber(SETTINGS_STORAGE_KEYS.metaWidthPx, DEFAULT_META_WIDTH_PX, 200, 720),
-  )
-  const [dragState, setDragState] = useState<DragState | null>(null)
   const [dropImportActive, setDropImportActive] = useState(false)
-  const [mainGridSize, setMainGridSize] = useState({ width: 960, height: 640 })
-  const [thumbnailZoomLevel, setThumbnailZoomLevel] = useState<ThumbnailZoomLevel>(() =>
-    toThumbnailZoomLevel(
-      readSessionNumber(
-        SETTINGS_STORAGE_KEYS.thumbnailZoomLevel,
-        DEFAULT_THUMBNAIL_ZOOM_LEVEL,
-        THUMBNAIL_ZOOM_LEVELS[0],
-        THUMBNAIL_ZOOM_LEVELS[THUMBNAIL_ZOOM_LEVELS.length - 1],
-      ),
-    ),
-  )
+  const {
+    dragState,
+    beginSplitterDrag,
+    itemGridStyle,
+    layoutPreview,
+    setMainGridElement,
+    setSettingsBackdropOpacity,
+    setLayoutGapScaleCoeff,
+    setPaneInnerGapScaleCoeff,
+    setPaneStackGapScaleCoeff,
+    setSplitterWidthScaleCoeff,
+    settingsBackdropOpacity,
+    layoutGapScaleCoeff,
+    paneInnerGapScaleCoeff,
+    paneStackGapScaleCoeff,
+    splitterWidthScaleCoeff,
+    thumbnailGridLayout,
+    thumbnailZoomLevel,
+    setThumbnailZoomLevel,
+    workspaceStyle,
+  } = useAppShellLayout()
 
   const [libraries, setLibraries] = useState<LibrarySummary[]>([])
   const [librariesLoading, setLibrariesLoading] = useState(false)
@@ -268,83 +188,6 @@ export function AppShell() {
   const [databaseActionBusy, setDatabaseActionBusy] = useState<DatabaseActionKind | null>(null)
   const [databaseActionMessage, setDatabaseActionMessage] = useState<string | null>(null)
   const [databaseActionError, setDatabaseActionError] = useState<string | null>(null)
-
-  const layoutPreview = useMemo(() => {
-    const normalizedLayoutGapScaleCoeff = clampNumber(layoutGapScaleCoeff, 0, 3)
-    const normalizedPaneInnerGapScaleCoeff = clampNumber(paneInnerGapScaleCoeff, 0, 2)
-    const normalizedPaneStackGapScaleCoeff = clampNumber(paneStackGapScaleCoeff, 0, 2)
-    const normalizedSplitterWidthScaleCoeff = clampNumber(splitterWidthScaleCoeff, 0.5, 2)
-    const layoutGapPx = resolveSpacingPx(viewportWidth, normalizedLayoutGapScaleCoeff)
-    const paneInnerPaddingPx = resolveSpacingPx(viewportWidth, normalizedPaneInnerGapScaleCoeff)
-    const paneStackGapPx = Math.max(
-      0,
-      Math.round(paneInnerPaddingPx * 0.75 * normalizedPaneStackGapScaleCoeff),
-    )
-    const splitterWidthPx = Math.max(0, Math.round(layoutGapPx * normalizedSplitterWidthScaleCoeff))
-    const paneHeaderHeightPx = Math.max(68, Math.round(paneInnerPaddingPx * 3.2))
-    const paneFooterHeightPx = Math.max(48, Math.round(paneInnerPaddingPx * 2.2))
-
-    return {
-      layoutGapPx,
-      paneInnerPaddingPx,
-      paneStackGapPx,
-      paneHeaderHeightPx,
-      paneFooterHeightPx,
-      splitterWidthPx,
-      normalizedLayoutGapScaleCoeff,
-      normalizedPaneInnerGapScaleCoeff,
-      normalizedPaneStackGapScaleCoeff,
-      normalizedSplitterWidthScaleCoeff,
-    }
-  }, [
-    layoutGapScaleCoeff,
-    paneInnerGapScaleCoeff,
-    paneStackGapScaleCoeff,
-    splitterWidthScaleCoeff,
-    viewportWidth,
-  ])
-
-  const workspaceLayout = useMemo(
-    () =>
-      resolveWorkspaceWidths(
-        viewportWidth,
-        layoutPreview.layoutGapPx,
-        layoutPreview.splitterWidthPx,
-        sidebarWidthPx,
-        metaWidthPx,
-      ),
-    [layoutPreview.layoutGapPx, layoutPreview.splitterWidthPx, metaWidthPx, sidebarWidthPx, viewportWidth],
-  )
-
-  const workspaceStyle = useMemo(
-    () =>
-      ({
-        '--app-sidebar-width-px': `${workspaceLayout.sidebarWidthPx}px`,
-        '--app-meta-width-px': `${workspaceLayout.metaWidthPx}px`,
-      }) as CSSProperties,
-    [workspaceLayout.metaWidthPx, workspaceLayout.sidebarWidthPx],
-  )
-
-  const thumbnailGridLayout = useMemo(
-    () =>
-      computeThumbnailGridLayout({
-        containerWidth: mainGridSize.width,
-        containerHeight: mainGridSize.height,
-        zoomLevel: thumbnailZoomLevel,
-        gapPx: THUMBNAIL_GRID_GAP_PX,
-        minCellSizePx: THUMBNAIL_GRID_MIN_CELL_PX,
-      }),
-    [mainGridSize.height, mainGridSize.width, thumbnailZoomLevel],
-  )
-
-  const itemGridStyle = useMemo(
-    () =>
-      ({
-        gridTemplateColumns: `repeat(${thumbnailGridLayout.columns}, minmax(0, ${thumbnailGridLayout.cellSizePx}px))`,
-        gap: `${thumbnailGridLayout.gapPx}px`,
-      }) as CSSProperties,
-    [thumbnailGridLayout.cellSizePx, thumbnailGridLayout.columns, thumbnailGridLayout.gapPx],
-  )
 
   const clearWorkspaceData = useCallback(() => {
     libraryLoadRequestIdRef.current += 1
@@ -649,23 +492,6 @@ export function AppShell() {
   ])
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return
-    }
-
-    const updateViewportWidth = (): void => {
-      setViewportWidth(window.innerWidth)
-    }
-
-    updateViewportWidth()
-    window.addEventListener('resize', updateViewportWidth)
-
-    return () => {
-      window.removeEventListener('resize', updateViewportWidth)
-    }
-  }, [])
-
-  useEffect(() => {
     let cancelled = false
 
     const hydrateWorkspace = async (): Promise<void> => {
@@ -707,85 +533,6 @@ export function AppShell() {
       cancelled = true
     }
   }, [refreshWorkspace, repository])
-
-  useEffect(() => {
-    const root = document.documentElement
-
-    root.style.setProperty(
-      '--mpx-settings-backdrop-opacity',
-      `${clampNumber(settingsBackdropOpacity, 0, 100).toFixed(0)}%`,
-    )
-    root.style.setProperty(
-      '--mpx-layout-gap-scale',
-      layoutPreview.normalizedLayoutGapScaleCoeff.toFixed(2),
-    )
-    root.style.setProperty('--mpx-layout-gap-px', `${layoutPreview.layoutGapPx}px`)
-    root.style.setProperty('--mpx-layout-padding', `${layoutPreview.layoutGapPx}px`)
-    root.style.setProperty(
-      '--mpx-header-floating-gap',
-      `${layoutPreview.layoutGapPx}px ${layoutPreview.layoutGapPx}px 0px`,
-    )
-    root.style.setProperty(
-      '--mpx-pane-inner-gap-scale',
-      layoutPreview.normalizedPaneInnerGapScaleCoeff.toFixed(2),
-    )
-    root.style.setProperty('--mpx-pane-inner-padding-px', `${layoutPreview.paneInnerPaddingPx}px`)
-    root.style.setProperty(
-      '--mpx-pane-stack-gap-scale',
-      layoutPreview.normalizedPaneStackGapScaleCoeff.toFixed(2),
-    )
-    root.style.setProperty('--mpx-pane-stack-gap-px', `${layoutPreview.paneStackGapPx}px`)
-    root.style.setProperty('--mpx-pane-section-gap-px', `${layoutPreview.paneStackGapPx}px`)
-    root.style.setProperty('--mpx-pane-header-height-px', `${layoutPreview.paneHeaderHeightPx}px`)
-    root.style.setProperty('--mpx-pane-footer-height-px', `${layoutPreview.paneFooterHeightPx}px`)
-    root.style.setProperty(
-      '--mpx-splitter-width-scale',
-      layoutPreview.normalizedSplitterWidthScaleCoeff.toFixed(2),
-    )
-    root.style.setProperty('--mpx-splitter-width', `${layoutPreview.splitterWidthPx}px`)
-  }, [layoutPreview, settingsBackdropOpacity])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return
-    }
-
-    window.sessionStorage.setItem(
-      SETTINGS_STORAGE_KEYS.settingsBackdropOpacity,
-      settingsBackdropOpacity.toString(),
-    )
-    window.sessionStorage.setItem(
-      SETTINGS_STORAGE_KEYS.layoutGapScaleCoeff,
-      layoutGapScaleCoeff.toString(),
-    )
-    window.sessionStorage.setItem(
-      SETTINGS_STORAGE_KEYS.paneInnerGapScaleCoeff,
-      paneInnerGapScaleCoeff.toString(),
-    )
-    window.sessionStorage.setItem(
-      SETTINGS_STORAGE_KEYS.paneStackGapScaleCoeff,
-      paneStackGapScaleCoeff.toString(),
-    )
-    window.sessionStorage.setItem(
-      SETTINGS_STORAGE_KEYS.splitterWidthScaleCoeff,
-      splitterWidthScaleCoeff.toString(),
-    )
-    window.sessionStorage.setItem(
-      SETTINGS_STORAGE_KEYS.sidebarWidthPx,
-      workspaceLayout.sidebarWidthPx.toString(),
-    )
-    window.sessionStorage.setItem(SETTINGS_STORAGE_KEYS.metaWidthPx, workspaceLayout.metaWidthPx.toString())
-    window.sessionStorage.setItem(SETTINGS_STORAGE_KEYS.thumbnailZoomLevel, thumbnailZoomLevel.toString())
-  }, [
-    layoutGapScaleCoeff,
-    paneInnerGapScaleCoeff,
-    paneStackGapScaleCoeff,
-    settingsBackdropOpacity,
-    splitterWidthScaleCoeff,
-    thumbnailZoomLevel,
-    workspaceLayout.metaWidthPx,
-    workspaceLayout.sidebarWidthPx,
-  ])
 
   useEffect(() => {
     if (!workspaceHydrated) {
@@ -842,79 +589,6 @@ export function AppShell() {
       window.removeEventListener('keydown', handleEscape)
     }
   }, [importTaskPanelOpen, settingsOpen])
-
-  useEffect(() => {
-    if (!dragState) {
-      return
-    }
-
-    const previousUserSelect = document.body.style.userSelect
-    const previousCursor = document.body.style.cursor
-    document.body.style.userSelect = 'none'
-    document.body.style.cursor = 'col-resize'
-
-    const handlePointerMove = (event: PointerEvent): void => {
-      const deltaX = event.clientX - dragState.startX
-
-      if (dragState.target === 'left') {
-        setSidebarWidthPx(dragState.startSidebarWidthPx + deltaX)
-        return
-      }
-
-      setMetaWidthPx(dragState.startMetaWidthPx - deltaX)
-    }
-
-    const handlePointerUp = (): void => {
-      setDragState(null)
-    }
-
-    window.addEventListener('pointermove', handlePointerMove)
-    window.addEventListener('pointerup', handlePointerUp)
-
-    return () => {
-      document.body.style.userSelect = previousUserSelect
-      document.body.style.cursor = previousCursor
-      window.removeEventListener('pointermove', handlePointerMove)
-      window.removeEventListener('pointerup', handlePointerUp)
-    }
-  }, [dragState])
-
-  useEffect(() => {
-    if (mainGridElement === null) {
-      return
-    }
-
-    const updateGridSize = (width: number, height: number) => {
-      const nextWidth = Math.max(0, Math.round(width))
-      const nextHeight = Math.max(0, Math.round(height))
-
-      setMainGridSize((current) => {
-        if (current.width === nextWidth && current.height === nextHeight) {
-          return current
-        }
-
-        return {
-          width: nextWidth,
-          height: nextHeight,
-        }
-      })
-    }
-
-    const initialRect = mainGridElement.getBoundingClientRect()
-    updateGridSize(initialRect.width, initialRect.height)
-
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0]
-      if (!entry) {
-        return
-      }
-
-      updateGridSize(entry.contentRect.width, entry.contentRect.height)
-    })
-
-    observer.observe(mainGridElement)
-    return () => observer.disconnect()
-  }, [mainGridElement])
 
   useEffect(() => {
     if (selectedAssetId === null) {
@@ -1014,12 +688,7 @@ export function AppShell() {
   function handleSplitterPointerDown(target: DragTarget) {
     return (event: ReactPointerEvent<HTMLDivElement>): void => {
       event.preventDefault()
-      setDragState({
-        target,
-        startX: event.clientX,
-        startSidebarWidthPx: workspaceLayout.sidebarWidthPx,
-        startMetaWidthPx: workspaceLayout.metaWidthPx,
-      })
+      beginSplitterDrag(target, event.clientX)
     }
   }
 
