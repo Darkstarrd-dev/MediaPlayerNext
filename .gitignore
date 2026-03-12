@@ -8,6 +8,7 @@ apps/subtitle-sidecar/node_modules/
 target/
 src-tauri/target/
 data/
+msedgedriver.exe
 AGENTS.md
 config/local.paths.json
 docs/fixtures/generated-scan-placeholders.summary.json

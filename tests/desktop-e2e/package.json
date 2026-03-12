@@ -1,0 +1,19 @@
+{
+  "name": "@mediaplayernext/desktop-e2e",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "test": "node ./scripts/run-wdio.mjs",
+    "test:headed": "node ./scripts/run-wdio.mjs",
+    "doctor": "node ./scripts/doctor.mjs"
+  },
+  "dependencies": {
+    "@wdio/cli": "^9.20.0"
+  },
+  "devDependencies": {
+    "@wdio/local-runner": "^9.20.0",
+    "@wdio/mocha-framework": "^9.20.0",
+    "@wdio/spec-reporter": "^9.20.0"
+  }
+}

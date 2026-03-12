@@ -6,13 +6,17 @@
   "workspaces": [
     "apps/desktop",
     "apps/subtitle-sidecar",
-    "packages/contracts"
+    "packages/contracts",
+    "tests/desktop-e2e"
   ],
   "scripts": {
     "dev:web": "npm run dev --workspace @mediaplayernext/desktop -- --host 0.0.0.0 --port 1420",
     "build:web": "npm run build --workspace @mediaplayernext/desktop",
     "tauri:dev": ".\\scripts\\run-tauri-dev.cmd",
     "tauri:build": ".\\scripts\\run-tauri-build.cmd",
+    "e2e:desktop": "npm run test --workspace @mediaplayernext/desktop-e2e --",
+    "e2e:desktop:headed": "npm run test:headed --workspace @mediaplayernext/desktop-e2e --",
+    "e2e:desktop:doctor": "npm run doctor --workspace @mediaplayernext/desktop-e2e",
     "fixtures:scan-placeholders": "node ./scripts/generate-scan-placeholders.mjs",
     "fixtures:scan-placeholders:force": "node ./scripts/generate-scan-placeholders.mjs --force",
     "fixtures:fill-real": "node ./scripts/fill-scan-fixtures-with-realdata.mjs",
@@ -23,7 +27,13 @@
     "check:runtimes": "npm run check:subtitle-sidecar && powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\check-runtimes.ps1\"",
     "check:paths": "powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\release\\verify-resource-paths.ps1\"",
     "check:sidecar-package": "powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\release\\verify-sidecar-package.ps1\"",
-    "check:quality": "powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\quality\\run-rust-gates.ps1\"",
+    "check:debt": "powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\quality\\check-debt-delta.ps1\"",
+    "check:quality:fast": "powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\quality\\run-rust-gates.ps1\" -Layer fast",
+    "check:quality:standard": "powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\quality\\run-rust-gates.ps1\" -Layer standard",
+    "check:quality:heavy": "powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\quality\\run-rust-gates.ps1\" -Layer heavy",
+    "check:quality:release": "npm run check:quality:heavy && npm run check:release && npm run e2e:desktop:doctor && npm run e2e:desktop",
+    "check:quality:legacy": "powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\quality\\run-rust-gates.ps1\" -Layer legacy",
+    "check:quality": "npm run check:quality:standard",
     "check:release": "powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\quality\\run-release-verify.ps1\"",
     "check": "npm run check:runtimes"
   },

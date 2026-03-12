@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use app_core::ports::{
     ArchiveEntryRepository, ArchiveRepository, AssetRepository, LibraryRepository,
     SourceRepository, TaskRepository, ThumbnailRepository,
@@ -12,77 +13,70 @@ use std::fs;
 use tempfile::NamedTempFile;
 
 #[test]
-fn runs_migrations_for_new_database() {
-    let database = MediaDatabase::open(DatabaseLocation::InMemory)
-        .expect("in-memory database should open with migrations");
+fn runs_migrations_for_new_database() -> Result<()> {
+    let database = MediaDatabase::open(DatabaseLocation::InMemory)?;
 
-    let version =
-        current_schema_version(database.connection()).expect("schema version should load");
+    let version = current_schema_version(database.connection())?;
 
     assert_eq!(version, latest_schema_version());
+
+    Ok(())
 }
 
 #[test]
-fn rerunning_migrations_is_stable() {
-    let temp_file = NamedTempFile::new().expect("temporary file should be created");
+fn rerunning_migrations_is_stable() -> Result<()> {
+    let temp_file = NamedTempFile::new()?;
 
-    let database = MediaDatabase::open(DatabaseLocation::File(temp_file.path()))
-        .expect("file database should open with migrations");
-    let first_version =
-        current_schema_version(database.connection()).expect("version should exist");
+    let database = MediaDatabase::open(DatabaseLocation::File(temp_file.path()))?;
+    let first_version = current_schema_version(database.connection())?;
     drop(database);
 
-    let reopened = MediaDatabase::open(DatabaseLocation::File(temp_file.path()))
-        .expect("reopening file database should succeed");
-    let second_version =
-        current_schema_version(reopened.connection()).expect("version should remain accessible");
+    let reopened = MediaDatabase::open(DatabaseLocation::File(temp_file.path()))?;
+    let second_version = current_schema_version(reopened.connection())?;
 
     assert_eq!(first_version, latest_schema_version());
     assert_eq!(second_version, latest_schema_version());
+
+    Ok(())
 }
 
 #[test]
-fn enables_foreign_key_enforcement_for_opened_connections() {
-    let database = MediaDatabase::open(DatabaseLocation::InMemory)
-        .expect("in-memory database should open with migrations");
+fn enables_foreign_key_enforcement_for_opened_connections() -> Result<()> {
+    let database = MediaDatabase::open(DatabaseLocation::InMemory)?;
 
-    let foreign_keys_enabled: i64 = database
-        .connection()
-        .pragma_query_value(None, "foreign_keys", |row| row.get(0))
-        .expect("foreign_keys pragma should be readable");
+    let foreign_keys_enabled: i64 =
+        database
+            .connection()
+            .pragma_query_value(None, "foreign_keys", |row| row.get(0))?;
 
     assert_eq!(foreign_keys_enabled, 1);
+
+    Ok(())
 }
 
 #[test]
-fn upgrades_fixture_database_from_n_minus_1() {
-    let temp_file = NamedTempFile::new().expect("temporary file should be created");
+fn upgrades_fixture_database_from_n_minus_1() -> Result<()> {
+    let temp_file = NamedTempFile::new()?;
     let fixture_sql = include_str!("fixtures/schema_v1_fixture.sql");
 
     {
-        let connection = rusqlite::Connection::open(temp_file.path())
-            .expect("fixture database should open before upgrade");
-        connection
-            .execute_batch(fixture_sql)
-            .expect("fixture sql should be applied");
+        let connection = rusqlite::Connection::open(temp_file.path())?;
+        connection.execute_batch(fixture_sql)?;
     }
 
-    let upgraded = MediaDatabase::open(DatabaseLocation::File(temp_file.path()))
-        .expect("fixture database should upgrade to latest version");
+    let upgraded = MediaDatabase::open(DatabaseLocation::File(temp_file.path()))?;
 
-    let version =
-        current_schema_version(upgraded.connection()).expect("upgraded version should load");
-    let thumbnails_exists: String = upgraded
-        .connection()
-        .query_row(
-            "select name from sqlite_master where type = 'table' and name = 'thumbnails'",
-            [],
-            |row| row.get(0),
-        )
-        .expect("thumbnails table should exist after upgrade");
+    let version = current_schema_version(upgraded.connection())?;
+    let thumbnails_exists: String = upgraded.connection().query_row(
+        "select name from sqlite_master where type = 'table' and name = 'thumbnails'",
+        [],
+        |row| row.get(0),
+    )?;
 
     assert_eq!(version, latest_schema_version());
     assert_eq!(thumbnails_exists, "thumbnails");
+
+    Ok(())
 }
 
 #[test]
@@ -248,9 +242,8 @@ fn fails_when_database_schema_version_is_newer_than_supported() {
 }
 
 #[test]
-fn upserts_and_queries_core_records() {
-    let database = MediaDatabase::open(DatabaseLocation::InMemory)
-        .expect("in-memory database should open with migrations");
+fn upserts_and_queries_core_records() -> Result<()> {
+    let database = MediaDatabase::open(DatabaseLocation::InMemory)?;
     let repositories = database.repositories();
 
     let library = LibraryRecord {
@@ -261,15 +254,13 @@ fn upserts_and_queries_core_records() {
         created_at: "2026-03-07T00:00:00Z".to_string(),
         updated_at: "2026-03-07T00:00:00Z".to_string(),
     };
-    LibraryRepository::upsert(&repositories, &library).expect("library upsert should succeed");
+    LibraryRepository::upsert(&repositories, &library)?;
 
-    let fetched = LibraryRepository::get(&repositories, &library.id)
-        .expect("library fetch should succeed")
-        .expect("library should exist after insert");
+    let fetched = LibraryRepository::get(&repositories, &library.id)?
+        .context("library should exist after insert")?;
 
     assert_eq!(fetched.root_path, library.root_path);
-    assert!(LibraryRepository::exists(&repositories, &library.id)
-        .expect("library exists should succeed"));
+    assert!(LibraryRepository::exists(&repositories, &library.id)?);
 
     let source = SourceRecord {
         id: SourceId("source_primary".to_string()),
@@ -284,10 +275,9 @@ fn upserts_and_queries_core_records() {
         exists: true,
         last_seen_at: "2026-03-07T00:01:00Z".to_string(),
     };
-    SourceRepository::upsert(&repositories, &source).expect("source upsert should succeed");
-    let fetched_source = SourceRepository::get(&repositories, &source.id)
-        .expect("source fetch should succeed")
-        .expect("source should exist after insert");
+    SourceRepository::upsert(&repositories, &source)?;
+    let fetched_source = SourceRepository::get(&repositories, &source.id)?
+        .context("source should exist after insert")?;
 
     let asset = MediaAssetRecord {
         id: AssetId("asset_primary".to_string()),
@@ -301,7 +291,7 @@ fn upserts_and_queries_core_records() {
         orientation: Some(1),
         created_at: "2026-03-07T00:02:00Z".to_string(),
     };
-    AssetRepository::upsert(&repositories, &asset).expect("asset upsert should succeed");
+    AssetRepository::upsert(&repositories, &asset)?;
 
     let task = TaskRecord {
         id: TaskId("task_primary".to_string()),
@@ -315,24 +305,22 @@ fn upserts_and_queries_core_records() {
         started_at: Some("2026-03-07T00:03:00Z".to_string()),
         finished_at: None,
     };
-    TaskRepository::upsert(&repositories, &task).expect("task upsert should succeed");
+    TaskRepository::upsert(&repositories, &task)?;
 
-    assert!(
-        SourceRepository::exists(&repositories, &source.id).expect("source exists should succeed")
-    );
+    assert!(SourceRepository::exists(&repositories, &source.id)?);
     assert_eq!(fetched_source.file_name, source.file_name);
-    assert!(AssetRepository::exists(&repositories, &asset.id).expect("asset exists should succeed"));
-    let fetched_asset = AssetRepository::get(&repositories, &asset.id)
-        .expect("asset fetch should succeed")
-        .expect("asset should exist after insert");
-    assert!(TaskRepository::exists(&repositories, &task.id).expect("task exists should succeed"));
+    assert!(AssetRepository::exists(&repositories, &asset.id)?);
+    let fetched_asset = AssetRepository::get(&repositories, &asset.id)?
+        .context("asset should exist after insert")?;
+    assert!(TaskRepository::exists(&repositories, &task.id)?);
     assert_eq!(fetched_asset.source_ref_id, source.id.0);
+
+    Ok(())
 }
 
 #[test]
-fn inserts_and_counts_more_than_one_thousand_sources() {
-    let database = MediaDatabase::open(DatabaseLocation::InMemory)
-        .expect("in-memory database should open with migrations");
+fn inserts_and_counts_more_than_one_thousand_sources() -> Result<()> {
+    let database = MediaDatabase::open(DatabaseLocation::InMemory)?;
     let repositories = database.repositories();
 
     let library = LibraryRecord {
@@ -343,7 +331,7 @@ fn inserts_and_counts_more_than_one_thousand_sources() {
         created_at: "2026-03-07T00:00:00Z".to_string(),
         updated_at: "2026-03-07T00:00:00Z".to_string(),
     };
-    LibraryRepository::upsert(&repositories, &library).expect("library upsert should succeed");
+    LibraryRepository::upsert(&repositories, &library)?;
 
     for index in 0..1_000_u32 {
         let source = SourceRecord {
@@ -360,23 +348,20 @@ fn inserts_and_counts_more_than_one_thousand_sources() {
             last_seen_at: "2026-03-07T00:00:00Z".to_string(),
         };
 
-        SourceRepository::upsert(&repositories, &source)
-            .expect("bulk source upsert should succeed");
+        SourceRepository::upsert(&repositories, &source)?;
     }
 
-    let count = repositories.count().expect("source count should succeed");
+    let count = repositories.count()?;
     assert_eq!(count, 1_000);
+
+    Ok(())
 }
 
 #[test]
-fn transaction_rolls_back_on_error() {
-    let mut database = MediaDatabase::open(DatabaseLocation::InMemory)
-        .expect("in-memory database should open with migrations");
+fn transaction_rolls_back_on_error() -> Result<()> {
+    let mut database = MediaDatabase::open(DatabaseLocation::InMemory)?;
 
-    let transaction = database
-        .connection_mut()
-        .unchecked_transaction()
-        .expect("transaction should start");
+    let transaction = database.connection_mut().unchecked_transaction()?;
 
     transaction
         .execute(
@@ -390,26 +375,24 @@ fn transaction_rolls_back_on_error() {
                 "2026-03-07T00:00:00Z",
             ),
         )
-        .expect("insert inside transaction should succeed");
+        ?;
 
-    transaction.rollback().expect("rollback should succeed");
+    transaction.rollback()?;
 
-    let count: u64 = database
-        .connection()
-        .query_row(
-            "select count(*) from libraries where id = 'library_tx'",
-            [],
-            |row| row.get(0),
-        )
-        .expect("count query should succeed after rollback");
+    let count: u64 = database.connection().query_row(
+        "select count(*) from libraries where id = 'library_tx'",
+        [],
+        |row| row.get(0),
+    )?;
 
     assert_eq!(count, 0);
+
+    Ok(())
 }
 
 #[test]
-fn replaces_and_lists_archive_entries() {
-    let database = MediaDatabase::open(DatabaseLocation::InMemory)
-        .expect("in-memory database should open with migrations");
+fn replaces_and_lists_archive_entries() -> Result<()> {
+    let database = MediaDatabase::open(DatabaseLocation::InMemory)?;
     let repositories = database.repositories();
 
     let library = LibraryRecord {
@@ -420,7 +403,7 @@ fn replaces_and_lists_archive_entries() {
         created_at: "2026-03-07T00:00:00Z".to_string(),
         updated_at: "2026-03-07T00:00:00Z".to_string(),
     };
-    LibraryRepository::upsert(&repositories, &library).expect("library upsert should succeed");
+    LibraryRepository::upsert(&repositories, &library)?;
 
     let source = SourceRecord {
         id: SourceId("source_archive_entries".to_string()),
@@ -435,7 +418,7 @@ fn replaces_and_lists_archive_entries() {
         exists: true,
         last_seen_at: "2026-03-07T00:01:00Z".to_string(),
     };
-    SourceRepository::upsert(&repositories, &source).expect("source upsert should succeed");
+    SourceRepository::upsert(&repositories, &source)?;
 
     let archive = ArchiveRecord {
         id: ArchiveId("archive_primary".to_string()),
@@ -446,7 +429,7 @@ fn replaces_and_lists_archive_entries() {
         cover_entry_id: Some(ArchiveEntryId("entry_cover".to_string())),
         status: "indexed".to_string(),
     };
-    ArchiveRepository::upsert(&repositories, &archive).expect("archive upsert should succeed");
+    ArchiveRepository::upsert(&repositories, &archive)?;
 
     let first_entries = vec![
         ArchiveEntryRecord {
@@ -476,8 +459,7 @@ fn replaces_and_lists_archive_entries() {
             crc32: Some(2),
         },
     ];
-    ArchiveEntryRepository::replace_for_archive(&repositories, &archive.id, &first_entries)
-        .expect("archive entries should be stored");
+    ArchiveEntryRepository::replace_for_archive(&repositories, &archive.id, &first_entries)?;
 
     let replaced_entries = vec![ArchiveEntryRecord {
         id: ArchiveEntryId("entry_page_9".to_string()),
@@ -492,29 +474,26 @@ fn replaces_and_lists_archive_entries() {
         uncompressed_size: Some(220),
         crc32: Some(9),
     }];
-    ArchiveEntryRepository::replace_for_archive(&repositories, &archive.id, &replaced_entries)
-        .expect("archive entries should be replaced");
+    ArchiveEntryRepository::replace_for_archive(&repositories, &archive.id, &replaced_entries)?;
 
-    let fetched_archive = ArchiveRepository::get_by_source(&repositories, &source.id)
-        .expect("archive by source query should succeed")
-        .expect("archive should exist");
-    let fetched_entries = ArchiveEntryRepository::list_by_archive(&repositories, &archive.id)
-        .expect("archive entries query should succeed");
+    let fetched_archive = ArchiveRepository::get_by_source(&repositories, &source.id)?
+        .context("archive should exist")?;
+    let fetched_entries = ArchiveEntryRepository::list_by_archive(&repositories, &archive.id)?;
     let fetched_entry =
-        ArchiveEntryRepository::get(&repositories, &ArchiveEntryId("entry_page_9".to_string()))
-            .expect("archive entry fetch should succeed")
-            .expect("archive entry should exist");
+        ArchiveEntryRepository::get(&repositories, &ArchiveEntryId("entry_page_9".to_string()))?
+            .context("archive entry should exist")?;
 
     assert_eq!(fetched_archive.id, archive.id);
     assert_eq!(fetched_entries.len(), 1);
     assert_eq!(fetched_entries[0].entry_path, "009-page.png");
     assert_eq!(fetched_entry.entry_name, "009-page.png");
+
+    Ok(())
 }
 
 #[test]
-fn upserts_and_gets_thumbnail_records() {
-    let database = MediaDatabase::open(DatabaseLocation::InMemory)
-        .expect("in-memory database should open with migrations");
+fn upserts_and_gets_thumbnail_records() -> Result<()> {
+    let database = MediaDatabase::open(DatabaseLocation::InMemory)?;
     let repositories = database.repositories();
 
     let asset = MediaAssetRecord {
@@ -529,7 +508,7 @@ fn upserts_and_gets_thumbnail_records() {
         orientation: None,
         created_at: "2026-03-07T00:03:00Z".to_string(),
     };
-    AssetRepository::upsert(&repositories, &asset).expect("asset upsert should succeed");
+    AssetRepository::upsert(&repositories, &asset)?;
 
     let thumbnail = ThumbnailRecord {
         thumbnail_key: ThumbnailKey("thumb_primary".to_string()),
@@ -544,12 +523,12 @@ fn upserts_and_gets_thumbnail_records() {
         updated_at: "2026-03-07T00:04:00Z".to_string(),
     };
 
-    ThumbnailRepository::upsert(&repositories, &thumbnail)
-        .expect("thumbnail upsert should succeed");
-    let fetched = ThumbnailRepository::get(&repositories, &thumbnail.thumbnail_key)
-        .expect("thumbnail fetch should succeed")
-        .expect("thumbnail should exist");
+    ThumbnailRepository::upsert(&repositories, &thumbnail)?;
+    let fetched = ThumbnailRepository::get(&repositories, &thumbnail.thumbnail_key)?
+        .context("thumbnail should exist")?;
 
     assert_eq!(fetched.asset_id, thumbnail.asset_id);
     assert_eq!(fetched.profile, "grid-sm");
+
+    Ok(())
 }

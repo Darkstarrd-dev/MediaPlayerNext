@@ -159,11 +159,21 @@ Tauri command host 当前数据库与缩略图目录顺序：
 - 开发态：`data/runtime-storage-paths.json`
 - 打包态：`app local data dir/runtime-storage-paths.json`
 
+E2E / 测试隔离 override：
+
+- `MPNEXT_RUNTIME_STORAGE_CONFIG_PATH`
+  - 覆盖 runtime storage config 文件位置
+- `MPNEXT_RUNTIME_DEFAULT_DATA_DIR`
+  - 覆盖数据库默认回落 data dir（开发态 / 打包态都生效）
+- `MPNEXT_RUNTIME_DEFAULT_CACHE_DIR`
+  - 覆盖缩略图默认回落 cache dir（开发态 / 打包态都生效）
+
 当前说明：
 
 - `thumb://` / `media://` / `archive://` 现在与 command host 共用数据库路径解析规则，不再把打包态数据库路径硬编码回仓库根目录
 - 设置页现在可以持久化 `database_dir` 与 `thumbnail_cache_dir`
 - `clear_database_command` 会删除 runtime storage config，使路径回落到默认解析规则（若存在 env override，则仍由 env 优先）
+- Tauri E2E 当前依赖上述 override 把数据库、缓存和 runtime storage config 重定向到隔离临时目录，避免污染真实开发数据
 - `thumb/playback/normalize` 的缓存根路径仍以 backend harness 默认值为主，尚未统一切到 Tauri app cache
 
 ### 7. migrations

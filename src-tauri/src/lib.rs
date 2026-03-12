@@ -1171,7 +1171,7 @@ fn workspace_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .map(PathBuf::from)
-        .expect("workspace root should be available")
+        .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")))
 }
 
 #[cfg(test)]
@@ -1182,7 +1182,7 @@ mod tests {
         parse_thumbnail_key_from_uri, thumbnail_protocol_response, ERROR_CODE_HEADER,
         ERROR_RETRIABLE_HEADER,
     };
-    use anyhow::anyhow;
+    use anyhow::{anyhow, Context, Result};
     use app_core::ports::{
         ArchiveEntryRepository, ArchiveRepository, AssetRepository, LibraryRepository,
         SourceRepository, ThumbnailRepository,
@@ -1197,43 +1197,40 @@ mod tests {
     use tempfile::{tempdir, NamedTempFile};
 
     #[test]
-    fn parses_thumb_uri_key() {
-        let uri: Uri = "thumb://cache/thumb_primary"
-            .parse()
-            .expect("uri should parse");
-        let key = parse_thumbnail_key_from_uri(&uri).expect("key should parse");
+    fn parses_thumb_uri_key() -> Result<()> {
+        let uri: Uri = "thumb://cache/thumb_primary".parse()?;
+        let key = parse_thumbnail_key_from_uri(&uri)?;
 
         assert_eq!(key, "thumb_primary");
+
+        Ok(())
     }
 
     #[test]
-    fn parses_media_and_archive_uri_keys() {
-        let media_uri: Uri = "media://asset/asset_video_primary"
-            .parse()
-            .expect("media uri should parse");
-        let archive_uri: Uri = "archive://entry/archive_entry_primary"
-            .parse()
-            .expect("archive uri should parse");
+    fn parses_media_and_archive_uri_keys() -> Result<()> {
+        let media_uri: Uri = "media://asset/asset_video_primary".parse()?;
+        let archive_uri: Uri = "archive://entry/archive_entry_primary".parse()?;
 
         assert_eq!(
-            parse_media_asset_id_from_uri(&media_uri).expect("media asset id should parse"),
+            parse_media_asset_id_from_uri(&media_uri)?,
             "asset_video_primary"
         );
         assert_eq!(
-            parse_archive_entry_id_from_uri(&archive_uri).expect("archive entry id should parse"),
+            parse_archive_entry_id_from_uri(&archive_uri)?,
             "archive_entry_primary"
         );
+
+        Ok(())
     }
 
     #[test]
-    fn serves_thumbnail_file_from_protocol_handler() {
-        let temp = tempdir().expect("tempdir should exist");
-        let db_file = NamedTempFile::new().expect("db file should exist");
+    fn serves_thumbnail_file_from_protocol_handler() -> Result<()> {
+        let temp = tempdir()?;
+        let db_file = NamedTempFile::new()?;
         let thumbnail_path = temp.path().join("thumb.webp");
-        std::fs::write(&thumbnail_path, b"webp-bytes").expect("thumbnail should be written");
+        std::fs::write(&thumbnail_path, b"webp-bytes")?;
 
-        let database = MediaDatabase::open(DatabaseLocation::File(db_file.path()))
-            .expect("database should open");
+        let database = MediaDatabase::open(DatabaseLocation::File(db_file.path()))?;
         let repositories = database.repositories();
         let asset = MediaAssetRecord {
             id: AssetId("asset_thumb_protocol".to_string()),
@@ -1247,7 +1244,7 @@ mod tests {
             orientation: None,
             created_at: "1".to_string(),
         };
-        AssetRepository::upsert(&repositories, &asset).expect("asset should be stored");
+        AssetRepository::upsert(&repositories, &asset)?;
         ThumbnailRepository::upsert(
             &repositories,
             &ThumbnailRecord {
@@ -1262,83 +1259,78 @@ mod tests {
                 state: "ready".to_string(),
                 updated_at: "1".to_string(),
             },
-        )
-        .expect("thumbnail should be stored");
+        )?;
 
-        let uri: Uri = "thumb://cache/thumb_primary"
-            .parse()
-            .expect("uri should parse");
-        let response = thumbnail_protocol_response(db_file.path(), &uri)
-            .expect("protocol response should succeed");
+        let uri: Uri = "thumb://cache/thumb_primary".parse()?;
+        let response = thumbnail_protocol_response(db_file.path(), &uri)?;
 
         assert_eq!(response.status(), StatusCode::OK);
         assert_eq!(
-            response.headers().get(CONTENT_TYPE).expect("content type"),
+            response
+                .headers()
+                .get(CONTENT_TYPE)
+                .context("content type")?,
             "image/webp"
         );
         assert_eq!(response.body(), b"webp-bytes");
+
+        Ok(())
     }
 
     #[test]
-    fn returns_not_found_when_thumbnail_record_missing() {
-        let db_file = NamedTempFile::new().expect("db file should exist");
-        let _database = MediaDatabase::open(DatabaseLocation::File(db_file.path()))
-            .expect("database should open");
-        let uri: Uri = "thumb://cache/thumb_missing"
-            .parse()
-            .expect("uri should parse");
+    fn returns_not_found_when_thumbnail_record_missing() -> Result<()> {
+        let db_file = NamedTempFile::new()?;
+        let _database = MediaDatabase::open(DatabaseLocation::File(db_file.path()))?;
+        let uri: Uri = "thumb://cache/thumb_missing".parse()?;
 
-        let response = thumbnail_protocol_response(db_file.path(), &uri)
-            .expect("protocol response should succeed");
+        let response = thumbnail_protocol_response(db_file.path(), &uri)?;
 
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
         assert_eq!(
             response
                 .headers()
                 .get(ERROR_CODE_HEADER)
-                .expect("error code header"),
+                .context("error code header")?,
             "NOT_FOUND"
         );
         assert_eq!(
             response
                 .headers()
                 .get(ERROR_RETRIABLE_HEADER)
-                .expect("retriable header"),
+                .context("retriable header")?,
             "false"
         );
+
+        Ok(())
     }
 
     #[test]
-    fn returns_invalid_argument_when_thumb_uri_is_unsupported() {
-        let db_file = NamedTempFile::new().expect("db file should exist");
-        let _database = MediaDatabase::open(DatabaseLocation::File(db_file.path()))
-            .expect("database should open");
-        let uri: Uri = "thumb://cache".parse().expect("uri should parse");
+    fn returns_invalid_argument_when_thumb_uri_is_unsupported() -> Result<()> {
+        let db_file = NamedTempFile::new()?;
+        let _database = MediaDatabase::open(DatabaseLocation::File(db_file.path()))?;
+        let uri: Uri = "thumb://cache".parse()?;
 
-        let response = thumbnail_protocol_response(db_file.path(), &uri)
-            .expect("protocol response should succeed");
+        let response = thumbnail_protocol_response(db_file.path(), &uri)?;
 
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
         assert_eq!(
             response
                 .headers()
                 .get(ERROR_CODE_HEADER)
-                .expect("error code header"),
+                .context("error code header")?,
             "INVALID_ARGUMENT"
         );
+
+        Ok(())
     }
 
     #[test]
-    fn returns_not_found_when_media_asset_missing() {
-        let db_file = NamedTempFile::new().expect("db file should exist");
-        let _database = MediaDatabase::open(DatabaseLocation::File(db_file.path()))
-            .expect("database should open");
-        let uri: Uri = "media://asset/asset_missing"
-            .parse()
-            .expect("uri should parse");
+    fn returns_not_found_when_media_asset_missing() -> Result<()> {
+        let db_file = NamedTempFile::new()?;
+        let _database = MediaDatabase::open(DatabaseLocation::File(db_file.path()))?;
+        let uri: Uri = "media://asset/asset_missing".parse()?;
 
-        let response = media_protocol_response(db_file.path(), &uri)
-            .expect("protocol response should succeed");
+        let response = media_protocol_response(db_file.path(), &uri)?;
 
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
         assert_eq!(response.body(), b"media asset not found: asset_missing");
@@ -1346,40 +1338,41 @@ mod tests {
             response
                 .headers()
                 .get(ERROR_CODE_HEADER)
-                .expect("error code header"),
+                .context("error code header")?,
             "NOT_FOUND"
         );
+
+        Ok(())
     }
 
     #[test]
-    fn returns_invalid_argument_when_media_uri_is_unsupported() {
-        let db_file = NamedTempFile::new().expect("db file should exist");
-        let _database = MediaDatabase::open(DatabaseLocation::File(db_file.path()))
-            .expect("database should open");
-        let uri: Uri = "media://asset".parse().expect("uri should parse");
+    fn returns_invalid_argument_when_media_uri_is_unsupported() -> Result<()> {
+        let db_file = NamedTempFile::new()?;
+        let _database = MediaDatabase::open(DatabaseLocation::File(db_file.path()))?;
+        let uri: Uri = "media://asset".parse()?;
 
-        let response = media_protocol_response(db_file.path(), &uri)
-            .expect("protocol response should succeed");
+        let response = media_protocol_response(db_file.path(), &uri)?;
 
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
         assert_eq!(
             response
                 .headers()
                 .get(ERROR_CODE_HEADER)
-                .expect("error code header"),
+                .context("error code header")?,
             "INVALID_ARGUMENT"
         );
+
+        Ok(())
     }
 
     #[test]
-    fn serves_media_file_from_protocol_handler() {
-        let temp = tempdir().expect("tempdir should exist");
-        let db_file = NamedTempFile::new().expect("db file should exist");
+    fn serves_media_file_from_protocol_handler() -> Result<()> {
+        let temp = tempdir()?;
+        let db_file = NamedTempFile::new()?;
         let media_path = temp.path().join("video.mp4");
-        std::fs::write(&media_path, b"video-bytes").expect("media file should exist");
+        std::fs::write(&media_path, b"video-bytes")?;
 
-        let database = MediaDatabase::open(DatabaseLocation::File(db_file.path()))
-            .expect("database should open");
+        let database = MediaDatabase::open(DatabaseLocation::File(db_file.path()))?;
         let repositories = database.repositories();
         LibraryRepository::upsert(
             &repositories,
@@ -1391,8 +1384,7 @@ mod tests {
                 created_at: "1".to_string(),
                 updated_at: "1".to_string(),
             },
-        )
-        .expect("library should store");
+        )?;
         SourceRepository::upsert(
             &repositories,
             &SourceRecord {
@@ -1408,8 +1400,7 @@ mod tests {
                 exists: true,
                 last_seen_at: "1".to_string(),
             },
-        )
-        .expect("source should store");
+        )?;
         AssetRepository::upsert(
             &repositories,
             &MediaAssetRecord {
@@ -1424,31 +1415,31 @@ mod tests {
                 orientation: None,
                 created_at: "1".to_string(),
             },
-        )
-        .expect("asset should store");
+        )?;
 
-        let uri: Uri = "media://asset/asset_media_protocol"
-            .parse()
-            .expect("uri should parse");
-        let response = media_protocol_response(db_file.path(), &uri)
-            .expect("protocol response should succeed");
+        let uri: Uri = "media://asset/asset_media_protocol".parse()?;
+        let response = media_protocol_response(db_file.path(), &uri)?;
 
         assert_eq!(response.status(), StatusCode::OK);
         assert_eq!(
-            response.headers().get(CONTENT_TYPE).expect("content type"),
+            response
+                .headers()
+                .get(CONTENT_TYPE)
+                .context("content type")?,
             "video/mp4"
         );
         assert_eq!(response.body(), b"video-bytes");
+
+        Ok(())
     }
 
     #[test]
-    fn returns_not_found_when_media_file_missing() {
-        let temp = tempdir().expect("tempdir should exist");
-        let db_file = NamedTempFile::new().expect("db file should exist");
+    fn returns_not_found_when_media_file_missing() -> Result<()> {
+        let temp = tempdir()?;
+        let db_file = NamedTempFile::new()?;
         let media_path = temp.path().join("missing-video.mp4");
 
-        let database = MediaDatabase::open(DatabaseLocation::File(db_file.path()))
-            .expect("database should open");
+        let database = MediaDatabase::open(DatabaseLocation::File(db_file.path()))?;
         let repositories = database.repositories();
         let library_id = LibraryId("library_media_missing_file".to_string());
 
@@ -1462,8 +1453,7 @@ mod tests {
                 created_at: "1".to_string(),
                 updated_at: "1".to_string(),
             },
-        )
-        .expect("library should store");
+        )?;
         SourceRepository::upsert(
             &repositories,
             &SourceRecord {
@@ -1479,8 +1469,7 @@ mod tests {
                 exists: true,
                 last_seen_at: "1".to_string(),
             },
-        )
-        .expect("source should store");
+        )?;
         AssetRepository::upsert(
             &repositories,
             &MediaAssetRecord {
@@ -1495,14 +1484,10 @@ mod tests {
                 orientation: None,
                 created_at: "1".to_string(),
             },
-        )
-        .expect("asset should store");
+        )?;
 
-        let uri: Uri = "media://asset/asset_media_missing_file"
-            .parse()
-            .expect("uri should parse");
-        let response = media_protocol_response(db_file.path(), &uri)
-            .expect("protocol response should succeed");
+        let uri: Uri = "media://asset/asset_media_missing_file".parse()?;
+        let response = media_protocol_response(db_file.path(), &uri)?;
 
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
         assert!(String::from_utf8_lossy(response.body()).contains("media file not found"));
@@ -1510,31 +1495,28 @@ mod tests {
             response
                 .headers()
                 .get(ERROR_CODE_HEADER)
-                .expect("error code header"),
+                .context("error code header")?,
             "NOT_FOUND"
         );
+
+        Ok(())
     }
 
     #[test]
-    fn serves_archive_entry_from_protocol_handler() {
-        let temp = tempdir().expect("tempdir should exist");
-        let db_file = NamedTempFile::new().expect("db file should exist");
+    fn serves_archive_entry_from_protocol_handler() -> Result<()> {
+        let temp = tempdir()?;
+        let db_file = NamedTempFile::new()?;
         let zip_path = temp.path().join("chapter.cbz");
-        let file = std::fs::File::create(&zip_path).expect("zip file should exist");
+        let file = std::fs::File::create(&zip_path)?;
         let mut writer = zip::ZipWriter::new(file);
         let options = zip::write::SimpleFileOptions::default()
             .compression_method(zip::CompressionMethod::Stored);
         use std::io::Write;
-        writer
-            .start_file("001-cover.png", options)
-            .expect("zip entry should start");
-        writer
-            .write_all(b"cover-bytes")
-            .expect("zip entry should write");
-        writer.finish().expect("zip should finish");
+        writer.start_file("001-cover.png", options)?;
+        writer.write_all(b"cover-bytes")?;
+        writer.finish()?;
 
-        let database = MediaDatabase::open(DatabaseLocation::File(db_file.path()))
-            .expect("database should open");
+        let database = MediaDatabase::open(DatabaseLocation::File(db_file.path()))?;
         let repositories = database.repositories();
         let library_id = LibraryId("library_archive_protocol".to_string());
         let source_id = SourceId("source_archive_protocol".to_string());
@@ -1550,8 +1532,7 @@ mod tests {
                 created_at: "1".to_string(),
                 updated_at: "1".to_string(),
             },
-        )
-        .expect("library should store");
+        )?;
         SourceRepository::upsert(
             &repositories,
             &SourceRecord {
@@ -1567,8 +1548,7 @@ mod tests {
                 exists: true,
                 last_seen_at: "1".to_string(),
             },
-        )
-        .expect("source should store");
+        )?;
         ArchiveRepository::upsert(
             &repositories,
             &ArchiveRecord {
@@ -1580,8 +1560,7 @@ mod tests {
                 cover_entry_id: Some(ArchiveEntryId("archive_entry_primary".to_string())),
                 status: "indexed".to_string(),
             },
-        )
-        .expect("archive should store");
+        )?;
         ArchiveEntryRepository::replace_for_archive(
             &repositories,
             &archive_id,
@@ -1598,34 +1577,31 @@ mod tests {
                 uncompressed_size: Some(10),
                 crc32: Some(1),
             }],
-        )
-        .expect("archive entry should store");
+        )?;
 
-        let uri: Uri = "archive://entry/archive_entry_primary"
-            .parse()
-            .expect("uri should parse");
-        let response = archive_protocol_response(db_file.path(), &uri)
-            .expect("protocol response should succeed");
+        let uri: Uri = "archive://entry/archive_entry_primary".parse()?;
+        let response = archive_protocol_response(db_file.path(), &uri)?;
 
         assert_eq!(response.status(), StatusCode::OK);
         assert_eq!(
-            response.headers().get(CONTENT_TYPE).expect("content type"),
+            response
+                .headers()
+                .get(CONTENT_TYPE)
+                .context("content type")?,
             "image/png"
         );
         assert_eq!(response.body(), b"cover-bytes");
+
+        Ok(())
     }
 
     #[test]
-    fn returns_not_found_when_archive_entry_missing() {
-        let db_file = NamedTempFile::new().expect("db file should exist");
-        let _database = MediaDatabase::open(DatabaseLocation::File(db_file.path()))
-            .expect("database should open");
-        let uri: Uri = "archive://entry/archive_entry_missing"
-            .parse()
-            .expect("uri should parse");
+    fn returns_not_found_when_archive_entry_missing() -> Result<()> {
+        let db_file = NamedTempFile::new()?;
+        let _database = MediaDatabase::open(DatabaseLocation::File(db_file.path()))?;
+        let uri: Uri = "archive://entry/archive_entry_missing".parse()?;
 
-        let response = archive_protocol_response(db_file.path(), &uri)
-            .expect("protocol response should succeed");
+        let response = archive_protocol_response(db_file.path(), &uri)?;
 
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
         assert_eq!(
@@ -1636,39 +1612,40 @@ mod tests {
             response
                 .headers()
                 .get(ERROR_CODE_HEADER)
-                .expect("error code header"),
+                .context("error code header")?,
             "NOT_FOUND"
         );
+
+        Ok(())
     }
 
     #[test]
-    fn returns_invalid_argument_when_archive_uri_is_unsupported() {
-        let db_file = NamedTempFile::new().expect("db file should exist");
-        let _database = MediaDatabase::open(DatabaseLocation::File(db_file.path()))
-            .expect("database should open");
-        let uri: Uri = "archive://entry".parse().expect("uri should parse");
+    fn returns_invalid_argument_when_archive_uri_is_unsupported() -> Result<()> {
+        let db_file = NamedTempFile::new()?;
+        let _database = MediaDatabase::open(DatabaseLocation::File(db_file.path()))?;
+        let uri: Uri = "archive://entry".parse()?;
 
-        let response = archive_protocol_response(db_file.path(), &uri)
-            .expect("protocol response should succeed");
+        let response = archive_protocol_response(db_file.path(), &uri)?;
 
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
         assert_eq!(
             response
                 .headers()
                 .get(ERROR_CODE_HEADER)
-                .expect("error code header"),
+                .context("error code header")?,
             "INVALID_ARGUMENT"
         );
+
+        Ok(())
     }
 
     #[test]
-    fn returns_not_found_when_archive_file_missing() {
-        let temp = tempdir().expect("tempdir should exist");
-        let db_file = NamedTempFile::new().expect("db file should exist");
+    fn returns_not_found_when_archive_file_missing() -> Result<()> {
+        let temp = tempdir()?;
+        let db_file = NamedTempFile::new()?;
         let zip_path = temp.path().join("missing-chapter.cbz");
 
-        let database = MediaDatabase::open(DatabaseLocation::File(db_file.path()))
-            .expect("database should open");
+        let database = MediaDatabase::open(DatabaseLocation::File(db_file.path()))?;
         let repositories = database.repositories();
         let library_id = LibraryId("library_archive_missing_file".to_string());
         let source_id = SourceId("source_archive_missing_file".to_string());
@@ -1684,8 +1661,7 @@ mod tests {
                 created_at: "1".to_string(),
                 updated_at: "1".to_string(),
             },
-        )
-        .expect("library should store");
+        )?;
         SourceRepository::upsert(
             &repositories,
             &SourceRecord {
@@ -1701,8 +1677,7 @@ mod tests {
                 exists: true,
                 last_seen_at: "1".to_string(),
             },
-        )
-        .expect("source should store");
+        )?;
         ArchiveRepository::upsert(
             &repositories,
             &ArchiveRecord {
@@ -1714,8 +1689,7 @@ mod tests {
                 cover_entry_id: Some(ArchiveEntryId("archive_entry_missing_file".to_string())),
                 status: "indexed".to_string(),
             },
-        )
-        .expect("archive should store");
+        )?;
         ArchiveEntryRepository::replace_for_archive(
             &repositories,
             &archive_id,
@@ -1732,14 +1706,10 @@ mod tests {
                 uncompressed_size: Some(10),
                 crc32: Some(1),
             }],
-        )
-        .expect("archive entry should store");
+        )?;
 
-        let uri: Uri = "archive://entry/archive_entry_missing_file"
-            .parse()
-            .expect("uri should parse");
-        let response = archive_protocol_response(db_file.path(), &uri)
-            .expect("protocol response should succeed");
+        let uri: Uri = "archive://entry/archive_entry_missing_file".parse()?;
+        let response = archive_protocol_response(db_file.path(), &uri)?;
 
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
         assert!(String::from_utf8_lossy(response.body()).contains("archive entry file not found"));
@@ -1747,13 +1717,15 @@ mod tests {
             response
                 .headers()
                 .get(ERROR_CODE_HEADER)
-                .expect("error code header"),
+                .context("error code header")?,
             "NOT_FOUND"
         );
+
+        Ok(())
     }
 
     #[test]
-    fn maps_runtime_command_errors_to_app_error() {
+    fn maps_runtime_command_errors_to_app_error() -> Result<()> {
         let error = map_runtime_command_error(
             "runtime_smoke_check",
             anyhow!("runtime binary not found: C:/missing/ffmpeg.exe"),
@@ -1761,14 +1733,17 @@ mod tests {
 
         assert_eq!(error.code, AppErrorCode::NotFound);
         assert!(!error.retriable);
+        let details = error.details.context("details")?;
         assert_eq!(
-            error.details.expect("details")["command"],
+            details["command"],
             serde_json::Value::String("runtime_smoke_check".to_string())
         );
+
+        Ok(())
     }
 
     #[test]
-    fn maps_subtitle_command_timeout_to_app_error() {
+    fn maps_subtitle_command_timeout_to_app_error() -> Result<()> {
         let error = map_subtitle_command_error(
             "subtitle_ping_command",
             anyhow!("subtitle sidecar timed out after 150 ms"),
@@ -1776,10 +1751,12 @@ mod tests {
 
         assert_eq!(error.code, AppErrorCode::Timeout);
         assert!(error.retriable);
+
+        Ok(())
     }
 
     #[test]
-    fn maps_subtitle_command_embedded_error_code_to_app_error() {
+    fn maps_subtitle_command_embedded_error_code_to_app_error() -> Result<()> {
         let error = map_subtitle_command_error(
             "subtitle_get_progress_command",
             anyhow!("subtitle sidecar get_progress failed [NOT_FOUND]: session missing"),
@@ -1787,10 +1764,12 @@ mod tests {
 
         assert_eq!(error.code, AppErrorCode::NotFound);
         assert!(!error.retriable);
+
+        Ok(())
     }
 
     #[test]
-    fn maps_subtitle_command_payload_errors_to_external_tool_error() {
+    fn maps_subtitle_command_payload_errors_to_external_tool_error() -> Result<()> {
         let error = map_subtitle_command_error(
             "subtitle_ping_command",
             anyhow!("subtitle sidecar response payload missing"),
@@ -1798,5 +1777,7 @@ mod tests {
 
         assert_eq!(error.code, AppErrorCode::ExternalToolError);
         assert!(!error.retriable);
+
+        Ok(())
     }
 }

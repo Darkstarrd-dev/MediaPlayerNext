@@ -4,4 +4,8 @@ if errorlevel 1 exit /b 1
 if not defined HTTP_PROXY set HTTP_PROXY=http://127.0.0.1:2080
 if not defined HTTPS_PROXY set HTTPS_PROXY=http://127.0.0.1:2080
 set PATH=C:\Users\Houpy\.cargo\bin;%PATH%
-call npm exec tauri build
+if "%~1"=="" (
+  call npm exec tauri build
+) else (
+  call npm exec tauri build -- %*
+)

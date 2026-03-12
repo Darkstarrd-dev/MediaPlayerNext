@@ -1,0 +1,192 @@
+﻿{
+    "updatedAt":  "2026-03-12T08:13:02",
+    "policy":  "No new Rust debt occurrences by file/category; only allow reductions within the baseline.",
+    "scope":  {
+                  "roots":  [
+                                "crates",
+                                "src-tauri"
+                            ],
+                  "include":  [
+                                  "**/*.rs"
+                              ]
+              },
+    "categories":  [
+                       {
+                           "name":  "unsafe",
+                           "description":  "Rust unsafe keyword",
+                           "totalCount":  0,
+                           "files":  [
+
+                                     ]
+                       },
+                       {
+                           "name":  "unwrap",
+                           "description":  "Rust unwrap call",
+                           "totalCount":  0,
+                           "files":  [
+
+                                     ]
+                       },
+                       {
+                           "name":  "expect",
+                           "description":  "Rust expect call",
+                           "totalCount":  396,
+                           "files":  [
+                                         {
+                                             "path":  "crates/app-core/src/archive.rs",
+                                             "count":  62
+                                         },
+                                         {
+                                             "path":  "crates/app-core/src/asset.rs",
+                                             "count":  42
+                                         },
+                                         {
+                                             "path":  "crates/app-core/src/playback.rs",
+                                             "count":  34
+                                         },
+                                         {
+                                             "path":  "crates/app-core/src/scan.rs",
+                                             "count":  45
+                                         },
+                                         {
+                                             "path":  "crates/app-core/src/subtitle_host.rs",
+                                             "count":  8
+                                         },
+                                         {
+                                             "path":  "crates/app-core/src/thumbnail.rs",
+                                             "count":  44
+                                         },
+                                         {
+                                             "path":  "crates/media-db/tests/database_integration.rs",
+                                             "count":  24
+                                         },
+                                         {
+                                             "path":  "crates/media-io/src/archive/mod.rs",
+                                             "count":  20
+                                         },
+                                         {
+                                             "path":  "crates/media-io/src/lib.rs",
+                                             "count":  6
+                                         },
+                                         {
+                                             "path":  "crates/media-io/src/normalize/service.rs",
+                                             "count":  14
+                                         },
+                                         {
+                                             "path":  "crates/media-io/src/normalize/sevenz.rs",
+                                             "count":  2
+                                         },
+                                         {
+                                             "path":  "crates/media-playback/src/ffprobe.rs",
+                                             "count":  1
+                                         },
+                                         {
+                                             "path":  "crates/media-playback/src/session.rs",
+                                             "count":  9
+                                         },
+                                         {
+                                             "path":  "crates/media-thumb/src/cache.rs",
+                                             "count":  5
+                                         },
+                                         {
+                                             "path":  "crates/media-thumb/src/pipeline.rs",
+                                             "count":  5
+                                         },
+                                         {
+                                             "path":  "crates/media-thumb/src/service.rs",
+                                             "count":  11
+                                         },
+                                         {
+                                             "path":  "crates/shared-model/src/lib.rs",
+                                             "count":  15
+                                         },
+                                         {
+                                             "path":  "crates/shared-model/src/observability.rs",
+                                             "count":  1
+                                         },
+                                         {
+                                             "path":  "src-tauri/src/bin/backend_harness.rs",
+                                             "count":  1
+                                         },
+                                         {
+                                             "path":  "src-tauri/src/lib.rs",
+                                             "count":  5
+                                         },
+                                         {
+                                             "path":  "src-tauri/src/runtime_check.rs",
+                                             "count":  2
+                                         },
+                                         {
+                                             "path":  "src-tauri/src/runtime_storage.rs",
+                                             "count":  15
+                                         },
+                                         {
+                                             "path":  "src-tauri/src/subtitle_sidecar.rs",
+                                             "count":  25
+                                         }
+                                     ]
+                       },
+                       {
+                           "name":  "todo",
+                           "description":  "Rust todo macro",
+                           "totalCount":  0,
+                           "files":  [
+
+                                     ]
+                       },
+                       {
+                           "name":  "unimplemented",
+                           "description":  "Rust unimplemented macro",
+                           "totalCount":  0,
+                           "files":  [
+
+                                     ]
+                       },
+                       {
+                           "name":  "panic",
+                           "description":  "Rust panic macro",
+                           "totalCount":  9,
+                           "files":  [
+                                         {
+                                             "path":  "crates/app-core/src/asset.rs",
+                                             "count":  2
+                                         },
+                                         {
+                                             "path":  "crates/media-db/tests/database_integration.rs",
+                                             "count":  7
+                                         }
+                                     ]
+                       },
+                       {
+                           "name":  "allow",
+                           "description":  "Rust allow attribute",
+                           "totalCount":  6,
+                           "files":  [
+                                         {
+                                             "path":  "crates/app-core/src/archive.rs",
+                                             "count":  2
+                                         },
+                                         {
+                                             "path":  "crates/app-core/src/playback.rs",
+                                             "count":  2
+                                         },
+                                         {
+                                             "path":  "crates/app-core/src/thumbnail.rs",
+                                             "count":  1
+                                         },
+                                         {
+                                             "path":  "crates/media-db/src/repositories.rs",
+                                             "count":  1
+                                         }
+                                     ]
+                       },
+                       {
+                           "name":  "dbg",
+                           "description":  "Rust dbg macro",
+                           "totalCount":  0,
+                           "files":  [
+
+                                     ]
+                       }
+                   ]
+}

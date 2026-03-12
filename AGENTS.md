@@ -17,6 +17,7 @@
 
 - `Z:\Playground\CurrentWorking\MediaPlayerNext\docs\README.md`
 - `Z:\Playground\CurrentWorking\MediaPlayerNext\docs\ui\ui-definition.md`
+- `Z:\Playground\CurrentWorking\MediaPlayerNext\docs\testing\tauri-e2e-strategy.md`
 - `Z:\Playground\CurrentWorking\MediaPlayerNext\README.md`
 - 运行时绝对路径配置：`Z:\Playground\CurrentWorking\MediaPlayerNext\config\local.paths.json`
 
@@ -88,6 +89,17 @@ Z:\Playground\CurrentWorking\MediaPlayerNext
 - 构建前端：`npm run build:web`
 - 运行基础 smoke check：`npm run check`
 
+### Tauri 自动化 E2E 约定
+
+- 当前仓库的桌面自动化 E2E 基线方案固定为：`tauri-driver + WebdriverIO`
+- 方案说明文档：`Z:\Playground\CurrentWorking\MediaPlayerNext\docs\testing\tauri-e2e-strategy.md`
+- 当前阶段优先目标平台：`Windows`
+- 当前已接入 `Phase A` 脚手架，可使用：
+  - `npm run e2e:desktop:doctor`
+  - `npm run e2e:desktop`
+  - `npm run e2e:desktop:headed`
+- 与系统文件夹选择器、系统级原生弹窗有关的流程，首轮默认走测试替身方案，不把 OS 对话框本身作为主验收对象
+
 ### 脚本说明
 
 - `Z:\Playground\CurrentWorking\MediaPlayerNext\scripts\run-tauri-dev.cmd`
@@ -139,6 +151,7 @@ Z:\Playground\CurrentWorking\MediaPlayerNext
   - `Z:\Playground\CurrentWorking\MediaPlayerNext\docs\ui\ui-definition.md`
   - `Z:\Playground\CurrentWorking\MediaPlayerNext\docs\logs\<当天日期>.md`
   - 当前任务对应的执行型文档，例如 `Z:\Playground\CurrentWorking\MediaPlayerNext\docs\runtime\database-management-phase-plan.md`
+  - 若任务改变了自动化验收策略，还要同步 `Z:\Playground\CurrentWorking\MediaPlayerNext\docs\testing\tauri-e2e-strategy.md`
   - 若新增了新的主动维护文档，还要同步更新 `Z:\Playground\CurrentWorking\MediaPlayerNext\docs\README.md`
 - 文档更新要求与代码改动保持同一批次完成，避免出现“代码已变、文档仍停留旧状态”的情况
 
@@ -153,7 +166,8 @@ Z:\Playground\CurrentWorking\MediaPlayerNext
    - 前端改动至少执行 `npm run build:web`
    - Rust/运行时改动至少执行 `npm run check`
    - Tauri 宿主相关改动必要时执行 `npm run tauri:dev`
-7. 在最终说明中明确：修改了什么、验证了什么、未做什么
+7. 若任务属于桌面交互闭环（如设置面板、导入流程、带确认步骤的 destructive flow、前端 + Tauri command 状态闭环），在最终说明末尾追加一句简短提示：是否需要继续执行自动 E2E 验收
+8. 在最终说明中明确：修改了什么、验证了什么、未做什么
 
 ## 10. 后续迁移原则
 

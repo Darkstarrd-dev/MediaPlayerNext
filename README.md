@@ -153,23 +153,35 @@ Current Tauri protocol DB rule:
 `P6-1` adds a unified quality gate entry under `scripts/quality/`.
 
 - `npm run check:quality`
-  - runs Rust quality gates and writes logs/artifacts to `data/quality-gates/<timestamp>/rust-gates`
+  - default quality entry (now mapped to `standard` layer)
+- `npm run check:quality:fast`
+  - fast local feedback gate
+- `npm run check:quality:standard`
+  - standard pre-commit gate
+- `npm run check:quality:heavy`
+  - heavy full Rust quality gate
+- `npm run check:quality:release`
+  - release chain: `heavy + check:release + e2e:desktop:doctor + e2e:desktop`
+- `npm run check:quality:legacy`
+  - legacy compatibility entry (not recommended for daily use)
 - `npm run check:release`
   - builds subtitle sidecar + Tauri bundle and verifies current release artifacts, including packaged sidecar resource presence
 
-Current `check:quality` gate includes:
+Layer highlights:
 
-- `cargo fmt --all --check`
-- `cargo clippy --workspace --all-targets --all-features -- -D warnings`
-- `cargo check --workspace --all-targets --locked`
-- `cargo nextest run --workspace --all-features` x3
-- `cargo llvm-cov nextest --workspace --all-features --lcov`
-- `cargo deny check advisories licenses bans sources`
-- `cargo audit`
-- `cargo +nightly udeps --workspace --all-targets`
-- `cargo tree -d --workspace`（按 `config/quality/duplicate-deps-baseline.json` 做 baseline-delta 治理）
-- workspace forbidden-edges check
-- `cargo tauri build` release verification
+- `fast`
+  - `fmt`, `check`, `debt-delta`, `forbidden-edges`
+- `standard`
+  - `fast` + `clippy`, `nextest x1`, `duplicate-deps`
+- `heavy`
+  - `standard` + `nextest x3`, `coverage`, `deny`, `audit`, `udeps`
+- `release`
+  - `heavy` + `check:release` + desktop e2e doctor + desktop e2e
+
+Artifacts:
+
+- quality runs write to `data/quality-gates/<timestamp>/rust-gates` or `rust-gates-<layer>`
+- each `quality-gates-summary.json` includes `layer`
 
 Before the full quality gate can pass on a new machine, install the required Cargo subcommands:
 
@@ -186,3 +198,19 @@ Current validated tool versions for the Rust `1.88.0` project baseline:
 - `cargo-deny 0.19.0`
 - `cargo-audit 0.22.1`
 - `cargo-udeps 0.1.56`
+
+### Recommended Next Implementation Items
+
+After layered quality pipeline `Phase 0~5` completion, current recommended implementation priorities are:
+
+1. Stabilize existing failing gates:
+   - `clippy`
+   - `deny`
+   - `duplicate-deps`
+2. Add missing gates:
+   - `capabilities drift`
+   - `contract drift`
+3. Land CI workflows for layered gates (`fast/standard/heavy/release`)
+4. Extend release-level verification:
+   - installer/upgrade replay
+   - signing/offline smoke

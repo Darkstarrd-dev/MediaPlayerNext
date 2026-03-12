@@ -1716,7 +1716,23 @@ export function AppShell() {
                               <span>{item.sourceKind === 'archive_entry' ? 'Archive' : 'Media'}</span>
                             </div>
                           ) : (
-                            <img className="item-card-thumbnail" src={thumbnailUrl} alt="" loading="lazy" />
+                            <img
+                              className="item-card-thumbnail"
+                              src={thumbnailUrl}
+                              alt=""
+                              loading="lazy"
+                              onError={() => {
+                                setItemThumbnailUrls((current) => {
+                                  if (!(item.assetId in current)) {
+                                    return current
+                                  }
+
+                                  const next = { ...current }
+                                  delete next[item.assetId]
+                                  return next
+                                })
+                              }}
+                            />
                           )}
                         </button>
                       )

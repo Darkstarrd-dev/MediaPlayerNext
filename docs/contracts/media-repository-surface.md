@@ -78,9 +78,9 @@ export interface MediaRepository {
 
 | repository 方法 | 底层入口 | 当前状态 | 说明 |
 |---|---|---|---|
-| `buildThumbnailUrl(thumbnailKey)` | `thumb://cache/<thumbnail_key>` | 已有首版 | UI 图片主入口 |
-| `buildMediaUrl(assetId)` | `media://asset/<asset_id>` | 已有首版 | 媒体字节入口 |
-| `buildArchiveEntryUrl(entryId)` | `archive://entry/<archive_entry_id>` | 已有首版 | archive 图片入口 |
+| `buildThumbnailUrl(thumbnailKey)` | `thumb://cache/<thumbnail_key>` | 已有首版 | UI 图片主入口；Windows/WebView2 下会转为 `http://thumb.localhost/cache/<thumbnail_key>` |
+| `buildMediaUrl(assetId)` | `media://asset/<asset_id>` | 已有首版 | 媒体字节入口；Windows/WebView2 下会转为 `http://media.localhost/asset/<asset_id>` |
+| `buildArchiveEntryUrl(entryId)` | `archive://entry/<archive_entry_id>` | 已有首版 | archive 图片入口；Windows/WebView2 下会转为 `http://archive.localhost/entry/<archive_entry_id>` |
 
 ## 当前可直接复用的 contracts 类型
 

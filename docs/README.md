@@ -7,6 +7,18 @@
 - `docs/ui/ui-definition.md`
   - 当前 UI 定义、布局迁移、变量合同、切片与验收基线
   - 只记录 `MediaPlayerNext` 自身定义
+- `docs/ui/u2-thumbnail-grid-phase-plan.md`
+  - `U2` 缩略图网格分页、缩放与容器自适应的执行型计划文档
+  - 用于后续新对话继续按 phase 推进实现
+- `docs/ui/u2-thumbnail-grid-enhancement-phase-plan.md`
+  - `U2` 基础版完成后的增强项计划文档
+  - 覆盖滚轮翻页、ready-commit、gap snap、缩略图分辨率自适应
+- `docs/quality/current-quality-process.md`
+  - 当前质量门禁、执行入口、变更触发规则与缺口收口顺序
+  - 作为当前版质量流程总入口（默认 `check:quality` 已对齐 `standard` 层）
+- `docs/quality/layered-quality-pipeline-phase-plan.md`
+  - 分层质量流水线执行计划，按 phase 推进命令分层与脚本重构
+  - 作为后续质量命令改造的执行型文档
 - `docs/ui/source-ui-known-data.md`
   - 源项目 UI 已知数据、锚点、变量与文档位置记录
   - 仅作迁移参考，不作为新项目定义
@@ -39,6 +51,12 @@
 - `docs/runtime/`
   - 运行时路径与资源策略
   - 当前数据库管理分页实施计划：`docs/runtime/database-management-phase-plan.md`
+- `docs/testing/`
+  - 自动化测试与 E2E 验收策略
+  - 当前 Tauri 自动化 E2E 方案：`docs/testing/tauri-e2e-strategy.md`
+- `docs/quality/`
+  - 当前质量流程、门禁分层、执行入口与后续收口顺序
+  - 分层质量流水线计划：`docs/quality/layered-quality-pipeline-phase-plan.md`
 - `docs/logs/`
   - 每日工作记录
 
@@ -46,4 +64,7 @@
 
 - 历史计划不再继续在根目录堆叠
 - 新的 UI 迁移与布局重建以 `docs/ui/ui-definition.md` 为单一主动入口
+- `U2` 缩略图分页与缩放的执行过程以 `docs/ui/u2-thumbnail-grid-phase-plan.md` 为当前任务入口
+- `U2` 增强项推进以 `docs/ui/u2-thumbnail-grid-enhancement-phase-plan.md` 为后续任务入口
+- 新的质量流程以 `docs/quality/current-quality-process.md` 为当前主动入口
 - 若后续出现新的执行型文档，优先放到对应子目录，并在本索引补充链接

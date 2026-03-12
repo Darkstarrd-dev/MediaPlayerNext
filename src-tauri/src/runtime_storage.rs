@@ -8,6 +8,9 @@ use tauri::{AppHandle, Manager};
 const RUNTIME_STORAGE_CONFIG_FILE_NAME: &str = "runtime-storage-paths.json";
 const DEVELOPMENT_DATABASE_FILE_NAME: &str = "mediaplayernext-dev.db";
 const PACKAGED_DATABASE_FILE_NAME: &str = "mediaplayernext.db";
+const RUNTIME_STORAGE_CONFIG_PATH_ENV: &str = "MPNEXT_RUNTIME_STORAGE_CONFIG_PATH";
+const RUNTIME_DEFAULT_DATA_DIR_ENV: &str = "MPNEXT_RUNTIME_DEFAULT_DATA_DIR";
+const RUNTIME_DEFAULT_CACHE_DIR_ENV: &str = "MPNEXT_RUNTIME_DEFAULT_CACHE_DIR";
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq, Eq)]
 pub struct RuntimeStorageConfig {
@@ -149,6 +152,10 @@ pub fn read_runtime_storage_config(app: &AppHandle) -> anyhow::Result<RuntimeSto
 }
 
 fn runtime_storage_config_path(app: &AppHandle) -> anyhow::Result<PathBuf> {
+    if let Some(path) = env_path(RUNTIME_STORAGE_CONFIG_PATH_ENV) {
+        return Ok(path);
+    }
+
     if tauri::is_dev() {
         return Ok(crate::workspace_root()
             .join("data")
@@ -299,6 +306,10 @@ fn normalize_directory_path(raw_path: &str) -> anyhow::Result<PathBuf> {
 }
 
 fn packaged_local_data_dir(app: &AppHandle) -> anyhow::Result<PathBuf> {
+    if let Some(path) = env_path(RUNTIME_DEFAULT_DATA_DIR_ENV) {
+        return Ok(path);
+    }
+
     if tauri::is_dev() {
         return Ok(crate::workspace_root().join("data"));
     }
@@ -309,6 +320,10 @@ fn packaged_local_data_dir(app: &AppHandle) -> anyhow::Result<PathBuf> {
 }
 
 fn packaged_cache_dir(app: &AppHandle) -> anyhow::Result<PathBuf> {
+    if let Some(path) = env_path(RUNTIME_DEFAULT_CACHE_DIR_ENV) {
+        return Ok(path);
+    }
+
     if tauri::is_dev() {
         return Ok(crate::workspace_root().join("data").join("cache"));
     }
@@ -372,6 +387,10 @@ fn default_playback_sessions_root(packaged_cache_dir: &Path) -> PathBuf {
 
 fn path_to_string(path: &Path) -> String {
     path.to_string_lossy().into_owned()
+}
+
+fn env_path(env_name: &str) -> Option<PathBuf> {
+    env::var_os(env_name).map(PathBuf::from)
 }
 
 #[cfg(test)]
