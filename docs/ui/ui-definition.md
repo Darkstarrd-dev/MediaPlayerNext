@@ -530,4 +530,5 @@ Sidebar | Main | Metadata
 - 缩略图 ensure 当前已接入 `profile` 自适应映射：根据格子尺寸与 `devicePixelRatio` 在 `grid-sm / grid-md / detail-md / detail-lg` 间选择
 - `Sidebar.main` 已补齐 image 模式 `F/L` 标签切换（`full`/`leaf`），默认 `full`
 - `Sidebar.main` 已按源项目口径补齐 image 目录压缩链路：`single-chain compact + procedural prune`，并保留直属媒体父目录节点
+- `Sidebar.main` 节点文案当前固定为单行省略策略（title/subtitle 均不换行），并收紧节点高度与标题字号，避免长路径场景互相覆盖与点击区错位
 - `Main` 当前已接入 `gap snap`：在 splitter commit、resize、zoom、首次挂载后尝试贴合网格列宽，拖动中不实时吸附，且继续遵守三列最小宽度边界

@@ -97,7 +97,8 @@
 
 .pane-title-stack h2 {
   margin: 0;
-  font-size: 24px;
+  font-size: clamp(18px, 1.2vw, 22px);
+  line-height: 1.2;
 }
 
 .pane-title-caption {

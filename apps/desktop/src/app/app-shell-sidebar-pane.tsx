@@ -44,39 +44,41 @@ export function AppShellSidebarPane({
             </span>
           </div>
 
-          <label className="sidebar-library-select-wrap" aria-label="切换媒体库">
-            <span>媒体库</span>
-            <select
-              className="sidebar-library-select"
-              value={selectedLibraryId ?? ''}
-              onChange={(event) => {
-                const nextLibraryId = event.target.value.trim()
-                if (nextLibraryId.length === 0) {
-                  return
-                }
+          <div className="sidebar-header-actions">
+            <label className="sidebar-library-select-wrap" aria-label="切换媒体库">
+              <span>媒体库</span>
+              <select
+                className="sidebar-library-select"
+                value={selectedLibraryId ?? ''}
+                onChange={(event) => {
+                  const nextLibraryId = event.target.value.trim()
+                  if (nextLibraryId.length === 0) {
+                    return
+                  }
 
-                onLibrarySelect(nextLibraryId)
-              }}
-              disabled={librariesLoading || libraries.length === 0}
+                  onLibrarySelect(nextLibraryId)
+                }}
+                disabled={librariesLoading || libraries.length === 0}
+              >
+                {libraries.map((library) => (
+                  <option key={library.id} value={library.id}>
+                    {resolvePathLeaf(library.rootPath)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <button
+              className="sidebar-label-mode-toggle"
+              type="button"
+              data-testid="sidebar-label-mode-toggle"
+              aria-label={sidebarLabelDisplayMode === 'full' ? '切换到末段名' : '切换到完整路径'}
+              data-mode={sidebarLabelDisplayMode}
+              onClick={onToggleSidebarLabelDisplayMode}
             >
-              {libraries.map((library) => (
-                <option key={library.id} value={library.id}>
-                  {resolvePathLeaf(library.rootPath)}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <button
-            className="sidebar-label-mode-toggle"
-            type="button"
-            data-testid="sidebar-label-mode-toggle"
-            aria-label={sidebarLabelDisplayMode === 'full' ? '切换到末段名' : '切换到完整路径'}
-            data-mode={sidebarLabelDisplayMode}
-            onClick={onToggleSidebarLabelDisplayMode}
-          >
-            {sidebarLabelDisplayMode === 'full' ? 'F' : 'L'}
-          </button>
+              {sidebarLabelDisplayMode === 'full' ? 'F' : 'L'}
+            </button>
+          </div>
         </header>
 
         <div className="workspace-pane-main sidebar-main-shell" data-slot="fg-sidebar-main">
