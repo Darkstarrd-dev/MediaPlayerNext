@@ -3,7 +3,9 @@ import { AppShell } from './app/AppShell'
 import { MediaRepositoryProvider } from './app/MediaRepositoryProvider'
 import { createTauriMediaRepository } from './repositories/tauri-media-repository'
 import './App.css'
+import './styles/chrome-controls.css'
 import './styles/panels.css'
+import './styles/showcase.css'
 import './styles/workspace.css'
 
 function App() {
