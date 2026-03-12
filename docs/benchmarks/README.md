@@ -20,6 +20,7 @@
 - `p6-bad-path-validation-20260308.md`
 - `benchmark-threshold-policy.md`
 - `docs/benchmarks/business-benchmark-latest.json`（业务路径 benchmark 当前值）
+- `docs/benchmarks/business-benchmark-history.json`（业务路径 benchmark 历史样本）
 
 说明：
 
@@ -29,6 +30,8 @@
 - `P2` 已补 Rust debt-delta 基线，后续可继续围绕 `expect(` 与少量 `panic! / #[allow(...)]` 做定点收敛
 - duplicate deps 当前已改为 baseline-delta 口径，重点防止新增多版本分叉，而不是伪装成一次性清零
 - 已新增 `check:benchmark-thresholds`，用于对业务路径耗时做 compare + threshold 校验
+- 已新增 `bench:collect-business` 与 `check:benchmark-pipeline`，用于自动采样并立即执行阈值门禁
+- 已新增 `report:benchmark-trends`，可按 machine 维度输出多机趋势对照产物
 
 后续最低基线项：
 

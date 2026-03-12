@@ -32,17 +32,20 @@ const reportPath = path.join(outputRoot, "go-no-go-report.md");
 
 const heavySummaryPath = await findLatestFile(qualityRoot, path.join("rust-gates-heavy", "quality-gates-summary.json"));
 const releaseSummaryPath = await findLatestFile(qualityRoot, path.join("release-verify", "release-verify-summary.json"));
+const benchmarkSummaryPath = await findLatestFile(qualityRoot, path.join("business-benchmark-thresholds", "business-benchmark-thresholds-summary.json"));
 
-if (!heavySummaryPath || !releaseSummaryPath) {
-  throw new Error("missing heavy/release summary artifacts for go-no-go report");
+if (!heavySummaryPath || !releaseSummaryPath || !benchmarkSummaryPath) {
+  throw new Error("missing heavy/release/benchmark summary artifacts for go-no-go report");
 }
 
 const heavySummary = await readJson(heavySummaryPath);
 const releaseSummary = await readJson(releaseSummaryPath);
+const benchmarkSummary = await readJson(benchmarkSummaryPath);
 
 const heavyPassed = Number(heavySummary.totals?.failedCount ?? 1) === 0;
 const releasePassed = Boolean(releaseSummary.passed);
-const decision = heavyPassed && releasePassed ? "Go" : "No-Go";
+const benchmarkPassed = Boolean(benchmarkSummary.passed);
+const decision = heavyPassed && releasePassed && benchmarkPassed ? "Go" : "No-Go";
 
 const lines = [
   "# Release Go/No-Go 报告",
@@ -56,6 +59,8 @@ const lines = [
   `  - 产物：\`${toPosix(path.relative(projectRoot, heavySummaryPath))}\``,
   `- release verify：${releasePassed ? "passed" : "failed"}`,
   `  - 产物：\`${toPosix(path.relative(projectRoot, releaseSummaryPath))}\``,
+  `- benchmark thresholds：${benchmarkPassed ? "passed" : "failed"}`,
+  `  - 产物：\`${toPosix(path.relative(projectRoot, benchmarkSummaryPath))}\``,
   "",
   "## 说明",
   "",

@@ -1,0 +1,73 @@
+﻿{
+    "updatedAt":  "2026-03-13T00:03:56",
+    "entries":  [
+                    {
+                        "runId":  "20260313-000108",
+                        "recordedAt":  "2026-03-13T00:02:33",
+                        "machine":  "SERVER-202306",
+                        "runs":  3,
+                        "sampleRoot":  "Z:\\Playground\\CurrentWorking\\MediaPlayerNext\\docs\\fixtures\\medium-fixture\\generated-placeholder\\scan-root",
+                        "metrics":  {
+                                        "scan":  {
+                                                     "firstScanMs":  2330.309,
+                                                     "rescanMs":  2280.444
+                                                 },
+                                        "archive":  {
+                                                        "indexMs":  5879.241,
+                                                        "entryReadMs":  22.385
+                                                    },
+                                        "thumbnail":  {
+                                                          "ensureMs":  2410.472
+                                                      },
+                                        "playback":  {
+                                                         "probeMs":  57.876,
+                                                         "sessionOpenMs":  7.451
+                                                     },
+                                        "sidecar":  {
+                                                        "pingMs":  148.273,
+                                                        "healthMs":  119.919
+                                                    }
+                                    },
+                        "artifacts":  {
+                                          "scanArchive":  "Z:\\Playground\\CurrentWorking\\MediaPlayerNext\\data\\benchmarks\\20260313-000108\\business-benchmark\\scan-archive\\scan-archive-benchmark.json",
+                                          "thumbnail":  "Z:\\Playground\\CurrentWorking\\MediaPlayerNext\\data\\benchmarks\\20260313-000108\\business-benchmark\\thumbnail\\thumbnail-benchmark.json",
+                                          "playback":  "Z:\\Playground\\CurrentWorking\\MediaPlayerNext\\data\\benchmarks\\20260313-000108\\business-benchmark\\playback\\playback-benchmark.json",
+                                          "sidecar":  "Z:\\Playground\\CurrentWorking\\MediaPlayerNext\\data\\benchmarks\\20260313-000108\\business-benchmark\\sidecar\\sidecar-benchmark.json"
+                                      }
+                    },
+                    {
+                        "runId":  "20260313-000242",
+                        "recordedAt":  "2026-03-13T00:03:56",
+                        "machine":  "SERVER-202306",
+                        "runs":  3,
+                        "sampleRoot":  "Z:\\Playground\\CurrentWorking\\MediaPlayerNext\\docs\\fixtures\\medium-fixture\\generated-placeholder\\scan-root",
+                        "metrics":  {
+                                        "scan":  {
+                                                     "firstScanMs":  2176.246,
+                                                     "rescanMs":  2095.738
+                                                 },
+                                        "archive":  {
+                                                        "indexMs":  5067.222,
+                                                        "entryReadMs":  15.138
+                                                    },
+                                        "thumbnail":  {
+                                                          "ensureMs":  2357.848
+                                                      },
+                                        "playback":  {
+                                                         "probeMs":  57.221,
+                                                         "sessionOpenMs":  5.883
+                                                     },
+                                        "sidecar":  {
+                                                        "pingMs":  144.288,
+                                                        "healthMs":  122.283
+                                                    }
+                                    },
+                        "artifacts":  {
+                                          "scanArchive":  "Z:\\Playground\\CurrentWorking\\MediaPlayerNext\\data\\benchmarks\\20260313-000242\\business-benchmark\\scan-archive\\scan-archive-benchmark.json",
+                                          "thumbnail":  "Z:\\Playground\\CurrentWorking\\MediaPlayerNext\\data\\benchmarks\\20260313-000242\\business-benchmark\\thumbnail\\thumbnail-benchmark.json",
+                                          "playback":  "Z:\\Playground\\CurrentWorking\\MediaPlayerNext\\data\\benchmarks\\20260313-000242\\business-benchmark\\playback\\playback-benchmark.json",
+                                          "sidecar":  "Z:\\Playground\\CurrentWorking\\MediaPlayerNext\\data\\benchmarks\\20260313-000242\\business-benchmark\\sidecar\\sidecar-benchmark.json"
+                                      }
+                    }
+                ]
+}

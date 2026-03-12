@@ -1,25 +1,34 @@
-{
-  "recordedAt": "2026-03-12T23:30:00",
-  "machine": "windows-dev-main",
-  "metrics": {
-    "scan": {
-      "firstScanMs": 1720,
-      "rescanMs": 600
-    },
-    "archive": {
-      "indexMs": 860,
-      "entryReadMs": 132
-    },
-    "thumbnail": {
-      "ensureMs": 240
-    },
-    "playback": {
-      "probeMs": 168,
-      "sessionOpenMs": 112
-    },
-    "sidecar": {
-      "pingMs": 40,
-      "healthMs": 72
-    }
-  }
+﻿{
+    "runId":  "20260313-000242",
+    "recordedAt":  "2026-03-13T00:03:56",
+    "machine":  "SERVER-202306",
+    "runs":  3,
+    "sampleRoot":  "Z:\\Playground\\CurrentWorking\\MediaPlayerNext\\docs\\fixtures\\medium-fixture\\generated-placeholder\\scan-root",
+    "metrics":  {
+                    "scan":  {
+                                 "firstScanMs":  2176.246,
+                                 "rescanMs":  2095.738
+                             },
+                    "archive":  {
+                                    "indexMs":  5067.222,
+                                    "entryReadMs":  15.138
+                                },
+                    "thumbnail":  {
+                                      "ensureMs":  2357.848
+                                  },
+                    "playback":  {
+                                     "probeMs":  57.221,
+                                     "sessionOpenMs":  5.883
+                                 },
+                    "sidecar":  {
+                                    "pingMs":  144.288,
+                                    "healthMs":  122.283
+                                }
+                },
+    "artifacts":  {
+                      "scanArchive":  "Z:\\Playground\\CurrentWorking\\MediaPlayerNext\\data\\benchmarks\\20260313-000242\\business-benchmark\\scan-archive\\scan-archive-benchmark.json",
+                      "thumbnail":  "Z:\\Playground\\CurrentWorking\\MediaPlayerNext\\data\\benchmarks\\20260313-000242\\business-benchmark\\thumbnail\\thumbnail-benchmark.json",
+                      "playback":  "Z:\\Playground\\CurrentWorking\\MediaPlayerNext\\data\\benchmarks\\20260313-000242\\business-benchmark\\playback\\playback-benchmark.json",
+                      "sidecar":  "Z:\\Playground\\CurrentWorking\\MediaPlayerNext\\data\\benchmarks\\20260313-000242\\business-benchmark\\sidecar\\sidecar-benchmark.json"
+                  }
 }

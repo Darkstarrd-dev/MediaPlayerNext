@@ -66,7 +66,7 @@ $ffmpeg = Measure-MpNextOperation -Runs $Runs -BeforeEach {
     Remove-Item -Force $framePath
   }
 } -Action {
-  $result = Invoke-MpNextNativeCapture -FilePath $ffmpegPath -ArgumentList @("-y", "-ss", "0", "-i", $videoSample, "-frames:v", "1", "-update", "1", $framePath)
+  $result = Invoke-MpNextNativeCapture -FilePath $ffmpegPath -ArgumentList @("-v", "quiet", "-y", "-ss", "0", "-i", $videoSample, "-frames:v", "1", "-update", "1", $framePath)
   if ($result.ExitCode -ne 0) {
     throw "ffmpeg extract frame failed for $videoSample"
   }

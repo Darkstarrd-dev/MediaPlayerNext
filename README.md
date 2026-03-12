@@ -173,6 +173,10 @@ Current Tauri protocol DB rule:
 - `npm run check:gate-durations`
 - `npm run check:cargo-bloat`
 - `npm run check:benchmark-thresholds`
+- `npm run bench:collect-business`
+- `npm run check:benchmark-pipeline`
+- `npm run check:upgrade-replay`
+- `npm run check:signing-offline-smoke`
 - `npm run report:go-no-go`
   - module size and boundary baseline gate
 
@@ -185,7 +189,7 @@ Layer highlights:
 - `heavy`
   - `standard` + `nextest x3`, `coverage`, `deny`, `audit`, `udeps`
 - `release`
-  - `heavy` + `check:release` + desktop e2e doctor + desktop e2e + go-no-go report
+  - `heavy` + `check:release` + desktop e2e doctor + desktop e2e + benchmark pipeline + go-no-go report
 
 Artifacts:
 
@@ -368,7 +372,26 @@ Current validated tool versions for the Rust `1.88.0` project baseline:
        - 新增 `scripts/quality/check-business-benchmark-thresholds.mjs`
        - 新增 `config/quality/business-benchmark-thresholds.json`
        - 新增命令 `npm run check:benchmark-thresholds`
-       - 当前产物：`data/quality-gates/20260312-232220/business-benchmark-thresholds/business-benchmark-thresholds-summary.json`
+       - 当前产物：`data/quality-gates/20260313-000357/business-benchmark-thresholds/business-benchmark-thresholds-summary.json`
+28. installer upgrade replay 与 signing/offline smoke 已接入 release verify
+       - 新增 `scripts/release/verify-installer-upgrade-replay.ps1`
+       - 新增 `scripts/release/verify-signing-offline-smoke.ps1`
+       - 新增 `config/quality/upgrade-replay-scenario.json`
+       - 新增 `config/quality/release-signing-policy.json`
+       - `run-release-verify.ps1` 已串联两项校验
+       - 当前产物：`data/quality-gates/20260312-233248/release-verify/release-verify-summary.json`
+29. benchmark 样本采集自动化管线已落地
+       - 新增 `scripts/bench/run-scan-archive-benchmark.ps1`
+       - 新增 `scripts/bench/collect-business-benchmark.ps1`
+       - 新增 `npm run bench:collect-business`
+       - 新增 `npm run check:benchmark-pipeline`
+       - 当前产物：`docs/benchmarks/business-benchmark-latest.json` + `docs/benchmarks/business-benchmark-history.json`
+30. Go/No-Go 报告已纳入 benchmark 阈值门禁汇总
+       - `scripts/quality/generate-go-no-go-report.mjs` 已聚合 heavy/release/benchmark 三类 summary
+       - release workflow 已新增 benchmark pipeline 步骤
+31. 签名策略已固定为开源观察模式
+       - `config/quality/release-signing-policy.json`：`strategy=open-source-observe-only`
+       - `signingRequired=false`（不切强制，仅做签名状态可观测）
 
 #### 待拆分 / 待完成
 
@@ -376,7 +399,5 @@ Current validated tool versions for the Rust `1.88.0` project baseline:
    - `crates/app-core/src/archive.rs`（449 行）
    - `crates/app-core/src/asset.rs`（447 行）
    - `crates/app-core/src/scan.rs`（441 行）
-2. 完善发布增强验收
-   - installer/upgrade replay
-   - signing/offline smoke
-3. 持续校准业务路径 benchmark baseline 样本与阈值口径
+2. 持续校准业务路径 benchmark baseline 样本与阈值口径
+3. 引入多机趋势可视化与对照报表（当前已有 machine 维度数据）

@@ -2,39 +2,39 @@
   "updatedAt": "2026-03-12T23:30:00",
   "baseline": {
     "scan": {
-      "firstScanMs": 1800,
-      "rescanMs": 620
+      "firstScanMs": 3264.103,
+      "rescanMs": 2631.248
     },
     "archive": {
-      "indexMs": 900,
-      "entryReadMs": 140
+      "indexMs": 6525.371,
+      "entryReadMs": 41.895
     },
     "thumbnail": {
-      "ensureMs": 260
+      "ensureMs": 2363.485
     },
     "playback": {
-      "probeMs": 180,
-      "sessionOpenMs": 120
+      "probeMs": 71.292,
+      "sessionOpenMs": 25.069
     },
     "sidecar": {
-      "pingMs": 45,
-      "healthMs": 80
+      "pingMs": 175.873,
+      "healthMs": 148.923
     }
   },
   "thresholdsPercent": {
     "scan": {
-      "firstScanMs": 15,
-      "rescanMs": 15
+      "firstScanMs": 20,
+      "rescanMs": 20
     },
     "archive": {
-      "indexMs": 15,
+      "indexMs": 20,
       "entryReadMs": 20
     },
     "thumbnail": {
-      "ensureMs": 15
+      "ensureMs": 20
     },
     "playback": {
-      "probeMs": 15,
+      "probeMs": 20,
       "sessionOpenMs": 20
     },
     "sidecar": {

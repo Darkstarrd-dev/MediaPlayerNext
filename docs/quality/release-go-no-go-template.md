@@ -15,6 +15,10 @@
   - 产物路径：
 - `check:release`：
   - 产物路径：
+- `check:benchmark-pipeline`：
+  - 产物路径：
+- `report:benchmark-trends`：
+  - 产物路径：
 - `e2e:desktop:doctor`：
   - 结果：
 - `e2e:desktop`：
@@ -32,6 +36,9 @@
 - 与基线差值：
 - benchmark 关键指标：
 - 是否触发阈值告警：
+- 多机趋势对照结论：
+- upgrade replay 结果：
+- signing/offline smoke 结果：
 
 ## 5. 结论
 

@@ -1,0 +1,17 @@
+{
+  "updatedAt": "2026-03-12T23:40:00",
+  "beforeState": {
+    "runtimeStoragePaths": {
+      "databasePath": "C:/Users/demo/AppData/Roaming/MediaPlayerNext/data/app.db",
+      "thumbnailsPath": "C:/Users/demo/AppData/Roaming/MediaPlayerNext/data/thumbnails"
+    },
+    "workspaceCursor": {
+      "libraryId": "library_demo",
+      "itemId": "asset_demo_001"
+    }
+  },
+  "requiredPreservedFields": [
+    "runtimeStoragePaths",
+    "workspaceCursor"
+  ]
+}

@@ -7,7 +7,7 @@
 - `workflows/quality-standard.yml`
   - PR 与手动触发的标准层门禁
 - `workflows/release-verify.yml`
-  - 手动触发的发布级校验（heavy + release verify + go-no-go report）
+  - 手动触发的发布级校验（heavy + release verify + benchmark pipeline + go-no-go report）
 - `pull_request_template.md`
   - PR 最小验证与文档同步检查清单
 

@@ -1,0 +1,14 @@
+{
+  "updatedAt": "2026-03-12T23:40:00",
+  "strategy": "open-source-observe-only",
+  "signingRequired": false,
+  "requiredLocalRuntimeKeys": [
+    "ffmpeg",
+    "ffprobe",
+    "mpv"
+  ],
+  "notes": [
+    "当前阶段先落离线 smoke 与签名状态可观测，不强制签名阻断。",
+    "进入正式发布阶段后应将 signingRequired 调整为 true。"
+  ]
+}

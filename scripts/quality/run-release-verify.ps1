@@ -15,6 +15,8 @@ $sidecarBuildLogPath = Join-Path $resolvedOutputRoot "subtitle-sidecar-build.log
 $sidecarPackageLogPath = Join-Path $resolvedOutputRoot "sidecar-package-verify.log"
 $tauriBuildLogPath = Join-Path $resolvedOutputRoot "tauri-build.log"
 $summaryPath = Join-Path $resolvedOutputRoot "release-verify-summary.json"
+$upgradeReplayLogPath = Join-Path $resolvedOutputRoot "upgrade-replay-verify.log"
+$signingOfflineSmokeLogPath = Join-Path $resolvedOutputRoot "signing-offline-smoke-verify.log"
 
 $tauriConfigPath = Join-Path $projectRoot "src-tauri\tauri.conf.json"
 $capabilitiesRoot = Join-Path $projectRoot "src-tauri\capabilities"
@@ -65,6 +67,38 @@ $sidecarPackageResult = Invoke-LoggedCommand `
   -WorkingDirectory $projectRoot `
   -LogPath $sidecarPackageLogPath
 
+$upgradeReplayResult = Invoke-LoggedCommand `
+  -Executable "powershell.exe" `
+  -Arguments @(
+    "-NoProfile",
+    "-ExecutionPolicy",
+    "Bypass",
+    "-File",
+    (Join-Path $projectRoot "scripts\release\verify-installer-upgrade-replay.ps1"),
+    "-OutputRoot",
+    $resolvedOutputRoot,
+    "-ReleaseRoot",
+    (Join-Path $projectRoot "target\release")
+  ) `
+  -WorkingDirectory $projectRoot `
+  -LogPath $upgradeReplayLogPath
+
+$signingOfflineSmokeResult = Invoke-LoggedCommand `
+  -Executable "powershell.exe" `
+  -Arguments @(
+    "-NoProfile",
+    "-ExecutionPolicy",
+    "Bypass",
+    "-File",
+    (Join-Path $projectRoot "scripts\release\verify-signing-offline-smoke.ps1"),
+    "-OutputRoot",
+    $resolvedOutputRoot,
+    "-ReleaseRoot",
+    (Join-Path $projectRoot "target\release")
+  ) `
+  -WorkingDirectory $projectRoot `
+  -LogPath $signingOfflineSmokeLogPath
+
 $capabilityFiles = @()
 if (Test-Path $capabilitiesRoot) {
   $capabilityFiles = @(Get-ChildItem -Path $capabilitiesRoot -Filter *.json -Recurse | ForEach-Object {
@@ -103,6 +137,8 @@ $summary = [pscustomobject]@{
     $sidecarBuildResult.ExitCode -eq 0 -and
     $tauriBuildResult.ExitCode -eq 0 -and
     $sidecarPackageResult.ExitCode -eq 0 -and
+    $upgradeReplayResult.ExitCode -eq 0 -and
+    $signingOfflineSmokeResult.ExitCode -eq 0 -and
     (Test-Path $sidecarEntryPath) -and
     $missingIcons.Count -eq 0 -and
     $capabilityFiles.Count -gt 0 -and
@@ -123,6 +159,18 @@ $summary = [pscustomobject]@{
     durationMs = $sidecarPackageResult.DurationMs
     logPath = Get-RepoRelativePath $sidecarPackageLogPath
     summaryPath = Get-RepoRelativePath (Join-Path $resolvedOutputRoot "sidecar-package-summary.json")
+  }
+  upgradeReplay = [pscustomobject]@{
+    exitCode = $upgradeReplayResult.ExitCode
+    durationMs = $upgradeReplayResult.DurationMs
+    logPath = Get-RepoRelativePath $upgradeReplayLogPath
+    summaryPath = Get-RepoRelativePath (Join-Path $resolvedOutputRoot "upgrade-replay-summary.json")
+  }
+  signingOfflineSmoke = [pscustomobject]@{
+    exitCode = $signingOfflineSmokeResult.ExitCode
+    durationMs = $signingOfflineSmokeResult.DurationMs
+    logPath = Get-RepoRelativePath $signingOfflineSmokeLogPath
+    summaryPath = Get-RepoRelativePath (Join-Path $resolvedOutputRoot "signing-offline-smoke-summary.json")
   }
   sidecarEntryPath = Get-RepoRelativePath $sidecarEntryPath
   sidecarEntryExists = (Test-Path $sidecarEntryPath)

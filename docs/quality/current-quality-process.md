@@ -105,6 +105,8 @@ P1 当前用于阻断“构建虽能通过，但宿主边界、资源打包或�
     - subtitle sidecar build
     - `scripts/run-tauri-build.cmd`
     - sidecar package verify
+    - installer upgrade replay verify
+    - signing/offline smoke verify
     - bundle / capability / icon / resource 存在性检查
 - `npm run e2e:desktop:doctor`
   - 校验 `tauri-driver` 与 `msedgedriver` 前置条件
@@ -144,6 +146,14 @@ P2 当前用于暴露“不会立刻打断功能，但会持续侵蚀可维护�
   - 对应 `scripts/quality/check-cargo-bloat.ps1`
 - `npm run check:benchmark-thresholds`
   - 对应 `scripts/quality/check-business-benchmark-thresholds.mjs`
+- `npm run bench:collect-business`
+  - 对应 `scripts/bench/collect-business-benchmark.ps1`
+- `npm run check:benchmark-pipeline`
+  - 对应 `bench:collect-business + check:benchmark-thresholds`
+- `npm run check:upgrade-replay`
+  - 对应 `scripts/release/verify-installer-upgrade-replay.ps1`
+- `npm run check:signing-offline-smoke`
+  - 对应 `scripts/release/verify-signing-offline-smoke.ps1`
 - `npm run report:go-no-go`
   - 对应 `scripts/quality/generate-go-no-go-report.mjs`
 - `docs/benchmarks/`
@@ -158,6 +168,10 @@ P2 当前用于暴露“不会立刻打断功能，但会持续侵蚀可维护�
 - 质量门禁耗时阈值治理：`config/quality/gate-duration-baseline.json`
 - 二进制体积结构治理：`config/quality/cargo-bloat-baseline.json`
 - 业务路径 benchmark 阈值治理：`config/quality/business-benchmark-thresholds.json`
+- 业务 benchmark 自动采样最新值：`docs/benchmarks/business-benchmark-latest.json`
+- 业务 benchmark 历史样本：`docs/benchmarks/business-benchmark-history.json`
+- upgrade replay 测试替身场景治理：`config/quality/upgrade-replay-scenario.json`
+- release 签名策略治理：`config/quality/release-signing-policy.json`
 - duplicate deps 基线治理：`config/quality/duplicate-deps-baseline.json`
 - `cargo +nightly udeps` 未使用依赖检查
 - benchmark baseline 文档化沉淀
@@ -192,6 +206,7 @@ P2 当前用于暴露“不会立刻打断功能，但会持续侵蚀可维护�
 
 - Rust 质量门禁结果：`data/quality-gates/<timestamp>/rust-gates` 或 `rust-gates-<layer>`
 - release verify 结果：`data/quality-gates/<timestamp>/release-verify`
+- benchmark 阈值与趋势结果：`data/quality-gates/<timestamp>/business-benchmark-thresholds`、`benchmark-trends`
 
 分层脚本产物中，`quality-gates-summary.json` 会包含 `layer` 字段。
 
@@ -205,7 +220,7 @@ P2 当前用于暴露“不会立刻打断功能，但会持续侵蚀可维护�
   - 命令：`npm run check:quality` 或 `npm run check:quality:standard`
 - `heavy`：高成本全量质量检查
   - 命令：`npm run check:quality:heavy`
-- `release`：发布级链路（heavy + release verify + desktop e2e doctor + desktop e2e + go-no-go report）
+- `release`：发布级链路（heavy + release verify + desktop e2e doctor + desktop e2e + benchmark pipeline + go-no-go report）
   - 命令：`npm run check:quality:release`
 - `legacy`：旧入口兼容（不建议日常使用）
   - 命令：`npm run check:quality:legacy`
@@ -330,9 +345,10 @@ P2 当前用于暴露“不会立刻打断功能，但会持续侵蚀可维护�
 以下项目已经明确是缺口，但尚未形成当前仓库的强制门禁：
 
 - 已落库首版 `.github` workflows 与 PR 模板，但尚未收敛到完整发布治理（阈值、报告、升级回放）
-- 业务 benchmark 当前仍以手工更新 `latest` 样本为主，尚未形成自动采样管线
-- Go/No-Go 报告已自动生成，但尚未补 installer/upgrade/smoke 结果的自动汇总字段
-- 还没有离线安装、升级回放、签名等 release 级闭环
+- 业务 benchmark 已接入自动采样管线，后续需持续校准样本稳定性
+- Go/No-Go 报告已自动汇总 heavy/release/benchmark，后续可补 installer/upgrade/smoke 细项摘要
+
+注：签名策略已在当前项目口径下固定为开源观察模式，不作为当前阶段阻断项。
 
 ## 9. 当前阶段推进顺序
 
@@ -346,12 +362,11 @@ P2 当前用于暴露“不会立刻打断功能，但会持续侵蚀可维护�
 
 ### 9.2 第二阶段：补强制门禁
 
-优先补以下脚本化能力：
+优先补以下质量口径细化：
 
-- debt-delta
-- capabilities drift
-- contract drift
-- 独立 migration gate
+- benchmark 多机采样与趋势对照
+- release 签名策略从观察模式切到阻断模式
+- Go/No-Go 报告细项自动汇总（upgrade/signing/smoke）
 
 ### 9.3 第三阶段：补发布级闭环
 
@@ -370,6 +385,6 @@ P2 当前用于暴露“不会立刻打断功能，但会持续侵蚀可维护�
 
 - P0 / P1 的首轮脚本化地基已经落地
 - 契约、migration、release verify、desktop E2E 都已经各自形成最小闭环
-- 当前最大的缺口是“统一当前文档入口”和“少数尚未脚本化的强制门禁”
+- 当前最大的缺口是“签名强制策略切换”与“benchmark 多机趋势化”
 
 因此从本文件开始，后续质量流程变更应优先更新当前文档，而不是继续只追加到归档计划里。

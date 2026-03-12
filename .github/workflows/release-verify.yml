@@ -30,5 +30,8 @@ jobs:
       - name: release verify
         run: npm run check:release
 
+      - name: benchmark pipeline
+        run: npm run check:benchmark-pipeline
+
       - name: go-no-go report
         run: npm run report:go-no-go
