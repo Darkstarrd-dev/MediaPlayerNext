@@ -170,6 +170,7 @@ Current Tauri protocol DB rule:
 - `npm run check:capabilities-drift`
 - `npm run check:contract-drift`
 - `npm run check:binary-size`
+- `npm run check:gate-durations`
   - module size and boundary baseline gate
 
 Layer highlights:
@@ -346,6 +347,10 @@ Current validated tool versions for the Rust `1.88.0` project baseline:
        - 新增 `config/quality/binary-size-baseline.json`
        - 新增命令 `npm run check:binary-size`
        - 当前验证：`mediaplayernext.exe` = `10665984 bytes`（阈值 `268435456 bytes`）
+24. 门禁耗时 compare + threshold 脚本已落地
+       - 新增 `scripts/quality/check-gate-duration-thresholds.mjs`
+       - 新增 `config/quality/gate-duration-baseline.json`
+       - 新增命令 `npm run check:gate-durations`
 
 #### 待拆分 / 待完成
 
@@ -356,4 +361,4 @@ Current validated tool versions for the Rust `1.88.0` project baseline:
 2. 完善发布增强验收
    - installer/upgrade replay
    - signing/offline smoke
-3. 补 benchmark compare + threshold 与 `cargo bloat` 自动化门禁
+3. 补业务路径 benchmark compare + threshold 与 `cargo bloat` 自动化门禁

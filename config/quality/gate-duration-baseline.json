@@ -1,0 +1,37 @@
+{
+  "updatedAt": "2026-03-12T23:20:00",
+  "layers": {
+    "fast": {
+      "gates": {
+        "fmt": {
+          "baselineMs": 2039,
+          "maxRegressionPercent": 40
+        },
+        "check": {
+          "baselineMs": 4052,
+          "maxRegressionPercent": 40
+        },
+        "module-boundaries": {
+          "baselineMs": 1041,
+          "maxRegressionPercent": 50
+        },
+        "capabilities-drift": {
+          "baselineMs": 1018,
+          "maxRegressionPercent": 50
+        },
+        "contract-drift": {
+          "baselineMs": 1023,
+          "maxRegressionPercent": 50
+        },
+        "debt-delta": {
+          "baselineMs": 1025,
+          "maxRegressionPercent": 50
+        },
+        "forbidden-edges": {
+          "baselineMs": 1020,
+          "maxRegressionPercent": 50
+        }
+      }
+    }
+  }
+}

@@ -138,6 +138,8 @@ P2 当前用于暴露“不会立刻打断功能，但会持续侵蚀可维护�
   - 对应 `scripts/quality/check-contract-drift.mjs`
 - `npm run check:binary-size`
   - 对应 `scripts/quality/check-binary-size.ps1`
+- `npm run check:gate-durations`
+  - 对应 `scripts/quality/check-gate-duration-thresholds.mjs`
 - `docs/benchmarks/`
   - 当前用于沉淀 benchmark baseline、回归记录与质量门禁记录
 
@@ -147,6 +149,7 @@ P2 当前用于暴露“不会立刻打断功能，但会持续侵蚀可维护�
 - Tauri capabilities drift 基线治理：`config/quality/capabilities-baseline.json`
 - contracts vs Tauri command drift 基线治理：`config/quality/contract-drift-baseline.json`
 - 二进制体积基线治理：`config/quality/binary-size-baseline.json`
+- 质量门禁耗时阈值治理：`config/quality/gate-duration-baseline.json`
 - duplicate deps 基线治理：`config/quality/duplicate-deps-baseline.json`
 - `cargo +nightly udeps` 未使用依赖检查
 - benchmark baseline 文档化沉淀
@@ -319,7 +322,7 @@ P2 当前用于暴露“不会立刻打断功能，但会持续侵蚀可维护�
 以下项目已经明确是缺口，但尚未形成当前仓库的强制门禁：
 
 - 已落库首版 `.github` workflows 与 PR 模板，但尚未收敛到完整发布治理（阈值、报告、升级回放）
-- benchmark 还没有 compare + threshold gate
+- 已新增质量门禁耗时 compare + threshold，但业务路径 benchmark 阈值门禁仍未脚本化
 - 已新增 Go/No-Go 报告模板与 binary size 基线脚本，但还没有 `cargo bloat` 与自动化报告门禁
 - 还没有离线安装、升级回放、签名等 release 级闭环
 
