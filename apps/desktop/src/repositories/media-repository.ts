@@ -57,9 +57,9 @@ export interface MediaRepository {
     detail(assetId: string): Promise<ItemDetail>
   }
   archive: {
-    entries(sourceId: string): Promise<ArchiveEntrySummary[]>
+    entries(scope: { sourceId?: string; mediaSourceId?: string }): Promise<ArchiveEntrySummary[]>
     entryDetail(archiveEntryId: string): Promise<ArchiveEntryDetail>
-    normalize(sourceId: string): Promise<ArchiveNormalizeResult>
+    normalize(scope: { sourceId?: string; mediaSourceId?: string }): Promise<ArchiveNormalizeResult>
     normalizeStatus(taskId: string): Promise<TaskProgress>
   }
   thumbnail: {

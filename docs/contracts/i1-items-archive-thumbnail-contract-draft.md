@@ -88,6 +88,7 @@ type ItemDetail = {
 ```ts
 type ItemsListQuery = {
   libraryId: string
+  mediaSourceId?: string
   page?: number
   pageSize?: number
 }
@@ -96,6 +97,7 @@ type ItemsListQuery = {
 说明：
 
 - `I1` 首轮先只冻结最小分页壳，不冻结复杂筛选项
+- 目录树切片接入后，列表读取优先使用 `mediaSourceId` 作为作用域键
 
 ## 二、archive contracts 草案
 

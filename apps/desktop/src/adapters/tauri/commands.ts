@@ -154,8 +154,13 @@ export async function invokeItemDetail(assetId: string): Promise<ItemDetail> {
   return invoke<ItemDetail>('item_detail_command', withArgAliases({ assetId }))
 }
 
-export async function invokeArchiveEntries(sourceId: string): Promise<ArchiveEntrySummary[]> {
-  return invoke<ArchiveEntrySummary[]>('archive_entries_command', withArgAliases({ sourceId }))
+export interface ArchiveScopeInput {
+  sourceId?: string
+  mediaSourceId?: string
+}
+
+export async function invokeArchiveEntries(input: ArchiveScopeInput): Promise<ArchiveEntrySummary[]> {
+  return invoke<ArchiveEntrySummary[]>('archive_entries_command', withArgAliases({ ...input }))
 }
 
 export async function invokeArchiveEntryDetail(
@@ -165,9 +170,9 @@ export async function invokeArchiveEntryDetail(
 }
 
 export async function invokeArchiveNormalize(
-  sourceId: string,
+  input: ArchiveScopeInput,
 ): Promise<ArchiveNormalizeResult> {
-  return invoke<ArchiveNormalizeResult>('archive_normalize_command', withArgAliases({ sourceId }))
+  return invoke<ArchiveNormalizeResult>('archive_normalize_command', withArgAliases({ ...input }))
 }
 
 export async function invokeArchiveNormalizeStatus(taskId: string): Promise<TaskProgress> {

@@ -4,6 +4,7 @@ const idSchema = z.string().min(1);
 
 export const libraryIdSchema = idSchema;
 export const sourceIdSchema = idSchema;
+export const mediaSourceIdSchema = idSchema;
 export const archiveIdSchema = idSchema;
 export const archiveEntryIdSchema = idSchema;
 export const assetIdSchema = idSchema;

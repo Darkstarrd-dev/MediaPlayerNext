@@ -19,6 +19,10 @@ const MIGRATIONS: &[Migration] = &[
         version: 3,
         sql: include_str!("migrations/0003_init_app_state.sql"),
     },
+    Migration {
+        version: 4,
+        sql: include_str!("migrations/0004_init_media_sources.sql"),
+    },
 ];
 
 pub fn latest_schema_version() -> i32 {
@@ -194,6 +198,72 @@ fn validate_schema(connection: &Connection) -> Result<()> {
             &["state_key", "state_json", "updated_at"],
         )?;
         ensure_index_exists(connection, "idx_app_state_updated_at")?;
+    }
+
+    if version >= 4 {
+        ensure_table_columns(
+            connection,
+            "media_sources",
+            &[
+                "id",
+                "library_id",
+                "source_type",
+                "backing_source_id",
+                "absolute_path",
+                "tree_path_json",
+                "display_name",
+                "item_count",
+                "cover_asset_id",
+                "last_seen_revision",
+                "exists_flag",
+                "updated_at",
+            ],
+        )?;
+        ensure_table_columns(
+            connection,
+            "image_items",
+            &[
+                "id",
+                "media_source_id",
+                "asset_id",
+                "ordinal",
+                "width",
+                "height",
+                "size_bytes",
+                "media_locator_json",
+                "hidden_flag",
+                "last_seen_revision",
+                "updated_at",
+            ],
+        )?;
+        ensure_index_exists(connection, "idx_media_sources_library_path")?;
+        ensure_index_exists(connection, "idx_media_sources_library_updated")?;
+        ensure_index_exists(connection, "idx_media_sources_backing_source_id")?;
+        ensure_index_exists(connection, "idx_image_items_source_ordinal")?;
+        ensure_index_exists(connection, "idx_image_items_asset_id")?;
+        ensure_foreign_key_exists(connection, "media_sources", "library_id", "libraries", "id")?;
+        ensure_foreign_key_exists(
+            connection,
+            "media_sources",
+            "backing_source_id",
+            "sources",
+            "id",
+        )?;
+        ensure_foreign_key_exists(
+            connection,
+            "media_sources",
+            "cover_asset_id",
+            "media_assets",
+            "id",
+        )?;
+        ensure_foreign_key_exists(
+            connection,
+            "image_items",
+            "media_source_id",
+            "media_sources",
+            "id",
+        )?;
+        ensure_foreign_key_exists(connection, "image_items", "asset_id", "media_assets", "id")?;
     }
 
     ensure_foreign_key_integrity(connection)?;

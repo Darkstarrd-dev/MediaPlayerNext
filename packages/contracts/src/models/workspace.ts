@@ -1,9 +1,11 @@
 import { z } from "zod";
-import { assetIdSchema, libraryIdSchema, sourceIdSchema } from "./ids.js";
+import { assetIdSchema, libraryIdSchema, mediaSourceIdSchema } from "./ids.js";
 
 export const workspaceCursorSchema = z.object({
   selectedLibraryId: libraryIdSchema.nullable().optional(),
-  selectedNodeId: sourceIdSchema.nullable().optional(),
+  selectedSidebarNodeId: z.string().min(1).nullable().optional(),
+  selectedMediaSourceId: mediaSourceIdSchema.nullable().optional(),
+  selectedNodeId: z.string().min(1).nullable().optional(),
   itemsPageIndex: z.number().int().positive().nullable().optional(),
   selectedAssetId: assetIdSchema.nullable().optional(),
 });

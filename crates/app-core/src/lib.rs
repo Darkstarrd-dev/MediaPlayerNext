@@ -1,6 +1,7 @@
 pub mod archive;
 pub mod asset;
 pub mod cli;
+pub mod content;
 pub mod diagnostics;
 pub mod library;
 pub mod playback;

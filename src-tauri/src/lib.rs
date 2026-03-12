@@ -9,6 +9,9 @@ use app_core::archive::{
     resolve_archive_entry_location, ArchiveNormalizeSummary,
 };
 use app_core::asset::{asset_snapshot_for_library, resolve_asset, AssetResolution};
+use app_core::content::{
+    asset_snapshot_for_media_source, media_source_snapshot_for_library, sync_library_content,
+};
 use app_core::library::{get_library, list_libraries, remove_library};
 use app_core::playback::{
     open_playback_session, playback_seek, playback_status, resolve_media_asset_path,
@@ -29,9 +32,9 @@ use rusqlite::{named_params, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use shared_model::{
-    AppError, AppErrorCode, ArchiveEntryId, AssetId, LibraryId, LibraryRecord, PlaybackSessionId,
-    PlaybackSessionSummary, SourceId, SourceKind, SubtitleSessionId, TaskProgress, TaskRecord,
-    ThumbnailKey,
+    AppError, AppErrorCode, ArchiveEntryId, AssetId, LibraryId, LibraryRecord, MediaSourceId,
+    PlaybackSessionId, PlaybackSessionSummary, SourceId, SubtitleSessionId, TaskProgress,
+    TaskRecord, ThumbnailKey,
 };
 use std::env;
 use std::path::{Path, PathBuf};
@@ -41,7 +44,8 @@ use tauri::AppHandle;
 
 const ERROR_CODE_HEADER: &str = "x-mediaplayernext-error-code";
 const ERROR_RETRIABLE_HEADER: &str = "x-mediaplayernext-error-retriable";
-const WORKSPACE_CURSOR_STATE_KEY: &str = "workspace_cursor_v1";
+const WORKSPACE_CURSOR_STATE_KEY_V1: &str = "workspace_cursor_v1";
+const WORKSPACE_CURSOR_STATE_KEY_V2: &str = "workspace_cursor_v2";
 const SIDEBAR_THUMBNAIL_PROFILE: &str = "grid-md";
 type CommandResult<T> = Result<T, AppError>;
 
@@ -70,6 +74,8 @@ struct CommandEnvironment {
 #[serde(rename_all = "camelCase")]
 struct WorkspaceCursorPayload {
     selected_library_id: Option<String>,
+    selected_sidebar_node_id: Option<String>,
+    selected_media_source_id: Option<String>,
     selected_node_id: Option<String>,
     items_page_index: Option<u32>,
     selected_asset_id: Option<String>,
@@ -80,9 +86,15 @@ struct WorkspaceCursorPayload {
 struct SidebarNodePayload {
     node_id: String,
     library_id: String,
-    source_id: String,
     label: String,
-    normalized_path: String,
+    node_type: String,
+    parent_node_id: Option<String>,
+    tree_path: Vec<String>,
+    depth: u32,
+    media_source_id: Option<String>,
+    source_type: Option<String>,
+    item_count: Option<i64>,
+    has_direct_media_child: bool,
     kind: String,
 }
 
@@ -221,21 +233,24 @@ fn library_nodes_command(
 ) -> CommandResult<Vec<SidebarNodePayload>> {
     with_command_environment(&app, |environment| {
         let repositories = environment.database.repositories();
-        let nodes = app_core::ports::SourceRepository::list_by_library(
-            &repositories,
-            &LibraryId(library_id.clone()),
-        )?
-        .into_iter()
-        .filter(|source| source.exists)
-        .map(|source| SidebarNodePayload {
-            node_id: source.id.0.clone(),
-            library_id: source.library_id.0,
-            source_id: source.id.0,
-            label: source.file_name,
-            normalized_path: source.normalized_path,
-            kind: source_kind_label(&source.kind).to_string(),
-        })
-        .collect();
+        let library_id = LibraryId(library_id);
+        let existing_sources =
+            app_core::ports::MediaSourceRepository::list_by_library(&repositories, &library_id)?;
+        if existing_sources.is_empty() {
+            let _ = sync_library_content(
+                &repositories,
+                &repositories,
+                &repositories,
+                &repositories,
+                &repositories,
+                &repositories,
+                &repositories,
+                &library_id,
+            )?;
+        }
+
+        let media_sources = media_source_snapshot_for_library(&repositories, &library_id)?;
+        let nodes = build_sidebar_nodes_from_media_sources(&library_id.0, media_sources);
 
         Ok(nodes)
     })
@@ -247,15 +262,29 @@ fn workspace_cursor_read_command(
     app: tauri::AppHandle,
 ) -> CommandResult<Option<WorkspaceCursorPayload>> {
     with_command_environment(&app, |environment| {
-        let state_json = environment
+        let state_json_v2 = environment
             .database
             .connection()
             .query_row(
                 "select state_json from app_state where state_key = :state_key limit 1",
-                named_params! { ":state_key": WORKSPACE_CURSOR_STATE_KEY },
+                named_params! { ":state_key": WORKSPACE_CURSOR_STATE_KEY_V2 },
                 |row| row.get::<_, String>(0),
             )
             .optional()?;
+
+        let state_json = if state_json_v2.is_some() {
+            state_json_v2
+        } else {
+            environment
+                .database
+                .connection()
+                .query_row(
+                    "select state_json from app_state where state_key = :state_key limit 1",
+                    named_params! { ":state_key": WORKSPACE_CURSOR_STATE_KEY_V1 },
+                    |row| row.get::<_, String>(0),
+                )
+                .optional()?
+        };
 
         match state_json {
             Some(value) => {
@@ -284,7 +313,7 @@ fn workspace_cursor_write_command(
               updated_at = excluded.updated_at
             ",
             named_params! {
-                ":state_key": WORKSPACE_CURSOR_STATE_KEY,
+                ":state_key": WORKSPACE_CURSOR_STATE_KEY_V2,
                 ":state_json": state_json,
                 ":updated_at": now_epoch_millis_string(),
             },
@@ -301,12 +330,20 @@ fn workspace_cursor_write_command(
 fn scan_start_command(app: tauri::AppHandle, library_id: String) -> CommandResult<ScanRunSummary> {
     with_command_environment(&app, |environment| {
         let repositories = environment.database.repositories();
-        run_scan(
+        let library_id = LibraryId(library_id);
+        let summary = run_scan(&repositories, &repositories, &repositories, &library_id)?;
+        let _ = sync_library_content(
             &repositories,
             &repositories,
             &repositories,
-            &LibraryId(library_id),
-        )
+            &repositories,
+            &repositories,
+            &repositories,
+            &repositories,
+            &library_id,
+        )?;
+
+        Ok(summary)
     })
     .map_err(|error| map_backend_command_error("scan_start_command", "scan", error))
 }
@@ -315,12 +352,20 @@ fn scan_start_command(app: tauri::AppHandle, library_id: String) -> CommandResul
 fn scan_resume_command(app: tauri::AppHandle, library_id: String) -> CommandResult<ScanRunSummary> {
     with_command_environment(&app, |environment| {
         let repositories = environment.database.repositories();
-        resume_scan(
+        let library_id = LibraryId(library_id);
+        let summary = resume_scan(&repositories, &repositories, &repositories, &library_id)?;
+        let _ = sync_library_content(
             &repositories,
             &repositories,
             &repositories,
-            &LibraryId(library_id),
-        )
+            &repositories,
+            &repositories,
+            &repositories,
+            &repositories,
+            &library_id,
+        )?;
+
+        Ok(summary)
     })
     .map_err(|error| map_backend_command_error("scan_resume_command", "scan", error))
 }
@@ -356,6 +401,7 @@ struct ItemListEntryPayload {
     source_kind: String,
     source_ref_id: String,
     library_id: String,
+    media_source_id: Option<String>,
     source_id: String,
     archive_id: Option<String>,
     entry_path: Option<String>,
@@ -382,6 +428,7 @@ struct ItemDetailPayload {
 fn items_list_command(
     app: tauri::AppHandle,
     library_id: String,
+    media_source_id: Option<String>,
     source_id: Option<String>,
     page: Option<u32>,
     page_size: Option<u32>,
@@ -389,20 +436,49 @@ fn items_list_command(
     with_command_environment(&app, |environment| {
         let repositories = environment.database.repositories();
         let library_id = LibraryId(library_id);
-        let snapshot = asset_snapshot_for_library(
-            &repositories,
-            &repositories,
-            &repositories,
-            &repositories,
-            &library_id,
-        )?;
+        let legacy_source_id = source_id.clone();
+        let resolved_media_source_id = match media_source_id {
+            Some(value) => Some(MediaSourceId(value)),
+            None => match source_id {
+                Some(value) => app_core::ports::MediaSourceRepository::get_by_backing_source(
+                    &repositories,
+                    &SourceId(value.clone()),
+                )?
+                .map(|record| record.id),
+                None => None,
+            },
+        };
 
-        let filtered_snapshot = match source_id {
-            Some(expected_source_id) => snapshot
-                .into_iter()
-                .filter(|item| item.source_id == expected_source_id)
-                .collect::<Vec<_>>(),
-            None => snapshot,
+        let selected_media_source_id = resolved_media_source_id
+            .as_ref()
+            .map(|value| value.0.clone());
+
+        let filtered_snapshot = match resolved_media_source_id {
+            Some(media_source_id) => asset_snapshot_for_media_source(
+                &repositories,
+                &repositories,
+                &repositories,
+                &repositories,
+                &repositories,
+                &media_source_id,
+            )?,
+            None => {
+                let snapshot = asset_snapshot_for_library(
+                    &repositories,
+                    &repositories,
+                    &repositories,
+                    &repositories,
+                    &library_id,
+                )?;
+
+                match legacy_source_id {
+                    Some(expected_source_id) => snapshot
+                        .into_iter()
+                        .filter(|item| item.source_id == expected_source_id)
+                        .collect::<Vec<_>>(),
+                    None => snapshot,
+                }
+            }
         };
 
         let offset = page
@@ -434,6 +510,7 @@ fn items_list_command(
                     source_kind: item.source_kind,
                     source_ref_id: item.source_ref_id,
                     library_id: item.library_id,
+                    media_source_id: selected_media_source_id.clone(),
                     source_id: item.source_id,
                     archive_id: item.archive_id,
                     entry_path: item.entry_path,
@@ -497,11 +574,12 @@ fn item_detail_command(
 #[tauri::command]
 fn archive_entries_command(
     app: tauri::AppHandle,
-    source_id: String,
+    source_id: Option<String>,
+    media_source_id: Option<String>,
 ) -> CommandResult<Vec<shared_model::ArchiveEntryRecord>> {
     with_command_environment(&app, |environment| {
         let repositories = environment.database.repositories();
-        let source_id = SourceId(source_id);
+        let source_id = resolve_archive_source_id(&repositories, source_id, media_source_id)?;
         let snapshot = archive_snapshot(&repositories, &repositories, &source_id)?;
         Ok(snapshot.entries)
     })
@@ -529,10 +607,12 @@ fn archive_entry_detail_command(
 #[tauri::command]
 fn archive_normalize_command(
     app: tauri::AppHandle,
-    source_id: String,
+    source_id: Option<String>,
+    media_source_id: Option<String>,
 ) -> CommandResult<ArchiveNormalizeSummary> {
     with_command_environment(&app, |environment| {
         let repositories = environment.database.repositories();
+        let source_id = resolve_archive_source_id(&repositories, source_id, media_source_id)?;
         normalize_archive_source(
             &repositories,
             &repositories,
@@ -541,7 +621,7 @@ fn archive_normalize_command(
             &repositories,
             &environment.runtime_paths.sevenz_path,
             &environment.normalize_root,
-            &SourceId(source_id),
+            &source_id,
         )
     })
     .map_err(|error| map_backend_command_error("archive_normalize_command", "archive", error))
@@ -1232,14 +1312,122 @@ fn task_progress_from_record(task: TaskRecord) -> TaskProgress {
     }
 }
 
-fn source_kind_label(kind: &SourceKind) -> &'static str {
-    match kind {
-        SourceKind::Image => "image",
-        SourceKind::Video => "video",
-        SourceKind::Archive => "archive",
-        SourceKind::Audio => "audio",
-        SourceKind::Other => "other",
+fn build_sidebar_nodes_from_media_sources(
+    library_id: &str,
+    media_sources: Vec<app_core::content::MediaSourceSnapshotItem>,
+) -> Vec<SidebarNodePayload> {
+    use std::collections::BTreeMap;
+
+    let mut folders = BTreeMap::<String, SidebarNodePayload>::new();
+    let mut media_nodes = Vec::<SidebarNodePayload>::new();
+
+    for media_source in media_sources {
+        let segments = serde_json::from_str::<Vec<String>>(&media_source.tree_path_json)
+            .ok()
+            .filter(|items| !items.is_empty())
+            .unwrap_or_else(|| {
+                media_source
+                    .absolute_path
+                    .replace('\\', "/")
+                    .split('/')
+                    .filter(|segment| !segment.is_empty())
+                    .map(|segment| segment.to_string())
+                    .collect::<Vec<_>>()
+            });
+        if segments.is_empty() {
+            continue;
+        }
+
+        let mut parent_node_id: Option<String> = None;
+        let last_index = segments.len().saturating_sub(1);
+
+        for depth in 0..last_index {
+            let folder_segments = segments[..=depth].to_vec();
+            let folder_node_id = format!("folder::{}", folder_segments.join("/"));
+            let parent_id = if depth == 0 {
+                None
+            } else {
+                Some(format!("folder::{}", segments[..depth].join("/")))
+            };
+            let label = segments[depth].clone();
+
+            folders
+                .entry(folder_node_id.clone())
+                .or_insert_with(|| SidebarNodePayload {
+                    node_id: folder_node_id.clone(),
+                    library_id: library_id.to_string(),
+                    label,
+                    node_type: "folder".to_string(),
+                    parent_node_id: parent_id,
+                    tree_path: folder_segments,
+                    depth: depth as u32,
+                    media_source_id: None,
+                    source_type: None,
+                    item_count: None,
+                    has_direct_media_child: false,
+                    kind: "folder".to_string(),
+                });
+
+            parent_node_id = Some(folder_node_id);
+        }
+
+        if let Some(folder_id) = parent_node_id.clone() {
+            if let Some(folder_node) = folders.get_mut(&folder_id) {
+                folder_node.has_direct_media_child = true;
+            }
+        }
+
+        media_nodes.push(SidebarNodePayload {
+            node_id: format!("media_source::{}", media_source.media_source_id),
+            library_id: media_source.library_id,
+            label: media_source.display_name,
+            node_type: "media_source".to_string(),
+            parent_node_id,
+            tree_path: segments.clone(),
+            depth: (segments.len().saturating_sub(1)) as u32,
+            media_source_id: Some(media_source.media_source_id),
+            source_type: Some(media_source.source_type),
+            item_count: Some(media_source.item_count),
+            has_direct_media_child: false,
+            kind: "media_source".to_string(),
+        });
     }
+
+    let mut nodes = folders.into_values().collect::<Vec<_>>();
+    nodes.extend(media_nodes);
+    nodes.sort_by(|left, right| {
+        left.tree_path
+            .cmp(&right.tree_path)
+            .then(left.depth.cmp(&right.depth))
+            .then(left.node_type.cmp(&right.node_type))
+            .then(left.node_id.cmp(&right.node_id))
+    });
+
+    nodes
+}
+
+fn resolve_archive_source_id(
+    repositories: &impl app_core::ports::MediaSourceRepository,
+    source_id: Option<String>,
+    media_source_id: Option<String>,
+) -> anyhow::Result<SourceId> {
+    if let Some(source_id) = source_id {
+        return Ok(SourceId(source_id));
+    }
+
+    let Some(media_source_id) = media_source_id else {
+        return Err(anyhow::anyhow!("source_id or media_source_id is required"));
+    };
+
+    let media_source = app_core::ports::MediaSourceRepository::get(
+        repositories,
+        &MediaSourceId(media_source_id.clone()),
+    )?
+    .ok_or_else(|| anyhow::anyhow!("media source not found: {media_source_id}"))?;
+
+    media_source
+        .backing_source_id
+        .ok_or_else(|| anyhow::anyhow!("media source has no backing source: {media_source_id}"))
 }
 
 fn now_epoch_millis_string() -> String {

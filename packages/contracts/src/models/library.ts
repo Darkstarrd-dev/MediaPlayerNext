@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { libraryIdSchema, sourceIdSchema } from "./ids.js";
+import { libraryIdSchema, mediaSourceIdSchema } from "./ids.js";
 
 export const librarySummarySchema = z.object({
   id: libraryIdSchema,
@@ -16,21 +16,23 @@ export const addLibraryInputSchema = z.object({
   rootPath: z.string().min(1),
 });
 
-export const sidebarNodeKindSchema = z.enum([
-  "image",
-  "video",
-  "archive",
-  "audio",
-  "other",
-]);
+export const sidebarNodeTypeSchema = z.enum(["folder", "media_source"]);
+
+export const sidebarSourceTypeSchema = z.enum(["package", "directory"]);
 
 export const sidebarNodeSummarySchema = z.object({
   nodeId: z.string().min(1),
   libraryId: libraryIdSchema,
-  sourceId: sourceIdSchema,
   label: z.string().min(1),
-  normalizedPath: z.string().min(1),
-  kind: sidebarNodeKindSchema,
+  nodeType: sidebarNodeTypeSchema,
+  parentNodeId: z.string().min(1).optional(),
+  treePath: z.array(z.string().min(1)),
+  depth: z.number().int().nonnegative(),
+  mediaSourceId: mediaSourceIdSchema.optional(),
+  sourceType: sidebarSourceTypeSchema.optional(),
+  itemCount: z.number().int().nonnegative().optional(),
+  hasDirectMediaChild: z.boolean(),
+  kind: z.string().min(1),
 });
 
 export type LibrarySummary = z.infer<typeof librarySummarySchema>;

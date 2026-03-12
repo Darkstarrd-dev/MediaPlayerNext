@@ -500,7 +500,8 @@ Sidebar | Main | Metadata
 - 已建立 `docs/ui/u2-thumbnail-grid-enhancement-phase-plan.md`，用于基础版完成后继续推进滚轮翻页、ready-commit、gap snap 与缩略图分辨率自适应
 - `U2` 基础版首轮已接通：`Main.header` 的 `1~7` 缩放下拉、容器 `ResizeObserver`、`pageSize = columns * rows` 的布局推导、页面级 `Prev / Next` 分页 footer
 - `Main` 条目读取当前已从固定 `page=1/pageSize=12` 切到页面级参数读取，并在缩放/容器尺寸变化后自动重算分页与刷新当前页
-- `Sidebar.main` 当前已从“媒体库列表”切到“当前媒体库直属节点列表”；媒体库切换入口改为 `Sidebar.header` 下拉选择
+- `Sidebar.main` 当前已切到“路径节点 + 媒体源节点”语义：父路径节点运行时还原，媒体源节点来自 `media_sources`
+- `Sidebar.main` 当前节点类型固定为 `folder / media_source`，点击 `folder` 仅更新选中态，点击 `media_source` 才驱动 `Main` 列表刷新
 - 主工作区当前已接入 `stale-while-refresh` 语义：刷新时优先保留旧页内容，不再默认用 loading 卡片覆盖整个 `Main.main`
-- 当前已接入最小工作区游标持久化：`selectedLibraryId / selectedNodeId / itemsPageIndex / selectedAssetId` 会写入数据库 `app_state` 并在启动时恢复
-- `items.list` 当前已支持按 `sourceId` 读取当前直属节点条目，并会回传已存在的 `thumbnailKey`，减少前端整页 `thumbnail.ensure` 压力
+- 当前已把工作区游标升级到 `selectedSidebarNodeId / selectedMediaSourceId / itemsPageIndex / selectedAssetId`（兼容读取旧 `selectedNodeId`）
+- `items.list` 当前已支持按 `mediaSourceId` 读取条目，并继续兼容旧 `sourceId` 过滤；返回项会回传已存在的 `thumbnailKey`

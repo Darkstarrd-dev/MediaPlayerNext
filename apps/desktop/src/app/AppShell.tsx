@@ -237,18 +237,52 @@ function resolveLibrarySelection(
   return libraries[0]?.id ?? null
 }
 
-function resolveSidebarNodeSelection(
+interface SidebarSelection {
+  selectedSidebarNodeId: string | null
+  selectedMediaSourceId: string | null
+}
+
+function isMediaSourceNode(node: SidebarNodeSummary): boolean {
+  return node.nodeType === 'media_source' && typeof node.mediaSourceId === 'string'
+}
+
+function resolveSidebarSelection(
   nodes: SidebarNodeSummary[],
-  preferredNodeId?: string | null,
-): string | null {
-  if (preferredNodeId !== undefined && preferredNodeId !== null) {
-    const matchedNode = nodes.find((node) => node.nodeId === preferredNodeId)
+  preferredSidebarNodeId?: string | null,
+  preferredMediaSourceId?: string | null,
+): SidebarSelection {
+  if (preferredSidebarNodeId !== undefined && preferredSidebarNodeId !== null) {
+    const matchedNode = nodes.find((node) => node.nodeId === preferredSidebarNodeId)
     if (matchedNode) {
-      return matchedNode.nodeId
+      return {
+        selectedSidebarNodeId: matchedNode.nodeId,
+        selectedMediaSourceId: isMediaSourceNode(matchedNode) ? matchedNode.mediaSourceId ?? null : null,
+      }
     }
   }
 
-  return nodes[0]?.nodeId ?? null
+  if (preferredMediaSourceId !== undefined && preferredMediaSourceId !== null) {
+    const matchedNode = nodes.find((node) => node.mediaSourceId === preferredMediaSourceId)
+    if (matchedNode) {
+      return {
+        selectedSidebarNodeId: matchedNode.nodeId,
+        selectedMediaSourceId: matchedNode.mediaSourceId ?? null,
+      }
+    }
+  }
+
+  const firstMediaNode = nodes.find((node) => isMediaSourceNode(node))
+  if (firstMediaNode) {
+    return {
+      selectedSidebarNodeId: firstMediaNode.nodeId,
+      selectedMediaSourceId: firstMediaNode.mediaSourceId ?? null,
+    }
+  }
+
+  return {
+    selectedSidebarNodeId: nodes[0]?.nodeId ?? null,
+    selectedMediaSourceId: null,
+  }
 }
 
 function normalizePathBatch(paths: string[]): string[] {
@@ -385,7 +419,8 @@ export function AppShell() {
   const [selectedLibraryId, setSelectedLibraryId] = useState<string | null>(null)
   const [sidebarNodes, setSidebarNodes] = useState<SidebarNodeSummary[]>([])
   const [sidebarNodesLoading, setSidebarNodesLoading] = useState(false)
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+  const [selectedSidebarNodeId, setSelectedSidebarNodeId] = useState<string | null>(null)
+  const [selectedMediaSourceId, setSelectedMediaSourceId] = useState<string | null>(null)
   const [selectedLibraryDetail, setSelectedLibraryDetail] = useState<LibraryDetail | null>(null)
   const [scanStats, setScanStats] = useState<ScanStats | null>(null)
   const [scanSnapshot, setScanSnapshot] = useState<TaskProgress | null>(null)
@@ -495,7 +530,8 @@ export function AppShell() {
     itemDetailRequestIdRef.current += 1
     setSelectedLibraryDetail(null)
     setSidebarNodes([])
-    setSelectedNodeId(null)
+    setSelectedSidebarNodeId(null)
+    setSelectedMediaSourceId(null)
     setSidebarNodesLoading(false)
     setScanStats(null)
     setScanSnapshot(null)
@@ -545,11 +581,11 @@ export function AppShell() {
   const loadLibrarySurface = useCallback(
     async (options: {
       libraryId: string
-      nodeId: string | null
+      mediaSourceId: string | null
       requestedPageIndex: number
       preferredAssetId?: string | null
     }) => {
-      const { libraryId, nodeId, requestedPageIndex, preferredAssetId } = options
+      const { libraryId, mediaSourceId, requestedPageIndex, preferredAssetId } = options
       const requestId = libraryLoadRequestIdRef.current + 1
       libraryLoadRequestIdRef.current = requestId
 
@@ -563,7 +599,7 @@ export function AppShell() {
         const readItemsPage = (pageIndex: number) =>
           repository.items.list({
             libraryId,
-            sourceId: nodeId ?? undefined,
+            mediaSourceId: mediaSourceId ?? undefined,
             page: pageIndex,
             pageSize,
           })
@@ -673,23 +709,37 @@ export function AppShell() {
   )
 
   const refreshSidebarNodes = useCallback(
-    async (libraryId: string, preferredNodeId?: string | null): Promise<string | null> => {
+    async (
+      libraryId: string,
+      preferredSidebarNodeId?: string | null,
+      preferredMediaSourceId?: string | null,
+    ): Promise<SidebarSelection> => {
       setSidebarNodesLoading(true)
       setSidebarNodes([])
-      setSelectedNodeId(null)
+      setSelectedSidebarNodeId(null)
+      setSelectedMediaSourceId(null)
 
       try {
         const nextNodes = await repository.library.nodes(libraryId)
-        const nextSelectedNodeId = resolveSidebarNodeSelection(nextNodes, preferredNodeId)
+        const nextSelection = resolveSidebarSelection(
+          nextNodes,
+          preferredSidebarNodeId,
+          preferredMediaSourceId,
+        )
 
         setSidebarNodes(nextNodes)
-        setSelectedNodeId(nextSelectedNodeId)
-        return nextSelectedNodeId
+        setSelectedSidebarNodeId(nextSelection.selectedSidebarNodeId)
+        setSelectedMediaSourceId(nextSelection.selectedMediaSourceId)
+        return nextSelection
       } catch (error) {
         setSidebarNodes([])
-        setSelectedNodeId(null)
+        setSelectedSidebarNodeId(null)
+        setSelectedMediaSourceId(null)
         setWorkspaceError(getErrorMessage(error))
-        return null
+        return {
+          selectedSidebarNodeId: null,
+          selectedMediaSourceId: null,
+        }
       } finally {
         setSidebarNodesLoading(false)
       }
@@ -700,7 +750,8 @@ export function AppShell() {
   const refreshWorkspace = useCallback(
     async (options?: {
       preferredLibraryId?: string | null
-      preferredNodeId?: string | null
+      preferredSidebarNodeId?: string | null
+      preferredMediaSourceId?: string | null
       preferredPageIndex?: number
       preferredAssetId?: string | null
     }) => {
@@ -712,13 +763,17 @@ export function AppShell() {
         return
       }
 
-      const nextSelectedNodeId = await refreshSidebarNodes(nextSelectedLibraryId, options?.preferredNodeId)
+      const nextSelection = await refreshSidebarNodes(
+        nextSelectedLibraryId,
+        options?.preferredSidebarNodeId,
+        options?.preferredMediaSourceId,
+      )
       const nextPageIndex = Math.max(1, options?.preferredPageIndex ?? 1)
 
       setItemsPageIndex(nextPageIndex)
       await loadLibrarySurface({
         libraryId: nextSelectedLibraryId,
-        nodeId: nextSelectedNodeId,
+        mediaSourceId: nextSelection.selectedMediaSourceId,
         requestedPageIndex: nextPageIndex,
         preferredAssetId: options?.preferredAssetId,
       })
@@ -738,14 +793,14 @@ export function AppShell() {
 
     void loadLibrarySurface({
       libraryId: selectedLibraryId,
-      nodeId: selectedNodeId,
+      mediaSourceId: selectedMediaSourceId,
       requestedPageIndex: itemsPageIndex,
     })
   }, [
     itemsPageIndex,
     loadLibrarySurface,
     selectedLibraryId,
-    selectedNodeId,
+    selectedMediaSourceId,
     thumbnailGridLayout.pageSize,
   ])
 
@@ -778,6 +833,9 @@ export function AppShell() {
 
         const normalizedCursor: WorkspaceCursor = {
           selectedLibraryId: cursor?.selectedLibraryId ?? null,
+          selectedSidebarNodeId:
+            cursor?.selectedSidebarNodeId ?? cursor?.selectedNodeId ?? null,
+          selectedMediaSourceId: cursor?.selectedMediaSourceId ?? null,
           selectedNodeId: cursor?.selectedNodeId ?? null,
           itemsPageIndex: Math.max(1, cursor?.itemsPageIndex ?? 1),
           selectedAssetId: cursor?.selectedAssetId ?? null,
@@ -785,7 +843,8 @@ export function AppShell() {
 
         await refreshWorkspace({
           preferredLibraryId: normalizedCursor.selectedLibraryId,
-          preferredNodeId: normalizedCursor.selectedNodeId,
+          preferredSidebarNodeId: normalizedCursor.selectedSidebarNodeId,
+          preferredMediaSourceId: normalizedCursor.selectedMediaSourceId,
           preferredPageIndex: normalizedCursor.itemsPageIndex ?? 1,
           preferredAssetId: normalizedCursor.selectedAssetId,
         })
@@ -893,7 +952,9 @@ export function AppShell() {
       void repository.database
         .writeWorkspaceCursor({
           selectedLibraryId,
-          selectedNodeId,
+          selectedSidebarNodeId,
+          selectedMediaSourceId,
+          selectedNodeId: selectedSidebarNodeId,
           itemsPageIndex,
           selectedAssetId,
         })
@@ -910,7 +971,8 @@ export function AppShell() {
     repository,
     selectedAssetId,
     selectedLibraryId,
-    selectedNodeId,
+    selectedMediaSourceId,
+    selectedSidebarNodeId,
     workspaceHydrated,
   ])
 
@@ -1133,15 +1195,19 @@ export function AppShell() {
         return
       }
 
-      setSelectedNodeId(nodeId)
+      const matchedNode = sidebarNodes.find((node) => node.nodeId === nodeId) ?? null
+      const nextMediaSourceId = matchedNode?.mediaSourceId ?? null
+
+      setSelectedSidebarNodeId(nodeId)
+      setSelectedMediaSourceId(nextMediaSourceId)
       setItemsPageIndex(1)
       void loadLibrarySurface({
         libraryId: selectedLibraryId,
-        nodeId,
+        mediaSourceId: nextMediaSourceId,
         requestedPageIndex: 1,
       })
     },
-    [loadLibrarySurface, selectedLibraryId],
+    [loadLibrarySurface, selectedLibraryId, sidebarNodes],
   )
 
   const handleAddLibrary = useCallback(
@@ -1462,7 +1528,7 @@ export function AppShell() {
         if (isActiveTaskProgress(scanSnapshot) && nextSnapshot !== null && !isActiveTaskProgress(nextSnapshot)) {
           await loadLibrarySurface({
             libraryId: selectedLibraryId,
-            nodeId: selectedNodeId,
+            mediaSourceId: selectedMediaSourceId,
             requestedPageIndex: itemsPageIndex,
           })
         }
@@ -1490,7 +1556,7 @@ export function AppShell() {
     repository,
     scanSnapshot,
     selectedLibraryId,
-    selectedNodeId,
+    selectedMediaSourceId,
   ])
 
   useEffect(() => {
@@ -1708,11 +1774,11 @@ export function AppShell() {
       setItemsPageIndex(normalizedPageIndex)
       void loadLibrarySurface({
         libraryId: selectedLibraryId,
-        nodeId: selectedNodeId,
+        mediaSourceId: selectedMediaSourceId,
         requestedPageIndex: normalizedPageIndex,
       })
     },
-    [loadLibrarySurface, selectedLibraryId, selectedNodeId],
+    [loadLibrarySurface, selectedLibraryId, selectedMediaSourceId],
   )
 
   const handleGoPreviousItemsPage = useCallback(() => {
@@ -1744,7 +1810,8 @@ export function AppShell() {
       ? '扫描进行中'
       : null
   const selectedLibrarySummary = libraries.find((library) => library.id === selectedLibraryId) ?? null
-  const selectedSidebarNode = sidebarNodes.find((node) => node.nodeId === selectedNodeId) ?? null
+  const selectedSidebarNode =
+    sidebarNodes.find((node) => node.nodeId === selectedSidebarNodeId) ?? null
   const scanStateLabel = scanSnapshot === null ? '未建立任务' : formatTaskStateLabel(scanSnapshot.state)
   const scanSummary = scanSnapshot === null
     ? '当前媒体库尚未执行扫描。'
@@ -1761,7 +1828,9 @@ export function AppShell() {
     : `${selectedLibraryDetail.libraryType} · 节点 ${sidebarNodes.length} · 活跃源 ${scanStats?.activeSourceCount ?? 0}`
   const mainFooterPrimary = selectedLibraryDetail === null
     ? '当前未选择媒体库'
-    : selectedSidebarNode?.normalizedPath ?? selectedLibraryDetail.rootPath
+    : selectedSidebarNode === null
+      ? selectedLibraryDetail.rootPath
+      : selectedSidebarNode.treePath.join(' / ')
   const mainFooterSecondary = selectedLibraryDetail === null
     ? '当前作用域暂无条目'
     : `${thumbnailGridLayout.columns} 列 × ${thumbnailGridLayout.rows} 行 · 每页 ${thumbnailGridLayout.pageSize} 项 · 当前页 ${items.length} 项`
@@ -1898,7 +1967,7 @@ export function AppShell() {
                 ) : (
                   <div className="sidebar-tree" role="tree" aria-label="直属媒体节点列表">
                     {sidebarNodes.map((node) => {
-                      const isActive = node.nodeId === selectedNodeId
+                      const isActive = node.nodeId === selectedSidebarNodeId
 
                       return (
                         <button
@@ -1907,13 +1976,20 @@ export function AppShell() {
                           type="button"
                           role="treeitem"
                           aria-selected={isActive}
+                          style={{ paddingInlineStart: `${14 + node.depth * 14}px` }}
                           onClick={() => handleSidebarNodeSelect(node.nodeId)}
                         >
                           <span className="sidebar-tree-node-rail" aria-hidden="true" />
                           <span className="sidebar-tree-node-dot" aria-hidden="true" />
                           <span className="sidebar-tree-node-copy">
                             <strong>{node.label}</strong>
-                            <span>{node.normalizedPath}</span>
+                            <span>
+                              {node.nodeType === 'media_source'
+                                ? `${node.sourceType ?? 'source'} · ${node.itemCount ?? 0} 项`
+                                : node.hasDirectMediaChild
+                                  ? '包含直属媒体节点'
+                                  : '路径节点'}
+                            </span>
                           </span>
                         </button>
                       )

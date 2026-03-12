@@ -1,10 +1,18 @@
 import { z } from "zod";
-import { archiveEntryIdSchema, archiveIdSchema, assetIdSchema, libraryIdSchema, sourceIdSchema } from "./ids.js";
+import {
+  archiveEntryIdSchema,
+  archiveIdSchema,
+  assetIdSchema,
+  libraryIdSchema,
+  mediaSourceIdSchema,
+  sourceIdSchema,
+} from "./ids.js";
 
 export const itemSourceKindSchema = z.enum(["file", "archive_entry"]);
 
 export const itemsListQuerySchema = z.object({
   libraryId: libraryIdSchema,
+  mediaSourceId: mediaSourceIdSchema.optional(),
   sourceId: sourceIdSchema.optional(),
   page: z.number().int().positive().optional(),
   pageSize: z.number().int().positive().optional(),
@@ -15,6 +23,7 @@ export const itemListEntrySchema = z.object({
   sourceKind: itemSourceKindSchema,
   sourceRefId: z.string().min(1),
   libraryId: libraryIdSchema,
+  mediaSourceId: mediaSourceIdSchema.optional(),
   sourceId: sourceIdSchema,
   archiveId: archiveIdSchema.optional(),
   entryPath: z.string().min(1).optional(),

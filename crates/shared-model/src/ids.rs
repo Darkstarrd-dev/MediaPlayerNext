@@ -16,6 +16,8 @@ macro_rules! id_type {
 
 id_type!(LibraryId);
 id_type!(SourceId);
+id_type!(MediaSourceId);
+id_type!(ImageItemId);
 id_type!(ArchiveId);
 id_type!(ArchiveEntryId);
 id_type!(AssetId);

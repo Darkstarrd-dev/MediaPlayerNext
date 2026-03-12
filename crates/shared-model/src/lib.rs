@@ -9,8 +9,8 @@ pub mod tasks;
 
 pub use errors::{AppError, AppErrorCode};
 pub use ids::{
-    ArchiveEntryId, ArchiveId, AssetId, LibraryId, PlaybackSessionId, SourceId, SubtitleSessionId,
-    TaskId, ThumbnailKey,
+    ArchiveEntryId, ArchiveId, AssetId, ImageItemId, LibraryId, MediaSourceId, PlaybackSessionId,
+    SourceId, SubtitleSessionId, TaskId, ThumbnailKey,
 };
 pub use media::{
     FfmpegProgressEvent, MediaAssetSummary, MediaProbeSummary, MediaSourceKind, MediaUrlSummary,
@@ -21,8 +21,8 @@ pub use observability::{
 };
 pub use pagination::{PageRequest, PageResponse};
 pub use records::{
-    ArchiveEntryRecord, ArchiveRecord, LibraryRecord, MediaAssetRecord, SourceKind, SourceRecord,
-    TaskRecord, ThumbnailRecord,
+    ArchiveEntryRecord, ArchiveRecord, ImageItemRecord, LibraryRecord, MediaAssetRecord,
+    MediaSourceRecord, MediaSourceType, SourceKind, SourceRecord, TaskRecord, ThumbnailRecord,
 };
 pub use subtitle::{
     SubtitleHealthSummary, SubtitleHostSummary, SubtitlePingSummary, SubtitleProgressEvent,

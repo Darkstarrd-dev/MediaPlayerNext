@@ -1,8 +1,8 @@
 use shared_model::{
-    ArchiveEntryId, ArchiveEntryRecord, ArchiveId, ArchiveRecord, AssetId, LibraryId,
-    LibraryRecord, MediaAssetRecord, SourceId, SourceRecord, SubtitleHostSummary,
-    SubtitleProgressEvent, SubtitleSessionId, SubtitleSessionSummary, TaskId, TaskRecord,
-    ThumbnailKey, ThumbnailRecord,
+    ArchiveEntryId, ArchiveEntryRecord, ArchiveId, ArchiveRecord, AssetId, ImageItemId,
+    ImageItemRecord, LibraryId, LibraryRecord, MediaAssetRecord, MediaSourceId, MediaSourceRecord,
+    SourceId, SourceRecord, SubtitleHostSummary, SubtitleProgressEvent, SubtitleSessionId,
+    SubtitleSessionSummary, TaskId, TaskRecord, ThumbnailKey, ThumbnailRecord,
 };
 
 pub trait LibraryRepository {
@@ -24,6 +24,47 @@ pub trait SourceRepository {
     fn count(&self) -> anyhow::Result<u64>;
     fn count_by_library(&self, library_id: &LibraryId) -> anyhow::Result<u64>;
     fn list_by_library(&self, library_id: &LibraryId) -> anyhow::Result<Vec<SourceRecord>>;
+}
+
+pub trait MediaSourceRepository {
+    fn exists(&self, media_source_id: &MediaSourceId) -> anyhow::Result<bool>;
+    fn upsert(&self, media_source: &MediaSourceRecord) -> anyhow::Result<()>;
+    fn get(&self, media_source_id: &MediaSourceId) -> anyhow::Result<Option<MediaSourceRecord>>;
+    fn list_by_library(&self, library_id: &LibraryId) -> anyhow::Result<Vec<MediaSourceRecord>>;
+    fn delete_by_library(&self, _library_id: &LibraryId) -> anyhow::Result<()> {
+        Err(anyhow::anyhow!(
+            "media source delete by library is not implemented"
+        ))
+    }
+    fn get_by_backing_source(
+        &self,
+        _source_id: &SourceId,
+    ) -> anyhow::Result<Option<MediaSourceRecord>> {
+        Ok(None)
+    }
+}
+
+pub trait ImageItemRepository {
+    fn exists(&self, image_item_id: &ImageItemId) -> anyhow::Result<bool>;
+    fn replace_for_media_source(
+        &self,
+        media_source_id: &MediaSourceId,
+        items: &[ImageItemRecord],
+    ) -> anyhow::Result<()>;
+    fn list_by_media_source(
+        &self,
+        media_source_id: &MediaSourceId,
+    ) -> anyhow::Result<Vec<ImageItemRecord>>;
+    fn list_by_library(&self, _library_id: &LibraryId) -> anyhow::Result<Vec<ImageItemRecord>> {
+        Err(anyhow::anyhow!(
+            "image item list by library is not implemented"
+        ))
+    }
+    fn delete_by_library(&self, _library_id: &LibraryId) -> anyhow::Result<()> {
+        Err(anyhow::anyhow!(
+            "image item delete by library is not implemented"
+        ))
+    }
 }
 
 pub trait ArchiveRepository {

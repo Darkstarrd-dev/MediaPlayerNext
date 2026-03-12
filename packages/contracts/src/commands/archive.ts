@@ -1,8 +1,9 @@
 import { z } from "zod";
-import { archiveEntryIdSchema, sourceIdSchema, taskIdSchema } from "../models/ids.js";
+import { archiveEntryIdSchema, mediaSourceIdSchema, sourceIdSchema, taskIdSchema } from "../models/ids.js";
 
 export const archiveEntriesRequestSchema = z.object({
-  sourceId: sourceIdSchema,
+  sourceId: sourceIdSchema.optional(),
+  mediaSourceId: mediaSourceIdSchema.optional(),
 });
 
 export const archiveEntryDetailRequestSchema = z.object({
@@ -10,7 +11,8 @@ export const archiveEntryDetailRequestSchema = z.object({
 });
 
 export const archiveNormalizeRequestSchema = z.object({
-  sourceId: sourceIdSchema,
+  sourceId: sourceIdSchema.optional(),
+  mediaSourceId: mediaSourceIdSchema.optional(),
 });
 
 export const archiveNormalizeStatusRequestSchema = z.object({

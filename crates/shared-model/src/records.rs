@@ -1,6 +1,6 @@
 use crate::{
-    ArchiveEntryId, ArchiveId, AssetId, LibraryId, MediaSourceKind, SourceId, TaskId, TaskKind,
-    TaskState, ThumbnailKey,
+    ArchiveEntryId, ArchiveId, AssetId, ImageItemId, LibraryId, MediaSourceId, MediaSourceKind,
+    SourceId, TaskId, TaskKind, TaskState, ThumbnailKey,
 };
 use serde::{Deserialize, Serialize};
 
@@ -40,6 +40,54 @@ pub struct SourceRecord {
     pub fingerprint: Option<String>,
     pub exists: bool,
     pub last_seen_at: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MediaSourceType {
+    Package,
+    Directory,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaSourceRecord {
+    pub id: MediaSourceId,
+    pub library_id: LibraryId,
+    pub source_type: MediaSourceType,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub backing_source_id: Option<SourceId>,
+    pub absolute_path: String,
+    pub tree_path_json: String,
+    pub display_name: String,
+    pub item_count: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cover_asset_id: Option<AssetId>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_seen_revision: Option<String>,
+    pub exists: bool,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImageItemRecord {
+    pub id: ImageItemId,
+    pub media_source_id: MediaSourceId,
+    pub asset_id: AssetId,
+    pub ordinal: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub width: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub height: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub size_bytes: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub media_locator_json: Option<String>,
+    pub hidden: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_seen_revision: Option<String>,
+    pub updated_at: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
