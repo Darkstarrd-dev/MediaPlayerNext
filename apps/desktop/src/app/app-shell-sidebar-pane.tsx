@@ -1,5 +1,6 @@
 import type { LibrarySummary, SidebarNodeSummary } from '@mediaplayernext/contracts'
-import { resolvePathLeaf } from './app-shell-utils'
+import { resolvePathLeaf, resolveSidebarDisplayLabel } from './app-shell-utils'
+import type { SidebarLabelDisplayMode } from './sidebar-main-image-tree'
 
 interface AppShellSidebarPaneProps {
   selectedLibrarySummary: LibrarySummary | null
@@ -10,6 +11,8 @@ interface AppShellSidebarPaneProps {
   sidebarNodes: SidebarNodeSummary[]
   selectedSidebarNodeId: string | null
   sidebarFooterText: string
+  sidebarLabelDisplayMode: SidebarLabelDisplayMode
+  onToggleSidebarLabelDisplayMode: () => void
   onLibrarySelect: (libraryId: string) => void
   onSidebarNodeSelect: (nodeId: string) => void
 }
@@ -23,6 +26,8 @@ export function AppShellSidebarPane({
   sidebarNodes,
   selectedSidebarNodeId,
   sidebarFooterText,
+  sidebarLabelDisplayMode,
+  onToggleSidebarLabelDisplayMode,
   onLibrarySelect,
   onSidebarNodeSelect,
 }: AppShellSidebarPaneProps) {
@@ -61,6 +66,17 @@ export function AppShellSidebarPane({
               ))}
             </select>
           </label>
+
+          <button
+            className="sidebar-label-mode-toggle"
+            type="button"
+            data-testid="sidebar-label-mode-toggle"
+            aria-label={sidebarLabelDisplayMode === 'full' ? '切换到末段名' : '切换到完整路径'}
+            data-mode={sidebarLabelDisplayMode}
+            onClick={onToggleSidebarLabelDisplayMode}
+          >
+            {sidebarLabelDisplayMode === 'full' ? 'F' : 'L'}
+          </button>
         </header>
 
         <div className="workspace-pane-main sidebar-main-shell" data-slot="fg-sidebar-main">
@@ -86,6 +102,11 @@ export function AppShellSidebarPane({
             <div className="sidebar-tree" role="tree" aria-label="直属媒体节点列表">
               {sidebarNodes.map((node) => {
                 const isActive = node.nodeId === selectedSidebarNodeId
+                const displayLabel = resolveSidebarDisplayLabel(node, sidebarLabelDisplayMode)
+                const tooltipLabel =
+                  sidebarLabelDisplayMode === 'leaf' && node.nodeType === 'folder'
+                    ? node.label
+                    : undefined
 
                 return (
                   <button
@@ -100,12 +121,13 @@ export function AppShellSidebarPane({
                     data-media-source-id={node.mediaSourceId ?? ''}
                     data-has-direct-media-child={node.hasDirectMediaChild ? '1' : '0'}
                     style={{ paddingInlineStart: `${14 + node.depth * 14}px` }}
+                    data-tooltip-label={tooltipLabel}
                     onClick={() => onSidebarNodeSelect(node.nodeId)}
                   >
                     <span className="sidebar-tree-node-rail" aria-hidden="true" />
                     <span className="sidebar-tree-node-dot" aria-hidden="true" />
                     <span className="sidebar-tree-node-copy">
-                      <strong>{node.label}</strong>
+                      <strong>{displayLabel}</strong>
                       <span>
                         {node.nodeType === 'media_source'
                           ? `${node.sourceType ?? 'source'} · ${node.itemCount ?? 0} 项`

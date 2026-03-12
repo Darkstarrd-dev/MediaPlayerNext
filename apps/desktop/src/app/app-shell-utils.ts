@@ -124,6 +124,18 @@ export function resolvePathLeaf(path: string): string {
   return segments[segments.length - 1] ?? path
 }
 
+export function resolveSidebarDisplayLabel(
+  node: SidebarNodeSummary,
+  labelDisplayMode: 'full' | 'leaf',
+): string {
+  if (labelDisplayMode === 'full' || node.nodeType !== 'folder') {
+    return node.label
+  }
+
+  const leaf = node.treePath[node.treePath.length - 1]?.trim()
+  return leaf && leaf.length > 0 ? leaf : node.label
+}
+
 export function resolveItemLocation(item: ItemDetail | null): string {
   if (item === null) {
     return '当前未选中条目'

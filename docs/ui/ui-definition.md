@@ -387,6 +387,8 @@ Sidebar | Main | Metadata
 - 三列中的 `main` 是主要伸缩区
 - 三列中的 `header / footer` 以固定高度和统一基线保持对齐
 - `Sidebar.main` 当前只承载节点树，不再承担导入、刷新、扫描或状态提示
+- `Sidebar.main` 当前在 image 语义下固定支持 `label full/leaf` 双模式切换（默认 `full`）
+- `Sidebar.main` 的 image 目录链当前采用“单链压缩 + 过程路径剔除”，并阻止父目录并入 `media_source` 叶子
 - 导入、扫描、最近动作与错误提示统一收口到 `ImportTaskPanel` 与 `Header Logo` 状态
 - `Main.header` 与 `Metadata.header` 不再保留骨架占位文案，只显示真实上下文标题
 - `Main.main` 当前以缩略图网格为唯一主显示，不再混入说明型卡片
@@ -526,4 +528,6 @@ Sidebar | Main | Metadata
 - `Main.main` 当前已接入滚轮翻页预览：滚轮输入先进入预览态，settle 后再触发真实翻页提交
 - `Main` 翻页链路当前已接入 `ready-commit`：页切换期间保留旧页，待新页 ready 后再 commit 到展示层
 - 缩略图 ensure 当前已接入 `profile` 自适应映射：根据格子尺寸与 `devicePixelRatio` 在 `grid-sm / grid-md / detail-md / detail-lg` 间选择
+- `Sidebar.main` 已补齐 image 模式 `F/L` 标签切换（`full`/`leaf`），默认 `full`
+- `Sidebar.main` 已按源项目口径补齐 image 目录压缩链路：`single-chain compact + procedural prune`，并保留直属媒体父目录节点
 - `Main` 当前已接入 `gap snap`：在 splitter commit、resize、zoom、首次挂载后尝试贴合网格列宽，拖动中不实时吸附，且继续遵守三列最小宽度边界

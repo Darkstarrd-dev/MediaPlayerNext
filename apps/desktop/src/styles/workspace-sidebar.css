@@ -89,6 +89,19 @@
   font: inherit;
 }
 
+.sidebar-label-mode-toggle {
+  min-width: 34px;
+  min-height: 32px;
+  border-radius: 10px;
+  border: 1px solid rgba(119, 99, 71, 0.2);
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--mpx-text-1);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .sidebar-main-shell {
   min-height: 0;
   display: flex;

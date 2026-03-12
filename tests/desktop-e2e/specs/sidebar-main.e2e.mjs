@@ -46,6 +46,7 @@ describe('Sidebar.main 节点语义验收', () => {
 
     const mediaNode = await $(`${selectors.sidebarTreeNode}[data-node-id="${mediaNodeId}"]`)
     const folderNode = await $(`${selectors.sidebarTreeNode}[data-node-id="${folderNodeId}"]`)
+    const sidebarLabelModeToggle = await $(selectors.sidebarLabelModeToggle)
 
     const workspaceRoot = await $(selectors.workspaceRoot)
     await workspaceRoot.waitForDisplayed({ timeout: 30000 })
@@ -85,8 +86,52 @@ describe('Sidebar.main 节点语义验收', () => {
       activeMediaSourceIdBeforeFolderClick,
       'folder selection should not change active media source scope',
     )
+
+    await sidebarLabelModeToggle.waitForDisplayed({ timeout: 30000 })
+    const fullLabel = await readSidebarNodeLabel(folderNodeId)
+    assert.ok(fullLabel.includes('/'), 'default full label should include path separator')
+
+    await sidebarLabelModeToggle.click()
+    await browser.waitUntil(
+      async () => (await sidebarLabelModeToggle.getAttribute('data-mode')) === 'leaf',
+      {
+        timeout: 30000,
+        timeoutMsg: 'Timed out waiting for sidebar label mode to switch to leaf',
+      },
+    )
+
+    const leafLabel = await readSidebarNodeLabel(folderNodeId)
+    assert.ok(leafLabel.length > 0, 'leaf label should not be empty')
+    assert.ok(!leafLabel.includes('/'), 'leaf label should only show segment name')
+    assert.notEqual(leafLabel, fullLabel, 'leaf mode should change folder label text')
+
+    await sidebarLabelModeToggle.click()
+    await browser.waitUntil(
+      async () => (await sidebarLabelModeToggle.getAttribute('data-mode')) === 'full',
+      {
+        timeout: 30000,
+        timeoutMsg: 'Timed out waiting for sidebar label mode to switch back to full',
+      },
+    )
+
+    const fullLabelAfterRestore = await readSidebarNodeLabel(folderNodeId)
+    assert.equal(fullLabelAfterRestore, fullLabel, 'full mode should restore full path label text')
   })
 })
+
+async function readSidebarNodeLabel(nodeId) {
+  const value = await browser.execute(
+    (nodeSelector, targetNodeId) => {
+      const node = document.querySelector(`${nodeSelector}[data-node-id="${targetNodeId}"]`)
+      const label = node?.querySelector('.sidebar-tree-node-copy strong')
+      return label?.textContent?.trim() ?? ''
+    },
+    selectors.sidebarTreeNode,
+    nodeId,
+  )
+
+  return value
+}
 
 async function pickSidebarNodesForAssertion() {
   const snapshots = await browser.execute((nodeSelector) => {

@@ -2,6 +2,7 @@ import type { LibrarySummary, SidebarNodeSummary } from '@mediaplayernext/contra
 import { useCallback } from 'react'
 import type { MediaRepository } from '../repositories/media-repository'
 import { getErrorMessage, resolveLibrarySelection } from './app-shell-utils'
+import { normalizeSidebarImageNodes } from './sidebar-main-image-tree'
 
 export interface SidebarSelection {
   selectedSidebarNodeId: string | null
@@ -112,7 +113,8 @@ export function useAppShellWorkspaceSelection(params: UseAppShellWorkspaceSelect
       setSelectedMediaSourceId(null)
 
       try {
-        const nextNodes = await repository.library.nodes(libraryId)
+        const rawNodes = await repository.library.nodes(libraryId)
+        const nextNodes = normalizeSidebarImageNodes(rawNodes)
         const nextSelection = resolveSidebarSelection(
           nextNodes,
           preferredSidebarNodeId,

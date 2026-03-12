@@ -19,12 +19,14 @@ import { useAppShellWorkspaceSelection } from './use-app-shell-workspace-selecti
 import { useAppShellWorkspaceState } from './use-app-shell-workspace-state'
 import { useAppShellItemData } from './use-app-shell-item-data'
 import { useMediaRepository } from './use-media-repository'
+import type { SidebarLabelDisplayMode } from './sidebar-main-image-tree'
 
 export function AppShell() {
   const repository = useMediaRepository()
   const [importTaskPanelOpen, setImportTaskPanelOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [themeDebugOpen, setThemeDebugOpen] = useState(false)
+  const [sidebarLabelDisplayMode, setSidebarLabelDisplayMode] = useState<SidebarLabelDisplayMode>('full')
   const [settingsPage, setSettingsPage] = useState<AppShellSettingsPage>('ui')
   const [themeDebugPage, setThemeDebugPage] = useState<AppShellThemeDebugPage>('snapshot')
   const {
@@ -327,6 +329,10 @@ export function AppShell() {
           sidebarNodesLoading={sidebarNodesLoading}
           sidebarNodes={sidebarNodes}
           sidebarFooterText={sidebarFooterText}
+          sidebarLabelDisplayMode={sidebarLabelDisplayMode}
+          onToggleSidebarLabelDisplayMode={() => {
+            setSidebarLabelDisplayMode((current) => (current === 'full' ? 'leaf' : 'full'))
+          }}
           onLibrarySelect={handleLibrarySelect}
           onSidebarNodeSelect={handleSidebarNodeSelect}
           selectedLibraryDetail={selectedLibraryDetail}

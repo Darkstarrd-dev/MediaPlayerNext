@@ -16,6 +16,7 @@ import { AppShellMetadataPane } from './app-shell-metadata-pane'
 import { AppShellSidebarPane } from './app-shell-sidebar-pane'
 import type { ThumbnailZoomLevel } from './thumbnail-grid-layout'
 import type { ItemsPageTransitionState } from './use-app-shell-workspace-state'
+import type { SidebarLabelDisplayMode } from './sidebar-main-image-tree'
 
 interface AppShellWorkspaceProps {
   workspaceStyle: CSSProperties
@@ -32,6 +33,8 @@ interface AppShellWorkspaceProps {
   sidebarNodesLoading: boolean
   sidebarNodes: SidebarNodeSummary[]
   sidebarFooterText: string
+  sidebarLabelDisplayMode: SidebarLabelDisplayMode
+  onToggleSidebarLabelDisplayMode: () => void
   onLibrarySelect: (libraryId: string) => void
   onSidebarNodeSelect: (nodeId: string) => void
   selectedLibraryDetail: LibraryDetail | null
@@ -84,6 +87,8 @@ export function AppShellWorkspace(props: AppShellWorkspaceProps) {
     sidebarNodesLoading,
     sidebarNodes,
     sidebarFooterText,
+    sidebarLabelDisplayMode,
+    onToggleSidebarLabelDisplayMode,
     onLibrarySelect,
     onSidebarNodeSelect,
     selectedLibraryDetail,
@@ -137,6 +142,8 @@ export function AppShellWorkspace(props: AppShellWorkspaceProps) {
         sidebarNodes={sidebarNodes}
         selectedSidebarNodeId={selectedSidebarNodeId}
         sidebarFooterText={sidebarFooterText}
+        sidebarLabelDisplayMode={sidebarLabelDisplayMode}
+        onToggleSidebarLabelDisplayMode={onToggleSidebarLabelDisplayMode}
         onLibrarySelect={onLibrarySelect}
         onSidebarNodeSelect={onSidebarNodeSelect}
       />

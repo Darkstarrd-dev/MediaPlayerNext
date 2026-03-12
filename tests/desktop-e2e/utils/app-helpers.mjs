@@ -7,6 +7,7 @@ export const selectors = {
   importAddAndScan: '[data-testid="import-add-and-scan"]',
   workspaceRoot: '[data-testid="workspace-root"]',
   sidebarTreeNode: '[data-testid="sidebar-tree-node"]',
+  sidebarLabelModeToggle: '[data-testid="sidebar-label-mode-toggle"]',
   settingsPanel: '[data-testid="settings-panel"]',
   settingsPageDatabase: '[data-testid="settings-page-database"]',
   settingsPageDatabaseBody: '[data-testid="settings-page-database-body"]',
