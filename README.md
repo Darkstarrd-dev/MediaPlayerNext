@@ -58,8 +58,8 @@ Current usage notes:
 
 If direct access to npm or GitHub fails, use the local proxy:
 
-- `HTTP_PROXY=http://127.0.0.1:2080`
-- `HTTPS_PROXY=http://127.0.0.1:2080`
+- `HTTP_PROXY=http://127.0.0.1:3066`
+- `HTTPS_PROXY=http://127.0.0.1:3066`
 
 ### Bootstrap Commands
 

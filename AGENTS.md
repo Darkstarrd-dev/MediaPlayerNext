@@ -64,10 +64,10 @@ Z:\Playground\CurrentWorking\MediaPlayerNext
 
 ### 代理与网络
 
-- 当前可用本机代理端口：`http://127.0.0.1:2080`
+- 当前可用本机代理端口：`http://127.0.0.1:3066`
 - 需要联网安装依赖时，优先显式设置：
-  - `HTTP_PROXY=http://127.0.0.1:2080`
-  - `HTTPS_PROXY=http://127.0.0.1:2080`
+  - `HTTP_PROXY=http://127.0.0.1:3066`
+  - `HTTPS_PROXY=http://127.0.0.1:3066`
 
 
 ### 绝对路径约束
