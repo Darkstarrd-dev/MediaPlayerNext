@@ -1,0 +1,172 @@
+[data-slot='fg-import-task-ovl'] {
+  background: var(
+    --mpx-slot-fg-import-task-ovl-bg,
+    color-mix(in srgb, var(--mpx-bg-tooltip) var(--mpx-settings-backdrop-opacity, 18%), transparent)
+  );
+  color: var(--mpx-slot-fg-import-task-ovl-text, var(--mpx-slot-fg-import-task-root-text, inherit));
+}
+
+[data-slot='fg-import-task-root'] {
+  width: var(--mpx-slot-fg-import-task-root-width, min(920px, 90vw));
+  height: var(--mpx-slot-fg-import-task-root-height, min(680px, 84vh));
+  max-width: var(--mpx-slot-fg-import-task-root-max-width, 90vw);
+  max-height: var(--mpx-slot-fg-import-task-root-max-height, 84vh);
+  border-color: var(--mpx-slot-fg-import-task-root-border, var(--mpx-large-panel-border-color));
+  background: linear-gradient(
+    var(--mpx-large-panel-fill-angle),
+    var(--mpx-slot-fg-import-task-root-bg, var(--mpx-large-panel-fill-start)),
+    var(--mpx-slot-fg-import-task-root-bg, var(--mpx-large-panel-fill-end))
+  );
+  box-shadow: var(--mpx-slot-fg-import-task-root-shadow, var(--mpx-large-panel-shadow));
+  color: var(--mpx-slot-fg-import-task-root-text, var(--mpx-text-1));
+}
+
+.import-task-panel {
+  border-left: 3px solid
+    var(--mpx-slot-fg-import-task-root-status-border, rgba(40, 95, 100, 0.34));
+  color: var(--mpx-slot-fg-import-task-root-status-text, var(--mpx-slot-fg-import-task-root-text, var(--mpx-text-1)));
+}
+
+.import-task-panel-head {
+  border-bottom-color: var(--mpx-slot-fg-import-task-root-head-border, var(--mpx-large-panel-head-border-color));
+  background: linear-gradient(
+    var(--mpx-large-panel-head-fill-angle),
+    var(--mpx-slot-fg-import-task-root-head-bg, var(--mpx-large-panel-head-fill-start)),
+    var(--mpx-slot-fg-import-task-root-head-bg, var(--mpx-large-panel-head-fill-end))
+  );
+  color: var(--mpx-slot-fg-import-task-root-head-text, var(--mpx-large-panel-head-text));
+}
+
+.import-task-panel-shell {
+  min-height: 0;
+}
+
+.import-task-panel-main {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  background: linear-gradient(
+    var(--mpx-large-panel-main-fill-angle),
+    var(--mpx-slot-fg-import-task-root-main-bg, var(--mpx-large-panel-main-fill-start)),
+    var(--mpx-slot-fg-import-task-root-main-bg, var(--mpx-large-panel-main-fill-end))
+  );
+}
+
+.import-task-panel-close-btn {
+  justify-self: end;
+}
+
+.import-task-panel-summary,
+.import-task-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.import-task-panel-card,
+.import-task-panel-empty {
+  border: 1px solid rgba(119, 99, 71, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 251, 245, 0.78);
+}
+
+.import-task-panel-card {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+}
+
+.import-task-panel-card.compact {
+  padding: 14px;
+}
+
+.import-task-panel-card strong,
+.import-task-panel-empty strong {
+  color: var(--mpx-text-1);
+  font-size: 20px;
+}
+
+.import-task-panel-card p,
+.import-task-panel-empty p {
+  margin: 0;
+  color: var(--mpx-text-2);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.import-task-panel-section {
+  display: grid;
+  gap: 14px;
+}
+
+.import-task-panel-form,
+.import-task-panel-results {
+  display: grid;
+  gap: 12px;
+}
+
+.import-activity-list {
+  display: grid;
+  gap: 12px;
+}
+
+.import-activity-item {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid rgba(119, 99, 71, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 251, 245, 0.78);
+}
+
+.import-activity-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.import-activity-row strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--mpx-text-1);
+  font-size: 18px;
+}
+
+.import-activity-item p {
+  margin: 0;
+  color: var(--mpx-text-2);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.import-activity-time {
+  color: var(--mpx-text-3);
+  font-size: 12px;
+}
+
+.import-task-panel-actions {
+  align-items: stretch;
+}
+
+.import-task-panel-heading h2 {
+  margin-top: 10px;
+}
+
+.import-task-panel-empty {
+  display: grid;
+  gap: 10px;
+  padding: clamp(20px, 4vw, 32px);
+}
+
+.import-task-panel-empty.compact-empty {
+  padding: 18px;
+}
+
+@media (max-width: 1280px) {
+  .import-task-panel-summary,
+  .import-task-panel-grid {
+    grid-template-columns: 1fr;
+  }
+}

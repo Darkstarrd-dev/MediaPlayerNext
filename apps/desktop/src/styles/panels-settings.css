@@ -1,0 +1,226 @@
+.mpx-dialog-panel,
+.subpanel {
+  width: min(100%, var(--mpx-dialog-panel-width));
+  max-width: var(--mpx-dialog-panel-max-width);
+  height: var(--mpx-dialog-panel-height);
+  max-height: var(--mpx-dialog-panel-max-height);
+  border: var(--mpx-dialog-panel-border-width) solid var(--mpx-dialog-panel-border-color);
+  border-radius: var(--mpx-dialog-panel-radius);
+  background: var(--mpx-dialog-panel-bg);
+  box-shadow: var(--mpx-dialog-panel-shadow);
+  padding: var(--mpx-dialog-panel-padding);
+  display: grid;
+  gap: var(--mpx-dialog-panel-gap);
+}
+
+.settings-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: color-mix(
+    in srgb,
+    var(--mpx-bg-tooltip) var(--mpx-settings-backdrop-opacity, 18%),
+    transparent
+  );
+}
+
+.settings-panel {
+  width: min(760px, 92vw);
+  height: min(560px, 82vh);
+}
+
+.settings-panel-shell {
+  min-height: 0;
+}
+
+.settings-panel-side {
+  align-content: start;
+}
+
+.settings-panel-side .mpx-btn {
+  width: 100%;
+}
+
+.settings-panel-main {
+  min-height: 0;
+}
+
+.settings-page-block {
+  display: grid;
+  gap: 16px;
+}
+
+.settings-page-heading {
+  margin-bottom: 4px;
+}
+
+.settings-page-caption {
+  margin: 0;
+  color: var(--mpx-text-2);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.settings-subdialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 52;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: color-mix(in srgb, var(--mpx-bg-tooltip) 20%, transparent);
+}
+
+.settings-confirm-panel {
+  width: min(440px, 92vw);
+}
+
+.settings-confirm-heading {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-confirm-heading h3 {
+  margin: 0;
+}
+
+.settings-confirm-copy {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid rgba(119, 99, 71, 0.16);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--mpx-text-2);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.settings-confirm-actions {
+  display: flex;
+  justify-content: end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.settings-close-btn {
+  justify-self: end;
+}
+
+.settings-manage-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid rgba(119, 99, 71, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 251, 245, 0.82);
+}
+
+.settings-manage-heading {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-manage-heading h3 {
+  margin: 0;
+  color: var(--mpx-text-1);
+  font-size: 20px;
+}
+
+.settings-path-output {
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1px dashed rgba(119, 99, 71, 0.24);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.56);
+  color: var(--mpx-text-1);
+  font-size: 13px;
+  line-height: 1.7;
+  word-break: break-all;
+}
+
+.settings-action-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.settings-inline-note {
+  color: var(--mpx-text-3);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.settings-slider-field {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid rgba(119, 99, 71, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 251, 245, 0.78);
+}
+
+.settings-slider-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: baseline;
+}
+
+.settings-slider-label {
+  color: var(--mpx-text-1);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.settings-slider-value {
+  color: var(--mpx-accent);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.settings-slider-hint {
+  color: var(--mpx-text-2);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.settings-range {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--mpx-accent);
+}
+
+@media (max-width: 1280px) {
+  .settings-panel {
+    width: min(100%, 720px);
+  }
+}
+
+@media (max-width: 960px) {
+  .settings-panel-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-panel-side {
+    padding-bottom: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .settings-mask {
+    padding: 12px;
+  }
+
+  .settings-slider-row {
+    flex-direction: column;
+    align-items: start;
+    gap: 6px;
+  }
+}
