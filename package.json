@@ -32,6 +32,7 @@
     "check:contract-drift": "node .\\scripts\\quality\\check-contract-drift.mjs",
     "check:binary-size": "powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\quality\\check-binary-size.ps1\"",
     "check:gate-durations": "node .\\scripts\\quality\\check-gate-duration-thresholds.mjs",
+    "check:cargo-bloat": "powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\quality\\check-cargo-bloat.ps1\"",
     "check:module-boundaries": "powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\quality\\check-module-boundaries.ps1\"",
     "check:quality:fast": "powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\quality\\run-rust-gates.ps1\" -Layer fast",
     "check:quality:standard": "powershell -NoProfile -ExecutionPolicy Bypass -File \".\\scripts\\quality\\run-rust-gates.ps1\" -Layer standard",

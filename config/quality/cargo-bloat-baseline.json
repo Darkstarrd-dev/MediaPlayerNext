@@ -1,0 +1,9 @@
+{
+  "updatedAt": "2026-03-12T23:30:00",
+  "manifestPath": "src-tauri/Cargo.toml",
+  "bin": "mediaplayernext",
+  "primaryCrate": "mediaplayernext_lib",
+  "maxTextBytes": 14680064,
+  "maxFileBytes": 18874368,
+  "maxPrimaryFilePercent": 38
+}
