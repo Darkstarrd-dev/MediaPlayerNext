@@ -1,0 +1,45 @@
+{
+  "updatedAt": "2026-03-12T23:30:00",
+  "baseline": {
+    "scan": {
+      "firstScanMs": 1800,
+      "rescanMs": 620
+    },
+    "archive": {
+      "indexMs": 900,
+      "entryReadMs": 140
+    },
+    "thumbnail": {
+      "ensureMs": 260
+    },
+    "playback": {
+      "probeMs": 180,
+      "sessionOpenMs": 120
+    },
+    "sidecar": {
+      "pingMs": 45,
+      "healthMs": 80
+    }
+  },
+  "thresholdsPercent": {
+    "scan": {
+      "firstScanMs": 15,
+      "rescanMs": 15
+    },
+    "archive": {
+      "indexMs": 15,
+      "entryReadMs": 20
+    },
+    "thumbnail": {
+      "ensureMs": 15
+    },
+    "playback": {
+      "probeMs": 15,
+      "sessionOpenMs": 20
+    },
+    "sidecar": {
+      "pingMs": 20,
+      "healthMs": 20
+    }
+  }
+}

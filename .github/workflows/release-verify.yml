@@ -29,3 +29,6 @@ jobs:
 
       - name: release verify
         run: npm run check:release
+
+      - name: go-no-go report
+        run: npm run report:go-no-go

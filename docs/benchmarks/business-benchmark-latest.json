@@ -1,0 +1,25 @@
+{
+  "recordedAt": "2026-03-12T23:30:00",
+  "machine": "windows-dev-main",
+  "metrics": {
+    "scan": {
+      "firstScanMs": 1720,
+      "rescanMs": 600
+    },
+    "archive": {
+      "indexMs": 860,
+      "entryReadMs": 132
+    },
+    "thumbnail": {
+      "ensureMs": 240
+    },
+    "playback": {
+      "probeMs": 168,
+      "sessionOpenMs": 112
+    },
+    "sidecar": {
+      "pingMs": 40,
+      "healthMs": 72
+    }
+  }
+}

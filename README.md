@@ -172,6 +172,7 @@ Current Tauri protocol DB rule:
 - `npm run check:binary-size`
 - `npm run check:gate-durations`
 - `npm run check:cargo-bloat`
+- `npm run check:benchmark-thresholds`
 - `npm run report:go-no-go`
   - module size and boundary baseline gate
 
@@ -184,7 +185,7 @@ Layer highlights:
 - `heavy`
   - `standard` + `nextest x3`, `coverage`, `deny`, `audit`, `udeps`
 - `release`
-  - `heavy` + `check:release` + desktop e2e doctor + desktop e2e
+  - `heavy` + `check:release` + desktop e2e doctor + desktop e2e + go-no-go report
 
 Artifacts:
 
@@ -361,7 +362,13 @@ Current validated tool versions for the Rust `1.88.0` project baseline:
 26. Go/No-Go 自动报告脚本已落地
        - 新增 `scripts/quality/generate-go-no-go-report.mjs`
        - 新增命令 `npm run report:go-no-go`
+       - 已接入 `npm run check:quality:release`
        - 当前产物：`data/quality-gates/20260312-231318/go-no-go/go-no-go-report.md`
+27. 业务路径 benchmark compare + threshold 脚本已落地
+       - 新增 `scripts/quality/check-business-benchmark-thresholds.mjs`
+       - 新增 `config/quality/business-benchmark-thresholds.json`
+       - 新增命令 `npm run check:benchmark-thresholds`
+       - 当前产物：`data/quality-gates/20260312-232220/business-benchmark-thresholds/business-benchmark-thresholds-summary.json`
 
 #### 待拆分 / 待完成
 
@@ -372,4 +379,4 @@ Current validated tool versions for the Rust `1.88.0` project baseline:
 2. 完善发布增强验收
    - installer/upgrade replay
    - signing/offline smoke
-3. 补业务路径 benchmark compare + threshold，并把 Go/No-Go 自动报告接入 release 流水线
+3. 持续校准业务路径 benchmark baseline 样本与阈值口径

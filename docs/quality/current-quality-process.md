@@ -142,6 +142,8 @@ P2 当前用于暴露“不会立刻打断功能，但会持续侵蚀可维护�
   - 对应 `scripts/quality/check-gate-duration-thresholds.mjs`
 - `npm run check:cargo-bloat`
   - 对应 `scripts/quality/check-cargo-bloat.ps1`
+- `npm run check:benchmark-thresholds`
+  - 对应 `scripts/quality/check-business-benchmark-thresholds.mjs`
 - `npm run report:go-no-go`
   - 对应 `scripts/quality/generate-go-no-go-report.mjs`
 - `docs/benchmarks/`
@@ -155,6 +157,7 @@ P2 当前用于暴露“不会立刻打断功能，但会持续侵蚀可维护�
 - 二进制体积基线治理：`config/quality/binary-size-baseline.json`
 - 质量门禁耗时阈值治理：`config/quality/gate-duration-baseline.json`
 - 二进制体积结构治理：`config/quality/cargo-bloat-baseline.json`
+- 业务路径 benchmark 阈值治理：`config/quality/business-benchmark-thresholds.json`
 - duplicate deps 基线治理：`config/quality/duplicate-deps-baseline.json`
 - `cargo +nightly udeps` 未使用依赖检查
 - benchmark baseline 文档化沉淀
@@ -202,7 +205,7 @@ P2 当前用于暴露“不会立刻打断功能，但会持续侵蚀可维护�
   - 命令：`npm run check:quality` 或 `npm run check:quality:standard`
 - `heavy`：高成本全量质量检查
   - 命令：`npm run check:quality:heavy`
-- `release`：发布级链路（heavy + release verify + desktop e2e doctor + desktop e2e）
+- `release`：发布级链路（heavy + release verify + desktop e2e doctor + desktop e2e + go-no-go report）
   - 命令：`npm run check:quality:release`
 - `legacy`：旧入口兼容（不建议日常使用）
   - 命令：`npm run check:quality:legacy`
@@ -327,8 +330,8 @@ P2 当前用于暴露“不会立刻打断功能，但会持续侵蚀可维护�
 以下项目已经明确是缺口，但尚未形成当前仓库的强制门禁：
 
 - 已落库首版 `.github` workflows 与 PR 模板，但尚未收敛到完整发布治理（阈值、报告、升级回放）
-- 已新增质量门禁耗时 compare + threshold，但业务路径 benchmark 阈值门禁仍未脚本化
-- 已新增 Go/No-Go 自动报告脚本与模板，但尚未强制接入 `check:quality:release` 流水线
+- 业务 benchmark 当前仍以手工更新 `latest` 样本为主，尚未形成自动采样管线
+- Go/No-Go 报告已自动生成，但尚未补 installer/upgrade/smoke 结果的自动汇总字段
 - 还没有离线安装、升级回放、签名等 release 级闭环
 
 ## 9. 当前阶段推进顺序
