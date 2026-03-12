@@ -263,7 +263,14 @@ Current validated tool versions for the Rust `1.88.0` project baseline:
    - `config/quality/module-boundaries-baseline.json` 已移除失效项 `src-tauri/src/runtime_storage.rs`
    - `module-boundaries` 的 `missingFrozenFileCount` 已从 `1` 归零到 `0`
    - `frozenDebtFileCount` 已从 `7` 降到 `6`
-7. 本轮质量门禁结果
+7. `subtitle_sidecar` 已完成目录化拆分并退出 frozen debt
+   - `src-tauri/src/subtitle_sidecar.rs` 已拆为：
+     - `src-tauri/src/subtitle_sidecar/mod.rs`
+     - `src-tauri/src/subtitle_sidecar/paths.rs`
+     - `src-tauri/src/subtitle_sidecar/wire.rs`
+     - `src-tauri/src/subtitle_sidecar/tests.rs`
+   - `debt-delta totalOccurrenceCount` 已从 `392` 继续降到 `367`
+8. 本轮质量门禁结果
     - `npm run build:web`：通过
     - `npm run check`：通过
     - `npm run check:module-boundaries`：通过
@@ -272,20 +279,17 @@ Current validated tool versions for the Rust `1.88.0` project baseline:
 
 #### 待拆分 / 待完成
 
-1. 继续拆分 `src-tauri/src/lib.rs`（当前优先）
-   - 重点继续切 `tauri::command` 注册与命令实现分层，降低 `tauriCommandAnnotations` 与文件体积
-2. 继续处理 Rust frozen debt 文件
-   - `src-tauri/src/subtitle_sidecar.rs`
+1. 继续处理 Rust frozen debt 文件（当前优先）
    - `crates/app-core/src/archive.rs`
    - `crates/app-core/src/asset.rs`
    - `crates/app-core/src/scan.rs`
    - `crates/app-core/src/playback.rs`
    - `crates/app-core/src/thumbnail.rs`
-3. 继续拆分 `src-tauri/src/subtitle_sidecar.rs`
-   - 当前 Rust adapter 最大 frozen 文件之一（959 行），可按命令域与运行时封装继续切分
-4. 补齐缺失门禁项
+2. 收口新拆分文件的 warning
+   - `src-tauri/src/subtitle_sidecar/tests.rs` 当前 `line-warning`（403 行）
+3. 补齐缺失门禁项
    - `capabilities drift`
    - `contract drift`
-5. 落地 CI 分层流水线与发布增强验收
+4. 落地 CI 分层流水线与发布增强验收
    - 分层工作流：`fast / standard / heavy / release`
    - 发布侧补充：installer/upgrade replay、signing/offline smoke
