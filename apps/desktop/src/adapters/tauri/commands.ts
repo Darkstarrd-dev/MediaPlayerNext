@@ -4,8 +4,8 @@ import type {
   ArchiveEntrySummary,
   ArchiveNormalizeResult,
   ItemDetail,
-  ItemListEntry,
   ItemsListQuery,
+  ItemsListResult,
   LibraryDetail,
   SidebarNodeSummary,
   LibrarySummary,
@@ -138,8 +138,8 @@ export async function invokeScanSnapshot(libraryId: string): Promise<TaskProgres
   return invoke<TaskProgress>('scan_snapshot_command', withArgAliases({ libraryId }))
 }
 
-export async function invokeItemsList(query: ItemsListQuery): Promise<ItemListEntry[]> {
-  return invoke<ItemListEntry[]>('items_list_command', withArgAliases(query))
+export async function invokeItemsList(query: ItemsListQuery): Promise<ItemsListResult> {
+  return invoke<ItemsListResult>('items_list_command', withArgAliases(query))
 }
 
 export async function invokeWorkspaceCursorRead(): Promise<WorkspaceCursor | null> {

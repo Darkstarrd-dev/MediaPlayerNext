@@ -10,10 +10,10 @@ interface UseAppShellWorkspaceNavigationParams {
     mediaSourceId: string | null
     requestedPageIndex: number
     preferredAssetId?: string | null
+    includeWorkspaceSummary?: boolean
   }) => Promise<void>
   setSelectedSidebarNodeId: (value: string | null) => void
   setSelectedMediaSourceId: (value: string | null) => void
-  setItemsPageIndex: (value: number) => void
 }
 
 export function useAppShellWorkspaceNavigation(params: UseAppShellWorkspaceNavigationParams) {
@@ -24,7 +24,6 @@ export function useAppShellWorkspaceNavigation(params: UseAppShellWorkspaceNavig
     loadLibrarySurface,
     setSelectedSidebarNodeId,
     setSelectedMediaSourceId,
-    setItemsPageIndex,
   } = params
 
   const handleLibrarySelect = useCallback(
@@ -53,14 +52,14 @@ export function useAppShellWorkspaceNavigation(params: UseAppShellWorkspaceNavig
       const nextMediaSourceId = matchedNode.mediaSourceId ?? null
       setSelectedSidebarNodeId(nodeId)
       setSelectedMediaSourceId(nextMediaSourceId)
-      setItemsPageIndex(1)
       void loadLibrarySurface({
         libraryId: selectedLibraryId,
         mediaSourceId: nextMediaSourceId,
         requestedPageIndex: 1,
+        includeWorkspaceSummary: false,
       })
     },
-    [loadLibrarySurface, selectedLibraryId, setItemsPageIndex, setSelectedMediaSourceId, setSelectedSidebarNodeId, sidebarNodes],
+    [loadLibrarySurface, selectedLibraryId, setSelectedMediaSourceId, setSelectedSidebarNodeId, sidebarNodes],
   )
 
   return {

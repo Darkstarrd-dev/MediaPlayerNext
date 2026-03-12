@@ -109,6 +109,21 @@
   color: var(--mpx-slot-fg-main-footer-pagination-text, inherit);
 }
 
+.main-footer-transition {
+  margin-left: 6px;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--mpx-text-3);
+}
+
+.main-footer-transition[data-state='loading-next-page'] {
+  color: #9b5f1f;
+}
+
+.main-footer-transition[data-state='committing'] {
+  color: #236b4b;
+}
+
 .metadata-header {
   --mpx-metadata-header-button-border-effective: var(
     --mpx-slot-fg-meta-header-button-border,

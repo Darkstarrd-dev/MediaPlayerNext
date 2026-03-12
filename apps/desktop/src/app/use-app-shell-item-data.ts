@@ -1,13 +1,17 @@
 import type { ItemDetail, ItemListEntry } from '@mediaplayernext/contracts'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import type { MediaRepository } from '../repositories/media-repository'
 import { getErrorMessage } from './app-shell-utils'
+import { resolveThumbnailProfileForGrid } from './thumbnail-grid-enhancements'
+
+const THUMBNAIL_ENSURE_MAX_CONCURRENT = 2
 
 interface UseAppShellItemDataParams {
   repository: MediaRepository
   itemDetailRequestIdRef: { current: number }
   selectedAssetId: string | null
   items: ItemListEntry[]
+  thumbnailCellSizePx: number
   setSelectedItemDetail: (value: ItemDetail | null) => void
   setItemDetailError: (value: string | null) => void
   setItemDetailLoading: (value: boolean) => void
@@ -22,11 +26,14 @@ export function useAppShellItemData(params: UseAppShellItemDataParams) {
     itemDetailRequestIdRef,
     selectedAssetId,
     items,
+    thumbnailCellSizePx,
     setSelectedItemDetail,
     setItemDetailError,
     setItemDetailLoading,
     setItemThumbnailUrls,
   } = params
+  const thumbnailEnsureRequestIdRef = useRef(0)
+  const thumbnailEnsureInFlightRef = useRef(new Map<string, Promise<string>>())
 
   useEffect(() => {
     if (selectedAssetId === null) {
@@ -75,11 +82,14 @@ export function useAppShellItemData(params: UseAppShellItemDataParams) {
 
   useEffect(() => {
     if (items.length === 0) {
+      thumbnailEnsureRequestIdRef.current += 1
       setItemThumbnailUrls({})
       return
     }
 
-    let disposed = false
+    const requestId = thumbnailEnsureRequestIdRef.current + 1
+    thumbnailEnsureRequestIdRef.current = requestId
+    const thumbnailProfile = resolveThumbnailProfileForGrid(thumbnailCellSizePx)
     const visibleAssetIds = new Set(items.map((item) => item.assetId))
 
     setItemThumbnailUrls((current) => {
@@ -92,8 +102,10 @@ export function useAppShellItemData(params: UseAppShellItemDataParams) {
       return next
     })
 
+    const isCurrentRequest = () => thumbnailEnsureRequestIdRef.current === requestId
+
     const applyThumbnailUrl = (assetId: string, thumbnailUrl: string) => {
-      if (disposed) {
+      if (!isCurrentRequest()) {
         return
       }
 
@@ -109,24 +121,70 @@ export function useAppShellItemData(params: UseAppShellItemDataParams) {
       })
     }
 
+    const resolveThumbnailKey = (assetId: string): Promise<string> => {
+      const inflightKey = `${assetId}:${thumbnailProfile}`
+      const inFlight = thumbnailEnsureInFlightRef.current.get(inflightKey)
+      if (inFlight) {
+        return inFlight
+      }
+
+      const request = repository.thumbnail
+        .ensure(assetId, thumbnailProfile)
+        .then((ensuredThumbnail) => ensuredThumbnail.thumbnailKey)
+        .finally(() => {
+          const currentRequest = thumbnailEnsureInFlightRef.current.get(inflightKey)
+          if (currentRequest === request) {
+            thumbnailEnsureInFlightRef.current.delete(inflightKey)
+          }
+        })
+
+      thumbnailEnsureInFlightRef.current.set(inflightKey, request)
+      return request
+    }
+
+    const pendingAssetIds = items
+      .filter(
+        (item) =>
+          item.thumbnailKey == null ||
+          item.thumbnailKey.length === 0 ||
+          thumbnailProfile !== 'grid-md',
+      )
+      .map((item) => item.assetId)
+
+    const workerCount = Math.min(THUMBNAIL_ENSURE_MAX_CONCURRENT, pendingAssetIds.length)
+    const workers = Array.from(
+      {
+        length: workerCount,
+      },
+      async () => {
+        while (pendingAssetIds.length > 0 && isCurrentRequest()) {
+          const assetId = pendingAssetIds.shift()
+          if (!assetId) {
+            return
+          }
+
+          try {
+            const thumbnailKey = await resolveThumbnailKey(assetId)
+            applyThumbnailUrl(assetId, repository.urls.thumbnail(thumbnailKey))
+          } catch {
+            // ignore missing thumbnail and keep placeholder
+          }
+        }
+      },
+    )
+
     for (const item of items) {
       if (item.thumbnailKey) {
         applyThumbnailUrl(item.assetId, repository.urls.thumbnail(item.thumbnailKey))
-        continue
       }
-
-      void repository.thumbnail
-        .ensure(item.assetId, 'grid-md')
-        .then((ensuredThumbnail) => {
-          applyThumbnailUrl(item.assetId, repository.urls.thumbnail(ensuredThumbnail.thumbnailKey))
-        })
-        .catch(() => {
-          // ignore missing thumbnail and keep placeholder
-        })
     }
+
+    void Promise.all(workers)
 
     return () => {
-      disposed = true
+      if (thumbnailEnsureRequestIdRef.current === requestId) {
+        thumbnailEnsureRequestIdRef.current += 1
+      }
     }
-  }, [items, repository, setItemThumbnailUrls])
+  }, [items, repository, setItemThumbnailUrls, thumbnailCellSizePx])
 }

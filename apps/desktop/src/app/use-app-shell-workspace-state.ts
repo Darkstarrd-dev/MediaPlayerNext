@@ -9,6 +9,8 @@ import type {
 } from '@mediaplayernext/contracts'
 import { useCallback, useRef, useState } from 'react'
 
+export type ItemsPageTransitionState = 'idle' | 'loading-next-page' | 'committing'
+
 export function useAppShellWorkspaceState() {
   const libraryLoadRequestIdRef = useRef(0)
   const itemDetailRequestIdRef = useRef(0)
@@ -28,7 +30,10 @@ export function useAppShellWorkspaceState() {
   const [workspaceError, setWorkspaceError] = useState<string | null>(null)
   const [items, setItems] = useState<ItemListEntry[]>([])
   const [itemsPageIndex, setItemsPageIndex] = useState(1)
+  const [itemsTargetPageIndex, setItemsTargetPageIndex] = useState(1)
   const [itemsHasNextPage, setItemsHasNextPage] = useState(false)
+  const [itemsPageTransitionState, setItemsPageTransitionState] =
+    useState<ItemsPageTransitionState>('idle')
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null)
   const [selectedItemDetail, setSelectedItemDetail] = useState<ItemDetail | null>(null)
   const [itemDetailLoading, setItemDetailLoading] = useState(false)
@@ -50,7 +55,9 @@ export function useAppShellWorkspaceState() {
     setWorkspaceHydrated(false)
     setItems([])
     setItemsPageIndex(1)
+    setItemsTargetPageIndex(1)
     setItemsHasNextPage(false)
+    setItemsPageTransitionState('idle')
     setSelectedAssetId(null)
     setSelectedItemDetail(null)
     setItemDetailError(null)
@@ -91,8 +98,12 @@ export function useAppShellWorkspaceState() {
     setItems,
     itemsPageIndex,
     setItemsPageIndex,
+    itemsTargetPageIndex,
+    setItemsTargetPageIndex,
     itemsHasNextPage,
     setItemsHasNextPage,
+    itemsPageTransitionState,
+    setItemsPageTransitionState,
     selectedAssetId,
     setSelectedAssetId,
     selectedItemDetail,

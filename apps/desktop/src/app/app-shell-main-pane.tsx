@@ -1,11 +1,12 @@
 import type { ItemListEntry, LibraryDetail } from '@mediaplayernext/contracts'
-import type { CSSProperties } from 'react'
+import type { CSSProperties, WheelEvent as ReactWheelEvent } from 'react'
 import { resolvePathLeaf } from './app-shell-utils'
 import {
   THUMBNAIL_ZOOM_LEVELS,
   toThumbnailZoomLevel,
   type ThumbnailZoomLevel,
 } from './thumbnail-grid-layout'
+import type { ItemsPageTransitionState } from './use-app-shell-workspace-state'
 
 interface AppShellMainPaneProps {
   selectedLibraryId: string | null
@@ -22,6 +23,8 @@ interface AppShellMainPaneProps {
   mainFooterPrimary: string
   mainFooterSecondary: string
   mainFooterPageLabel: string
+  mainFooterTransitionLabel: string | null
+  pageTransitionState: ItemsPageTransitionState
   itemsHasNextPage: boolean
   itemsPageIndex: number
   setMainGridElement: (element: HTMLDivElement | null) => void
@@ -30,6 +33,7 @@ interface AppShellMainPaneProps {
   onThumbnailError: (assetId: string) => void
   onGoPreviousItemsPage: () => void
   onGoNextItemsPage: () => void
+  onMainGridWheel: (event: ReactWheelEvent<HTMLDivElement>) => void
 }
 
 export function AppShellMainPane({
@@ -47,6 +51,8 @@ export function AppShellMainPane({
   mainFooterPrimary,
   mainFooterSecondary,
   mainFooterPageLabel,
+  mainFooterTransitionLabel,
+  pageTransitionState,
   itemsHasNextPage,
   itemsPageIndex,
   setMainGridElement,
@@ -55,6 +61,7 @@ export function AppShellMainPane({
   onThumbnailError,
   onGoPreviousItemsPage,
   onGoNextItemsPage,
+  onMainGridWheel,
 }: AppShellMainPaneProps) {
   return (
     <section className="app-frame app-main-root" data-slot="fg-main-root">
@@ -83,7 +90,13 @@ export function AppShellMainPane({
           </label>
         </header>
 
-        <div ref={setMainGridElement} className="workspace-pane-main main-pane-main" data-slot="fg-main-main">
+        <div
+          ref={setMainGridElement}
+          className="workspace-pane-main main-pane-main"
+          data-slot="fg-main-main"
+          data-page-transition={pageTransitionState}
+          onWheel={onMainGridWheel}
+        >
           {selectedLibraryId === null ? (
             <div className="workspace-stage">
               <span className="workspace-label">主工作区</span>
@@ -163,6 +176,11 @@ export function AppShellMainPane({
               Next
             </button>
           </div>
+          {mainFooterTransitionLabel === null ? null : (
+            <span className="main-footer-transition" data-state={pageTransitionState}>
+              {mainFooterTransitionLabel}
+            </span>
+          )}
         </footer>
       </section>
     </section>

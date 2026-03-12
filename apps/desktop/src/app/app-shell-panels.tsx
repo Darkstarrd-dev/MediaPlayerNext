@@ -2,6 +2,8 @@ import type { LibraryDetail, LibrarySummary } from '@mediaplayernext/contracts'
 import { AppShellClearDatabaseDialog } from './app-shell-clear-database-dialog'
 import { AppShellSettingsPanel } from './app-shell-settings-panel'
 import type { AppShellDatabaseActionKind, AppShellSettingsPage } from './app-shell-settings-types'
+import { AppShellThemeDebugPanel } from './app-shell-theme-debug-panel'
+import type { AppShellThemeDebugPage } from './app-shell-theme-debug-types'
 import { ImportTaskPanel } from './ImportTaskPanel'
 
 interface ImportActivityViewModel {
@@ -16,7 +18,9 @@ interface ImportActivityViewModel {
 interface AppShellPanelsProps {
   importTaskPanelOpen: boolean
   settingsOpen: boolean
+  themeDebugOpen: boolean
   settingsPage: AppShellSettingsPage
+  themeDebugPage: AppShellThemeDebugPage
   importRootPath: string
   actionPendingLabel: string | null
   actionMessage: string | null
@@ -52,7 +56,9 @@ interface AppShellPanelsProps {
   onAddLibrary: () => void
   onAddAndScan: () => void
   onSettingsClose: () => void
+  onThemeDebugClose: () => void
   onSettingsPageChange: (page: AppShellSettingsPage) => void
+  onThemeDebugPageChange: (page: AppShellThemeDebugPage) => void
   onSettingsBackdropOpacityChange: (value: number) => void
   onLayoutGapScaleCoeffChange: (value: number) => void
   onPaneInnerGapScaleCoeffChange: (value: number) => void
@@ -69,7 +75,9 @@ export function AppShellPanels(props: AppShellPanelsProps) {
   const {
     importTaskPanelOpen,
     settingsOpen,
+    themeDebugOpen,
     settingsPage,
+    themeDebugPage,
     importRootPath,
     actionPendingLabel,
     actionMessage,
@@ -105,7 +113,9 @@ export function AppShellPanels(props: AppShellPanelsProps) {
     onAddLibrary,
     onAddAndScan,
     onSettingsClose,
+    onThemeDebugClose,
     onSettingsPageChange,
+    onThemeDebugPageChange,
     onSettingsBackdropOpacityChange,
     onLayoutGapScaleCoeffChange,
     onPaneInnerGapScaleCoeffChange,
@@ -169,6 +179,17 @@ export function AppShellPanels(props: AppShellPanelsProps) {
         onRequestClearDatabase={onRequestClearDatabase}
         onPickDatabaseDirectory={onPickDatabaseDirectory}
         onPickThumbnailDirectory={onPickThumbnailDirectory}
+      />
+
+      <AppShellThemeDebugPanel
+        open={themeDebugOpen}
+        themeDebugPage={themeDebugPage}
+        layoutGapScaleCoeff={layoutGapScaleCoeff}
+        splitterWidthScaleCoeff={splitterWidthScaleCoeff}
+        onClose={onThemeDebugClose}
+        onThemeDebugPageChange={onThemeDebugPageChange}
+        onLayoutGapScaleCoeffChange={onLayoutGapScaleCoeffChange}
+        onSplitterWidthScaleCoeffChange={onSplitterWidthScaleCoeffChange}
       />
 
       <AppShellClearDatabaseDialog

@@ -2,8 +2,9 @@ use app_core::archive::{
     archive_snapshot, normalize_archive_source, normalize_archive_status,
     resolve_archive_entry_location, ArchiveNormalizeSummary,
 };
-use app_core::asset::{asset_snapshot_for_library, resolve_asset, AssetResolution};
-use app_core::content::asset_snapshot_for_media_source;
+use app_core::asset::{resolve_asset, AssetResolution};
+use anyhow::anyhow;
+use rusqlite::{named_params, Connection};
 use app_core::thumbnail::{ensure_thumbnail_for_asset, parse_thumbnail_profile};
 use serde::Serialize;
 use shared_model::{
@@ -29,6 +30,13 @@ pub struct ItemListEntryPayload {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ItemsListPayload {
+    items: Vec<ItemListEntryPayload>,
+    has_next_page: bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ItemDetailPayload {
     asset_id: String,
     source_kind: String,
@@ -43,101 +51,55 @@ pub struct ItemDetailPayload {
 }
 
 #[tauri::command]
-pub fn items_list_command(
+pub async fn items_list_command(
     app: tauri::AppHandle,
     library_id: String,
     media_source_id: Option<String>,
     source_id: Option<String>,
     page: Option<u32>,
     page_size: Option<u32>,
-) -> CommandResult<Vec<ItemListEntryPayload>> {
-    crate::with_command_environment(&app, |environment| {
-        let repositories = environment.database.repositories();
-        let library_id = LibraryId(library_id);
-        let legacy_source_id = source_id.clone();
-        let resolved_media_source_id = match media_source_id {
-            Some(value) => Some(MediaSourceId(value)),
-            None => match source_id {
-                Some(value) => app_core::ports::MediaSourceRepository::get_by_backing_source(
-                    &repositories,
-                    &SourceId(value.clone()),
-                )?
-                .map(|record| record.id),
-                None => None,
-            },
-        };
-
-        let selected_media_source_id = resolved_media_source_id
-            .as_ref()
-            .map(|value| value.0.clone());
-
-        let filtered_snapshot = match resolved_media_source_id {
-            Some(media_source_id) => asset_snapshot_for_media_source(
+) -> CommandResult<ItemsListPayload> {
+    let join_result = tauri::async_runtime::spawn_blocking(move || {
+        crate::with_command_environment(&app, |environment| {
+            let repositories = environment.database.repositories();
+            let library_id = LibraryId(library_id);
+            let selected_media_source_id = resolve_selected_media_source_id(
                 &repositories,
-                &repositories,
-                &repositories,
-                &repositories,
-                &repositories,
-                &media_source_id,
-            )?,
-            None => {
-                let snapshot = asset_snapshot_for_library(
-                    &repositories,
-                    &repositories,
-                    &repositories,
-                    &repositories,
-                    &library_id,
-                )?;
+                &library_id,
+                media_source_id.as_deref(),
+                source_id.as_deref(),
+            )?;
 
-                match legacy_source_id {
-                    Some(expected_source_id) => snapshot
-                        .into_iter()
-                        .filter(|item| item.source_id == expected_source_id)
-                        .collect::<Vec<_>>(),
-                    None => snapshot,
-                }
-            }
-        };
-
-        let offset = page
-            .zip(page_size)
-            .map(|(page_value, page_size_value)| {
-                page_value.saturating_sub(1) as usize * page_size_value as usize
-            })
-            .unwrap_or(0);
-        let limit = page_size
-            .map(|value| value as usize)
-            .unwrap_or(filtered_snapshot.len());
-
-        filtered_snapshot
-            .into_iter()
-            .skip(offset)
-            .take(limit)
-            .map(|item| {
-                let thumbnail_key =
-                    app_core::ports::ThumbnailRepository::get_ready_by_asset_profile(
-                        &repositories,
-                        &AssetId(item.asset_id.clone()),
-                        crate::SIDEBAR_THUMBNAIL_PROFILE,
-                    )?
-                    .map(|record| record.thumbnail_key.0);
-
-                Ok(ItemListEntryPayload {
-                    thumbnail_key,
-                    asset_id: item.asset_id,
-                    source_kind: item.source_kind,
-                    source_ref_id: item.source_ref_id,
-                    library_id: item.library_id,
-                    media_source_id: selected_media_source_id.clone(),
-                    source_id: item.source_id,
-                    archive_id: item.archive_id,
-                    entry_path: item.entry_path,
-                    mime: item.mime,
+            let offset = page
+                .zip(page_size)
+                .map(|(page_value, page_size_value)| {
+                    page_value.saturating_sub(1) as i64 * i64::from(page_size_value.max(1))
                 })
-            })
-            .collect()
+                .unwrap_or(0);
+            let limit = page_size.map(|value| i64::from(value.max(1))).unwrap_or(-1);
+
+            query_items_page(
+                environment.database.connection(),
+                &library_id.0,
+                selected_media_source_id.as_deref(),
+                source_id.as_deref(),
+                offset,
+                limit,
+                crate::SIDEBAR_THUMBNAIL_PROFILE,
+            )
+        })
     })
-    .map_err(|error| crate::map_backend_command_error("items_list_command", "items", error))
+    .await;
+
+    let result = join_result.map_err(|error| {
+        crate::map_backend_command_error(
+            "items_list_command",
+            "items",
+            anyhow!("items_list_command join failed: {error}"),
+        )
+    })?;
+
+    result.map_err(|error| crate::map_backend_command_error("items_list_command", "items", error))
 }
 
 #[tauri::command]
@@ -273,27 +235,158 @@ pub fn archive_normalize_status_command(
 }
 
 #[tauri::command]
-pub fn thumbnail_ensure_command(
+pub async fn thumbnail_ensure_command(
     app: tauri::AppHandle,
     asset_id: String,
     profile: String,
 ) -> CommandResult<app_core::thumbnail::ThumbnailEnsureSummary> {
-    crate::with_command_environment(&app, |environment| {
-        let repositories = environment.database.repositories();
-        ensure_thumbnail_for_asset(
-            &repositories,
-            &repositories,
-            &repositories,
-            &repositories,
-            &repositories,
-            &repositories,
-            &environment.thumbnail_cache_root,
-            &AssetId(asset_id),
-            parse_thumbnail_profile(&profile)?,
-        )
+    let join_result = tauri::async_runtime::spawn_blocking(move || {
+        crate::with_command_environment(&app, |environment| {
+            let repositories = environment.database.repositories();
+            ensure_thumbnail_for_asset(
+                &repositories,
+                &repositories,
+                &repositories,
+                &repositories,
+                &repositories,
+                &repositories,
+                &environment.thumbnail_cache_root,
+                &AssetId(asset_id),
+                parse_thumbnail_profile(&profile)?,
+            )
+        })
     })
-    .map_err(|error| {
-        crate::map_backend_command_error("thumbnail_ensure_command", "thumbnail", error)
+    .await;
+
+    let result = join_result.map_err(|error| {
+        crate::map_backend_command_error(
+            "thumbnail_ensure_command",
+            "thumbnail",
+            anyhow!("thumbnail_ensure_command join failed: {error}"),
+        )
+    })?;
+
+    result
+        .map_err(|error| crate::map_backend_command_error("thumbnail_ensure_command", "thumbnail", error))
+}
+
+fn resolve_selected_media_source_id(
+    repositories: &impl app_core::ports::MediaSourceRepository,
+    library_id: &LibraryId,
+    media_source_id: Option<&str>,
+    source_id: Option<&str>,
+) -> anyhow::Result<Option<String>> {
+    if let Some(value) = media_source_id {
+        return Ok(Some(value.to_string()));
+    }
+
+    let Some(source_id) = source_id else {
+        return Ok(None);
+    };
+
+    let matched = app_core::ports::MediaSourceRepository::list_by_library(repositories, library_id)?
+        .into_iter()
+        .find(|record| record.backing_source_id.as_ref().map(|value| value.0.as_str()) == Some(source_id));
+
+    Ok(matched.map(|record| record.id.0))
+}
+
+fn query_items_page(
+    connection: &Connection,
+    library_id: &str,
+    media_source_id: Option<&str>,
+    source_id: Option<&str>,
+    offset: i64,
+    limit: i64,
+    profile: &str,
+) -> anyhow::Result<ItemsListPayload> {
+    let query_limit = if limit > 0 { limit + 1 } else { limit };
+    let mut statement = connection.prepare(
+        "
+        select
+          a.id as asset_id,
+          a.source_kind,
+          a.source_ref_id,
+          ms.library_id,
+          ms.id as media_source_id,
+          coalesce(
+            case
+              when a.source_kind = 'archive_entry' then ar.source_id
+              else a.source_ref_id
+            end,
+            a.source_ref_id
+          ) as source_id,
+          ar.id as archive_id,
+          ae.entry_path,
+          a.mime,
+          (
+            select t.thumbnail_key
+            from thumbnails t
+            where t.asset_id = a.id
+              and t.profile = :profile
+              and t.state = 'ready'
+            order by t.updated_at desc
+            limit 1
+          ) as thumbnail_key
+        from image_items i
+        inner join media_sources ms on ms.id = i.media_source_id
+        inner join media_assets a on a.id = i.asset_id
+        left join archive_entries ae
+          on a.source_kind = 'archive_entry'
+         and ae.id = a.source_ref_id
+        left join archives ar on ar.id = ae.archive_id
+        where ms.library_id = :library_id
+          and ms.exists_flag = 1
+          and i.hidden_flag = 0
+          and (:media_source_id is null or ms.id = :media_source_id)
+          and (
+            :source_id is null
+            or (a.source_kind = 'file' and a.source_ref_id = :source_id)
+            or (a.source_kind = 'archive_entry' and ar.source_id = :source_id)
+          )
+        order by ms.absolute_path asc, i.ordinal asc, i.id asc
+        limit :limit offset :offset
+        ",
+    )?;
+
+    let rows = statement.query_map(
+        named_params! {
+            ":library_id": library_id,
+            ":media_source_id": media_source_id,
+            ":source_id": source_id,
+            ":profile": profile,
+            ":limit": query_limit,
+            ":offset": offset,
+        },
+        |row| {
+            Ok(ItemListEntryPayload {
+                asset_id: row.get(0)?,
+                source_kind: row.get(1)?,
+                source_ref_id: row.get(2)?,
+                library_id: row.get(3)?,
+                media_source_id: row.get(4)?,
+                source_id: row.get(5)?,
+                archive_id: row.get(6)?,
+                entry_path: row.get(7)?,
+                mime: row.get(8)?,
+                thumbnail_key: row.get(9)?,
+            })
+        },
+    )?;
+
+    let mut items = Vec::new();
+    for row in rows {
+        items.push(row?);
+    }
+
+    let has_next_page = limit > 0 && items.len() as i64 > limit;
+    if has_next_page {
+        items.truncate(limit as usize);
+    }
+
+    Ok(ItemsListPayload {
+        items,
+        has_next_page,
     })
 }
 

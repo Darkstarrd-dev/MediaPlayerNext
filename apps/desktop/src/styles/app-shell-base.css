@@ -6,7 +6,7 @@
   position: relative;
   min-height: 100vh;
   color: var(--mpx-text-1);
-  background: var(--mpx-bg-app-fill);
+  background: var(--mpx-slot-bg-app-root-bg, var(--mpx-bg-app-fill));
   overflow: hidden;
 }
 

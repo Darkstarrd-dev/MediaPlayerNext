@@ -1,10 +1,12 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
+import net from 'node:net'
 import {
   applyDesktopE2eEnvironment,
   cleanupDesktopE2eRuntimeContext,
   createDesktopE2eRuntimeContext,
+  resolveDesktopE2eRuntimeContextFromEnv,
 } from './utils/runtime-context.mjs'
 import {
   repoRoot,
@@ -15,9 +17,23 @@ import {
 
 let tauriDriverProcess
 let tauriDriverExpectedExit = false
-const desktopE2eRuntimeContext = createDesktopE2eRuntimeContext()
+const { desktopE2eRuntimeContext, ownsDesktopE2eRuntimeContext } = initializeDesktopE2eRuntimeContext()
 
-applyDesktopE2eEnvironment(desktopE2eRuntimeContext)
+function initializeDesktopE2eRuntimeContext() {
+  try {
+    return {
+      desktopE2eRuntimeContext: resolveDesktopE2eRuntimeContextFromEnv(),
+      ownsDesktopE2eRuntimeContext: false,
+    }
+  } catch {
+    const createdContext = createDesktopE2eRuntimeContext()
+    applyDesktopE2eEnvironment(createdContext)
+    return {
+      desktopE2eRuntimeContext: createdContext,
+      ownsDesktopE2eRuntimeContext: true,
+    }
+  }
+}
 
 function ensureSuccess(result, label) {
   if (result.status === 0) {
@@ -29,6 +45,11 @@ function ensureSuccess(result, label) {
 
 function buildDesktopApplication() {
   spawnSync('powershell', ['-NoProfile', '-Command', 'Stop-Process -Name mediaplayernext -Force -ErrorAction SilentlyContinue'], {
+    cwd: repoRoot,
+    stdio: 'ignore',
+    shell: true,
+  })
+  spawnSync('powershell', ['-NoProfile', '-Command', 'Stop-Process -Name tauri-driver -Force -ErrorAction SilentlyContinue'], {
     cwd: repoRoot,
     stdio: 'ignore',
     shell: true,
@@ -68,6 +89,38 @@ function startTauriDriver() {
       console.error('tauri-driver exited unexpectedly with code:', code)
       process.exit(1)
     }
+  })
+}
+
+function waitForDriverReady({
+  host,
+  port,
+  timeoutMs = 15000,
+  intervalMs = 120,
+}) {
+  const startedAt = Date.now()
+
+  return new Promise((resolve, reject) => {
+    const tryConnect = () => {
+      const socket = net.connect({ host, port })
+
+      socket.once('connect', () => {
+        socket.destroy()
+        resolve()
+      })
+
+      socket.once('error', () => {
+        socket.destroy()
+        if (Date.now() - startedAt >= timeoutMs) {
+          reject(new Error(`tauri-driver is not ready on ${host}:${port} within ${timeoutMs}ms`))
+          return
+        }
+
+        setTimeout(tryConnect, intervalMs)
+      })
+    }
+
+    tryConnect()
   })
 }
 
@@ -116,17 +169,15 @@ export const config = {
   waitforTimeout: 30000,
   connectionRetryTimeout: 120000,
   connectionRetryCount: 1,
-  onPrepare: () => {
+  onPrepare: async () => {
     buildDesktopApplication()
-  },
-  beforeSession: () => {
     startTauriDriver()
-  },
-  afterSession: () => {
-    closeTauriDriver()
+    await waitForDriverReady({ host: '127.0.0.1', port: 4444 })
   },
   onComplete: () => {
     closeTauriDriver()
-    cleanupDesktopE2eRuntimeContext(desktopE2eRuntimeContext)
+    if (ownsDesktopE2eRuntimeContext) {
+      cleanupDesktopE2eRuntimeContext(desktopE2eRuntimeContext)
+    }
   },
 }

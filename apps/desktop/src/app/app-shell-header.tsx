@@ -3,19 +3,23 @@ import { SettingsIcon } from './SettingsIcon'
 interface AppShellHeaderProps {
   importTaskPanelOpen: boolean
   settingsOpen: boolean
+  themeDebugOpen: boolean
   logoLoading: boolean
   logoButtonState: string
   onToggleImportTaskPanel: () => void
   onOpenSettings: () => void
+  onOpenThemeDebug: () => void
 }
 
 export function AppShellHeader({
   importTaskPanelOpen,
   settingsOpen,
+  themeDebugOpen,
   logoLoading,
   logoButtonState,
   onToggleImportTaskPanel,
   onOpenSettings,
+  onOpenThemeDebug,
 }: AppShellHeaderProps) {
   return (
     <header className="app-frame app-header app-header-root" data-slot="fg-header-root">
@@ -40,6 +44,17 @@ export function AppShellHeader({
         </div>
 
         <div className="header-right">
+          <button
+            className="mpx-btn header-theme-debug-trigger"
+            type="button"
+            data-testid="header-theme-debug-trigger"
+            aria-haspopup="dialog"
+            aria-expanded={themeDebugOpen}
+            onClick={onOpenThemeDebug}
+          >
+            <span className="theme-debug-trigger-label">主题调试</span>
+          </button>
+
           <button
             className="mpx-btn header-settings-trigger"
             type="button"

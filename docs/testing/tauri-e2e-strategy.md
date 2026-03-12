@@ -8,7 +8,7 @@
 
 ## 2. 当前结论
 
-截至 `2026-03-12`，基于 Tauri 2 官方 WebDriver 文档，当前推荐基线固定为：
+截至 `2026-03-13`，基于 Tauri 2 官方 WebDriver 文档，当前推荐基线固定为：
 
 - 桌面 E2E 主方案：`tauri-driver + WebdriverIO`
 - 当前优先目标平台：`Windows`
@@ -153,6 +153,7 @@ tests/desktop-e2e/
 当前仓库实现方式：
 
 - `wdio.conf.mjs` 会为每次桌面 E2E 运行创建独立临时目录
+- `wdio.conf.mjs` 采用“优先复用 env runtime context，缺失时才创建”的策略，避免 worker 进程各自创建不同 session root
 - 通过以下环境变量把 Tauri 宿主重定向到隔离路径：
   - `MPNEXT_RUNTIME_STORAGE_CONFIG_PATH`
   - `MPNEXT_RUNTIME_DEFAULT_DATA_DIR`
@@ -160,6 +161,11 @@ tests/desktop-e2e/
   - `MPNEXT_BACKEND_NORMALIZE_ROOT`
   - `MPNEXT_BACKEND_PLAYBACK_SESSIONS_ROOT`
 - `clear_database_command` 在 E2E 中清掉的是隔离环境，不会误删日常开发数据
+
+补充稳定性约束：
+
+- `tauri-driver` 只在 `onPrepare` 启动一次，`onComplete` 统一关闭
+- 不在 `beforeSession/afterSession` 按 worker 启停，避免重复抢占 `127.0.0.1:4444`
 
 ## 7. 首轮实施顺序
 
@@ -247,7 +253,7 @@ tests/desktop-e2e/
 - `shell smoke`：`已通过`
 - `Phase B` 数据库管理验收：`已通过`
 - `Phase C` 目录选择 test double：`已通过`
-- 当前桌面 E2E 总状态：`2 specs / 4 cases passed`
+- 当前桌面 E2E 总状态：`4 specs / 6 cases passed`
 
 ## 11. 当前不做的事
 

@@ -6,11 +6,16 @@ import type {
   ScanStats,
   SidebarNodeSummary,
 } from '@mediaplayernext/contracts'
-import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
+import type {
+  CSSProperties,
+  PointerEvent as ReactPointerEvent,
+  WheelEvent as ReactWheelEvent,
+} from 'react'
 import { AppShellMainPane } from './app-shell-main-pane'
 import { AppShellMetadataPane } from './app-shell-metadata-pane'
 import { AppShellSidebarPane } from './app-shell-sidebar-pane'
 import type { ThumbnailZoomLevel } from './thumbnail-grid-layout'
+import type { ItemsPageTransitionState } from './use-app-shell-workspace-state'
 
 interface AppShellWorkspaceProps {
   workspaceStyle: CSSProperties
@@ -41,6 +46,8 @@ interface AppShellWorkspaceProps {
   mainFooterPrimary: string
   mainFooterSecondary: string
   mainFooterPageLabel: string
+  mainFooterTransitionLabel: string | null
+  pageTransitionState: ItemsPageTransitionState
   itemsHasNextPage: boolean
   itemsPageIndex: number
   setMainGridElement: (element: HTMLDivElement | null) => void
@@ -49,6 +56,7 @@ interface AppShellWorkspaceProps {
   onThumbnailError: (assetId: string) => void
   onGoPreviousItemsPage: () => void
   onGoNextItemsPage: () => void
+  onMainGridWheel: (event: ReactWheelEvent<HTMLDivElement>) => void
   selectedItemDetail: ItemDetail | null
   scanStateLabel: string
   scanStateData: string
@@ -90,6 +98,8 @@ export function AppShellWorkspace(props: AppShellWorkspaceProps) {
     mainFooterPrimary,
     mainFooterSecondary,
     mainFooterPageLabel,
+    mainFooterTransitionLabel,
+    pageTransitionState,
     itemsHasNextPage,
     itemsPageIndex,
     setMainGridElement,
@@ -98,6 +108,7 @@ export function AppShellWorkspace(props: AppShellWorkspaceProps) {
     onThumbnailError,
     onGoPreviousItemsPage,
     onGoNextItemsPage,
+    onMainGridWheel,
     selectedItemDetail,
     scanStateLabel,
     scanStateData,
@@ -153,6 +164,8 @@ export function AppShellWorkspace(props: AppShellWorkspaceProps) {
         mainFooterPrimary={mainFooterPrimary}
         mainFooterSecondary={mainFooterSecondary}
         mainFooterPageLabel={mainFooterPageLabel}
+        mainFooterTransitionLabel={mainFooterTransitionLabel}
+        pageTransitionState={pageTransitionState}
         itemsHasNextPage={itemsHasNextPage}
         itemsPageIndex={itemsPageIndex}
         setMainGridElement={setMainGridElement}
@@ -161,6 +174,7 @@ export function AppShellWorkspace(props: AppShellWorkspaceProps) {
         onThumbnailError={onThumbnailError}
         onGoPreviousItemsPage={onGoPreviousItemsPage}
         onGoNextItemsPage={onGoNextItemsPage}
+        onMainGridWheel={onMainGridWheel}
       />
 
       <div

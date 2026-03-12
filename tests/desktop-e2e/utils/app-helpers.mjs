@@ -1,6 +1,7 @@
 export const selectors = {
   headerLogoTrigger: '[data-testid="header-logo-trigger"]',
   headerSettingsTrigger: '[data-testid="header-settings-trigger"]',
+  headerThemeDebugTrigger: '[data-testid="header-theme-debug-trigger"]',
   importTaskPanel: '[data-testid="import-task-panel"]',
   importRootPathInput: '[data-testid="import-root-path-input"]',
   importAddAndScan: '[data-testid="import-add-and-scan"]',
@@ -18,6 +19,17 @@ export const selectors = {
   databaseClearDialog: '[data-testid="database-clear-dialog"]',
   databaseClearCancel: '[data-testid="database-clear-cancel"]',
   databaseClearConfirm: '[data-testid="database-clear-confirm"]',
+  themeDebugPanel: '[data-testid="theme-debug-panel"]',
+  themeDebugPageSnapshot: '[data-testid="theme-debug-page-snapshot"]',
+  themeDebugPageContainerLayer: '[data-testid="theme-debug-page-container-layer"]',
+  themeDebugPageButtonSnapshot: '[data-testid="theme-debug-tab-snapshot"]',
+  themeDebugPageButtonContainerLayer: '[data-testid="theme-debug-tab-containerLayer"]',
+  themeDebugSnapshotExport: '[data-testid="theme-debug-snapshot-export"]',
+  themeDebugSnapshotApply: '[data-testid="theme-debug-snapshot-apply"]',
+  themeDebugSnapshotTextarea: '[data-testid="theme-debug-snapshot-textarea"]',
+  themeDebugLayoutGapScale: '[data-testid="theme-debug-layout-gap-scale"]',
+  themeDebugSplitterWidthScale: '[data-testid="theme-debug-splitter-width-scale"]',
+  themeDebugInputBgAppFill: '[data-testid="theme-debug-input-mpx-bg-app-fill"]',
 }
 
 export async function openImportTaskPanel() {
@@ -82,6 +94,18 @@ export async function openDatabaseSettingsPage() {
 
   const databasePageBody = await $(selectors.settingsPageDatabaseBody)
   await databasePageBody.waitForDisplayed({ timeout: 30000 })
+}
+
+export async function openThemeDebugPanel() {
+  const trigger = await $(selectors.headerThemeDebugTrigger)
+  await trigger.waitForDisplayed({ timeout: 30000 })
+
+  const panel = await $(selectors.themeDebugPanel)
+  const panelVisible = await panel.isDisplayed().catch(() => false)
+  if (!panelVisible) {
+    await trigger.click()
+    await panel.waitForDisplayed({ timeout: 30000 })
+  }
 }
 
 export async function readDatabasePaths() {

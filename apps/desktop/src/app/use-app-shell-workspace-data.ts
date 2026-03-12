@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import type { MediaRepository } from '../repositories/media-repository'
 import { getErrorMessage, isTaskNotFoundError } from './app-shell-utils'
 import { useAppShellBootstrapScanSnapshot } from './use-app-shell-bootstrap-scan-snapshot'
+import type { ItemsPageTransitionState } from './use-app-shell-workspace-state'
 
 interface RefreshWorkspaceOptions {
   preferredLibraryId?: string | null
@@ -34,7 +35,9 @@ interface UseAppShellWorkspaceDataParams {
   setWorkspaceError: (value: string | null) => void
   setItems: (value: ItemListEntry[]) => void
   setItemsPageIndex: (value: number) => void
+  setItemsTargetPageIndex: (value: number) => void
   setItemsHasNextPage: (value: boolean) => void
+  setItemsPageTransitionState: (value: ItemsPageTransitionState) => void
   setSelectedAssetId: (updater: string | null | ((current: string | null) => string | null)) => void
   setItemThumbnailUrls: (
     updater: Record<string, string> | ((current: Record<string, string>) => Record<string, string>),
@@ -65,7 +68,9 @@ export function useAppShellWorkspaceData(params: UseAppShellWorkspaceDataParams)
     setWorkspaceError,
     setItems,
     setItemsPageIndex,
+    setItemsTargetPageIndex,
     setItemsHasNextPage,
+    setItemsPageTransitionState,
     setSelectedAssetId,
     setItemThumbnailUrls,
     refreshLibraries,
@@ -83,50 +88,77 @@ export function useAppShellWorkspaceData(params: UseAppShellWorkspaceDataParams)
       mediaSourceId: string | null
       requestedPageIndex: number
       preferredAssetId?: string | null
+      includeWorkspaceSummary?: boolean
     }) => {
-      const { libraryId, mediaSourceId, requestedPageIndex, preferredAssetId } = options
+      const {
+        libraryId,
+        mediaSourceId,
+        requestedPageIndex,
+        preferredAssetId,
+        includeWorkspaceSummary = false,
+      } = options
       const requestId = libraryLoadRequestIdRef.current + 1
       libraryLoadRequestIdRef.current = requestId
+
+      const useReadyCommit = workspaceHydrated && !includeWorkspaceSummary
+      if (useReadyCommit) {
+        setItemsTargetPageIndex(Math.max(1, requestedPageIndex))
+        setItemsPageTransitionState('loading-next-page')
+      } else {
+        setItemsPageTransitionState('idle')
+      }
 
       setWorkspaceRefreshing(true)
       setWorkspaceError(null)
 
       try {
         let resolvedPageIndex = Math.max(1, requestedPageIndex)
+        const effectivePageSize = Math.max(1, thumbnailPageSize)
         const readItemsPage = (pageIndex: number) =>
           repository.items.list({
             libraryId,
             mediaSourceId: mediaSourceId ?? undefined,
             page: pageIndex,
-            pageSize: thumbnailPageSize,
+            pageSize: effectivePageSize,
           })
 
-        let nextItems = await readItemsPage(resolvedPageIndex)
-        while (resolvedPageIndex > 1 && nextItems.length === 0) {
+        let nextItemsPage = await readItemsPage(resolvedPageIndex)
+        while (resolvedPageIndex > 1 && nextItemsPage.items.length === 0) {
           resolvedPageIndex -= 1
-          nextItems = await readItemsPage(resolvedPageIndex)
+          nextItemsPage = await readItemsPage(resolvedPageIndex)
         }
 
-        const [detail, stats, snapshot] = await Promise.all([
-          repository.library.get(libraryId),
-          repository.scan.stats(libraryId),
-          repository.scan.snapshot(libraryId).catch((error: unknown) => {
-            if (isTaskNotFoundError(error)) {
-              return null
-            }
-            throw error
-          }),
-        ])
+        const workspaceSummary = includeWorkspaceSummary
+          ? await Promise.all([
+              repository.library.get(libraryId),
+              repository.scan.stats(libraryId),
+              repository.scan.snapshot(libraryId).catch((error: unknown) => {
+                if (isTaskNotFoundError(error)) {
+                  return null
+                }
+                throw error
+              }),
+            ])
+          : null
 
         if (libraryLoadRequestIdRef.current !== requestId) {
           return
         }
 
-        setSelectedLibraryDetail(detail)
-        setScanStats(stats)
-        setScanSnapshot(snapshot)
+        const nextItems = nextItemsPage.items
+        if (useReadyCommit) {
+          setItemsPageTransitionState('committing')
+        }
+
+        if (workspaceSummary !== null) {
+          const [detail, stats, snapshot] = workspaceSummary
+          setSelectedLibraryDetail(detail)
+          setScanStats(stats)
+          setScanSnapshot(snapshot)
+        }
         setItemsPageIndex(resolvedPageIndex)
-        setItemsHasNextPage(resolvedPageIndex === requestedPageIndex && nextItems.length === thumbnailPageSize)
+        setItemsTargetPageIndex(resolvedPageIndex)
+        setItemsHasNextPage(nextItemsPage.hasNextPage)
         setItems(nextItems)
         setWorkspaceHydrated(true)
         setItemThumbnailUrls((current) => {
@@ -148,11 +180,14 @@ export function useAppShellWorkspaceData(params: UseAppShellWorkspaceDataParams)
           }
           return nextItems[0]?.assetId ?? null
         })
+        setItemsPageTransitionState('idle')
       } catch (error) {
         if (libraryLoadRequestIdRef.current !== requestId) {
           return
         }
 
+        setItemsPageTransitionState('idle')
+        setItemsTargetPageIndex(itemsPageIndex)
         setWorkspaceError(getErrorMessage(error))
         if (!workspaceHydrated) {
           setSelectedLibraryDetail(null)
@@ -160,6 +195,7 @@ export function useAppShellWorkspaceData(params: UseAppShellWorkspaceDataParams)
           setScanSnapshot(null)
           setItems([])
           setItemsPageIndex(1)
+          setItemsTargetPageIndex(1)
           setItemsHasNextPage(false)
           setSelectedAssetId(null)
           setItemThumbnailUrls({})
@@ -177,6 +213,8 @@ export function useAppShellWorkspaceData(params: UseAppShellWorkspaceDataParams)
       setItems,
       setItemsHasNextPage,
       setItemsPageIndex,
+      setItemsPageTransitionState,
+      setItemsTargetPageIndex,
       setScanSnapshot,
       setScanStats,
       setSelectedAssetId,
@@ -204,14 +242,23 @@ export function useAppShellWorkspaceData(params: UseAppShellWorkspaceDataParams)
       )
       const nextPageIndex = Math.max(1, options?.preferredPageIndex ?? 1)
       setItemsPageIndex(nextPageIndex)
+      setItemsTargetPageIndex(nextPageIndex)
       await loadLibrarySurface({
         libraryId: nextSelectedLibraryId,
         mediaSourceId: nextSelection.selectedMediaSourceId,
         requestedPageIndex: nextPageIndex,
         preferredAssetId: options?.preferredAssetId,
+        includeWorkspaceSummary: true,
       })
     },
-    [clearWorkspaceData, loadLibrarySurface, refreshLibraries, refreshSidebarNodes, setItemsPageIndex],
+    [
+      clearWorkspaceData,
+      loadLibrarySurface,
+      refreshLibraries,
+      refreshSidebarNodes,
+      setItemsPageIndex,
+      setItemsTargetPageIndex,
+    ],
   )
 
   const previousPageSizeRef = useRef(thumbnailPageSize)
@@ -227,6 +274,7 @@ export function useAppShellWorkspaceData(params: UseAppShellWorkspaceDataParams)
       libraryId: selectedLibraryId,
       mediaSourceId: selectedMediaSourceId,
       requestedPageIndex: itemsPageIndex,
+      includeWorkspaceSummary: false,
     })
   }, [itemsPageIndex, loadLibrarySurface, selectedLibraryId, selectedMediaSourceId, thumbnailPageSize])
 

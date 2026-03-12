@@ -4,8 +4,8 @@ import type {
   ArchiveEntrySummary,
   ArchiveNormalizeResult,
   ItemDetail,
-  ItemListEntry,
   ItemsListQuery,
+  ItemsListResult,
   LibraryDetail,
   LibrarySummary,
   PlaybackSession,
@@ -53,7 +53,7 @@ export interface MediaRepository {
     snapshot(libraryId: string): Promise<TaskProgress>
   }
   items: {
-    list(query: ItemsListQuery): Promise<ItemListEntry[]>
+    list(query: ItemsListQuery): Promise<ItemsListResult>
     detail(assetId: string): Promise<ItemDetail>
   }
   archive: {

@@ -2,6 +2,7 @@ import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useState } from 'react'
 import { AppShellHeader } from './app-shell-header'
 import { AppShellPanels } from './app-shell-panels'
+import type { AppShellThemeDebugPage } from './app-shell-theme-debug-types'
 import { AppShellWorkspace } from './app-shell-workspace'
 import type { AppShellSettingsPage } from './app-shell-settings-types'
 import { useAppShellDatabaseSettings } from './use-app-shell-database-settings'
@@ -23,7 +24,9 @@ export function AppShell() {
   const repository = useMediaRepository()
   const [importTaskPanelOpen, setImportTaskPanelOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [themeDebugOpen, setThemeDebugOpen] = useState(false)
   const [settingsPage, setSettingsPage] = useState<AppShellSettingsPage>('ui')
+  const [themeDebugPage, setThemeDebugPage] = useState<AppShellThemeDebugPage>('snapshot')
   const {
     dragState,
     beginSplitterDrag,
@@ -79,8 +82,12 @@ export function AppShell() {
     setItems,
     itemsPageIndex,
     setItemsPageIndex,
+    itemsTargetPageIndex,
+    setItemsTargetPageIndex,
     itemsHasNextPage,
     setItemsHasNextPage,
+    itemsPageTransitionState,
+    setItemsPageTransitionState,
     selectedAssetId,
     setSelectedAssetId,
     selectedItemDetail,
@@ -124,7 +131,9 @@ export function AppShell() {
       setWorkspaceError,
       setItems,
       setItemsPageIndex,
+      setItemsTargetPageIndex,
       setItemsHasNextPage,
+      setItemsPageTransitionState,
       setSelectedAssetId,
       setItemThumbnailUrls,
       refreshLibraries,
@@ -142,8 +151,10 @@ export function AppShell() {
   })
   useAppShellOverlayEscape({
     settingsOpen,
+    themeDebugOpen,
     importTaskPanelOpen,
     setSettingsOpen,
+    setThemeDebugOpen,
     setImportTaskPanelOpen,
   })
   useAppShellItemData({
@@ -151,6 +162,7 @@ export function AppShell() {
     itemDetailRequestIdRef,
     selectedAssetId,
     items,
+    thumbnailCellSizePx: thumbnailGridLayout.cellSizePx,
     setSelectedItemDetail,
     setItemDetailError,
     setItemDetailLoading,
@@ -169,7 +181,6 @@ export function AppShell() {
     loadLibrarySurface,
     setSelectedSidebarNodeId,
     setSelectedMediaSourceId,
-    setItemsPageIndex,
   })
   const handleLeftSplitterPointerDown = handleSplitterPointerDown('left')
   const handleRightSplitterPointerDown = handleSplitterPointerDown('right')
@@ -241,12 +252,15 @@ export function AppShell() {
     mainFooterPrimary,
     mainFooterSecondary,
     mainFooterPageLabel,
+    mainFooterTransitionLabel,
     importActivitiesForPanel,
     handleGoPreviousItemsPage,
     handleGoNextItemsPage,
+    handleMainGridWheel,
     handleItemThumbnailError,
     handleToggleImportTaskPanel,
     handleOpenSettings,
+    handleOpenThemeDebug,
   } = useAppShellViewState({
     actionBusy,
     scanSnapshot,
@@ -263,14 +277,17 @@ export function AppShell() {
     items,
     itemsHasNextPage,
     itemsPageIndex,
+    itemsTargetPageIndex,
+    itemsPageTransitionState,
     importActivities,
     selectedMediaSourceId,
     loadLibrarySurface,
-    setItemsPageIndex,
     setItemThumbnailUrls,
     setSettingsOpen,
     setImportTaskPanelOpen,
+    setThemeDebugOpen,
     setSettingsPage,
+    setThemeDebugPage,
   })
   return (
     <main className="app-shell" data-slot="bg-app-root">
@@ -288,10 +305,12 @@ export function AppShell() {
         <AppShellHeader
           importTaskPanelOpen={importTaskPanelOpen}
           settingsOpen={settingsOpen}
+          themeDebugOpen={themeDebugOpen}
           logoLoading={logoLoading}
           logoButtonState={logoButtonState}
           onToggleImportTaskPanel={handleToggleImportTaskPanel}
           onOpenSettings={handleOpenSettings}
+          onOpenThemeDebug={handleOpenThemeDebug}
         />
         <AppShellWorkspace
           workspaceStyle={workspaceStyle}
@@ -322,6 +341,8 @@ export function AppShell() {
           mainFooterPrimary={mainFooterPrimary}
           mainFooterSecondary={mainFooterSecondary}
           mainFooterPageLabel={mainFooterPageLabel}
+          pageTransitionState={itemsPageTransitionState}
+          mainFooterTransitionLabel={mainFooterTransitionLabel}
           itemsHasNextPage={itemsHasNextPage}
           itemsPageIndex={itemsPageIndex}
           setMainGridElement={setMainGridElement}
@@ -330,6 +351,7 @@ export function AppShell() {
           onThumbnailError={handleItemThumbnailError}
           onGoPreviousItemsPage={handleGoPreviousItemsPage}
           onGoNextItemsPage={handleGoNextItemsPage}
+          onMainGridWheel={handleMainGridWheel}
           selectedItemDetail={selectedItemDetail}
           scanStateLabel={scanStateLabel}
           scanStateData={scanSnapshot?.state ?? 'idle'}
@@ -344,7 +366,9 @@ export function AppShell() {
       <AppShellPanels
         importTaskPanelOpen={importTaskPanelOpen}
         settingsOpen={settingsOpen}
+        themeDebugOpen={themeDebugOpen}
         settingsPage={settingsPage}
+        themeDebugPage={themeDebugPage}
         importRootPath={importRootPath}
         actionPendingLabel={actionPendingLabel}
         actionMessage={actionMessage}
@@ -380,7 +404,9 @@ export function AppShell() {
         onAddLibrary={() => void handleAddLibrary(false)}
         onAddAndScan={() => void handleAddLibrary(true)}
         onSettingsClose={() => setSettingsOpen(false)}
+        onThemeDebugClose={() => setThemeDebugOpen(false)}
         onSettingsPageChange={setSettingsPage}
+        onThemeDebugPageChange={setThemeDebugPage}
         onSettingsBackdropOpacityChange={setSettingsBackdropOpacity}
         onLayoutGapScaleCoeffChange={setLayoutGapScaleCoeff}
         onPaneInnerGapScaleCoeffChange={setPaneInnerGapScaleCoeff}

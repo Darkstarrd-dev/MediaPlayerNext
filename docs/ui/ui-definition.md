@@ -80,7 +80,7 @@
 
 - `bg.app.root` 负责最外层背景
 - 其余四项负责主页面的四大前景容器
-- `Header` 已继续细化为 Logo 入口与设置入口所在的稳定根容器
+- `Header` 已继续细化为 Logo 入口、主题调试入口与设置入口所在的稳定根容器
 - `Sidebar / Main / Metadata` 当前已建立各自的 `header / main / footer` 三段结构与对应 slot
 
 ## 6. 当前变量合同
@@ -147,6 +147,7 @@
 - 用于设置、帮助、主题参数等大型面板的统一骨架
 - 负责大面板的 root、shell、head、side、main 五段结构
 - 当前不负责具体业务内部件语义
+- 当前新增 `主题调试` 面板作为 `3` 层实例，首轮只接两分页（参数导入导出 / 大容器层调试）
 
 ### 8.2 结构
 
@@ -380,7 +381,7 @@ Sidebar | Main | Metadata
 
 补充约束：
 
-- `Header` 当前已包含 `Logo` 按钮与设置按钮
+- `Header` 当前已包含 `Logo` 按钮、主题调试按钮与设置按钮
 - `Logo` 按钮打开的是独立的大面板 overlay，不回退为说明型入口
 - `Sidebar / Main / Metadata` 三列当前都固定采用 `header / main / footer` 三段结构
 - 三列中的 `main` 是主要伸缩区
@@ -505,3 +506,23 @@ Sidebar | Main | Metadata
 - 主工作区当前已接入 `stale-while-refresh` 语义：刷新时优先保留旧页内容，不再默认用 loading 卡片覆盖整个 `Main.main`
 - 当前已把工作区游标升级到 `selectedSidebarNodeId / selectedMediaSourceId / itemsPageIndex / selectedAssetId`（兼容读取旧 `selectedNodeId`）
 - `items.list` 当前已支持按 `mediaSourceId` 读取条目，并继续兼容旧 `sourceId` 过滤；返回项会回传已存在的 `thumbnailKey`
+
+### 2026-03-13
+
+- `Header` 已新增 `主题调试` 入口按钮，打开后进入独立 `3 大面板层` overlay
+- 主题调试面板首轮固定双分页：`参数导入导出` / `大容器层调试`
+- 当前调试范围固定为根级 `1.0~2.4`，不下探到 `2.4.1` 这类子级
+- `参数导入导出` 已支持导出到文本框、下载 JSON、复制、加载文件、应用导入与清空文本框
+- `2.0 共享壳层`中的 `layout-padding / splitter-width` 当前走系数链路，与设置页滑杆保持同源同步
+- `Sidebar / Main / Metadata` 三列根容器已补齐 `2.2~2.4` 的 root slot 覆写入口（bg/border/shadow）
+
+### 2026-03-13
+
+- `Main` 缩略图当前已切到“有限并发 ensure”策略：缺图项不再无上限并发触发 `thumbnail.ensure`，改为固定并发队列渐进落图
+- 工作区数据读取已区分“页面级条目刷新”和“工作区摘要刷新”：翻页/切媒体源节点默认只拉 `items`，不再每次并发刷新 `library.get / scan.stats / scan.snapshot`
+- `items_list_command` 已切到 SQL 级分页读取（基于 `image_items + media_assets + media_sources`），不再先构建整库快照再 `skip/take`
+- `thumbnail_ensure_command` 与 `items_list_command` 当前已改为 `async + spawn_blocking`，降低冷缩略图阶段对命令通道的阻塞风险
+- `items.list` contracts 当前已升级为 `{ items, hasNextPage }` 返回结构，前端不再依赖 `items.length === pageSize` 估算是否存在下一页
+- `Main.main` 当前已接入滚轮翻页预览：滚轮输入先进入预览态，settle 后再触发真实翻页提交
+- `Main` 翻页链路当前已接入 `ready-commit`：页切换期间保留旧页，待新页 ready 后再 commit 到展示层
+- 缩略图 ensure 当前已接入 `profile` 自适应映射：根据格子尺寸与 `devicePixelRatio` 在 `grid-sm / grid-md / detail-md / detail-lg` 间选择

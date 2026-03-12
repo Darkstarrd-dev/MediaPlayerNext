@@ -22,6 +22,24 @@
   overflow: hidden;
 }
 
+.app-sidebar-root {
+  border-color: var(--mpx-slot-fg-sidebar-root-border, var(--mpx-container-frame-border-color));
+  background: var(--mpx-slot-fg-sidebar-root-bg, var(--mpx-container-frame-fill));
+  box-shadow: var(--mpx-slot-fg-sidebar-root-shadow, var(--mpx-container-frame-shadow));
+}
+
+.app-main-root {
+  border-color: var(--mpx-slot-fg-main-root-border, var(--mpx-container-frame-border-color));
+  background: var(--mpx-slot-fg-main-root-bg, var(--mpx-container-frame-fill));
+  box-shadow: var(--mpx-slot-fg-main-root-shadow, var(--mpx-container-frame-shadow));
+}
+
+.app-meta-root {
+  border-color: var(--mpx-slot-fg-meta-root-border, var(--mpx-container-frame-border-color));
+  background: var(--mpx-slot-fg-meta-root-bg, var(--mpx-container-frame-fill));
+  box-shadow: var(--mpx-slot-fg-meta-root-shadow, var(--mpx-container-frame-shadow));
+}
+
 .workspace-pane {
   min-width: 0;
   min-height: 0;

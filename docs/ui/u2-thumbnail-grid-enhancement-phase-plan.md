@@ -171,11 +171,11 @@
 | Phase | 目标 | 状态 |
 |---|---|---|
 | `Phase 0` | 冻结增强项边界与前置条件 | `done` |
-| `Phase 1` | 滚轮翻页与页码预览状态链 | `pending` |
-| `Phase 2` | ready-commit 翻页缓冲 | `pending` |
+| `Phase 1` | 滚轮翻页与页码预览状态链 | `done` |
+| `Phase 2` | ready-commit 翻页缓冲 | `done` |
 | `Phase 3` | gap snap 吸附策略 | `pending` |
-| `Phase 4` | 缩略图分辨率自适应 | `pending` |
-| `Phase 5` | 联调、验证、文档回填 | `pending` |
+| `Phase 4` | 缩略图分辨率自适应 | `done` |
+| `Phase 5` | 联调、验证、文档回填 | `in-progress` |
 
 ---
 
@@ -255,11 +255,11 @@
 
 ### 10.4 phase 完成后状态 check
 
-- [ ] 缩略图容器已接上滚轮事件入口
-- [ ] 滚轮输入不会导致主区原生滚动
-- [ ] 滚轮可进入页码预览态
-- [ ] settle 后才真正翻页 commit
-- [ ] 到达边界页时不会出现非法页码
+- [x] 缩略图容器已接上滚轮事件入口
+- [x] 滚轮输入不会导致主区原生滚动
+- [x] 滚轮可进入页码预览态
+- [x] settle 后才真正翻页 commit
+- [x] 到达边界页时不会出现非法页码
 
 ---
 
@@ -314,11 +314,11 @@
 
 ### 11.4 phase 完成后状态 check
 
-- [ ] 翻页时不会先清空旧页
-- [ ] 新页 ready 后才 commit 到显示层
-- [ ] 重复翻页时旧请求可被取消或失效
-- [ ] footer / 预览态能反映目标页与显示页差异
-- [ ] 白屏与闪烁明显减少
+- [x] 翻页时不会先清空旧页
+- [x] 新页 ready 后才 commit 到显示层
+- [x] 重复翻页时旧请求可被取消或失效
+- [x] footer / 预览态能反映目标页与显示页差异
+- [x] 白屏与闪烁明显减少
 
 ---
 
@@ -427,11 +427,11 @@ thumbnailMaxEdge = ceil(devicePixelRatio * max(actualCellWidth, actualMediaHeigh
 
 ### 13.4 phase 完成后状态 check
 
-- [ ] 已固定首轮分辨率自适应计算规则
-- [ ] 高 DPI 下的缩略图请求已比固定低档位更合理
-- [ ] 已有过大请求的上限保护
-- [ ] 当前 contracts 无法直接支持自由尺寸时，已定义清晰的 profile 映射策略
-- [ ] 文档中已写明这条链路和网格布局自适应是两回事
+- [x] 已固定首轮分辨率自适应计算规则
+- [x] 高 DPI 下的缩略图请求已比固定低档位更合理
+- [x] 已有过大请求的上限保护
+- [x] 当前 contracts 无法直接支持自由尺寸时，已定义清晰的 profile 映射策略
+- [x] 文档中已写明这条链路和网格布局自适应是两回事
 
 ---
 
@@ -442,7 +442,7 @@ thumbnailMaxEdge = ceil(devicePixelRatio * max(actualCellWidth, actualMediaHeigh
 - `docs/ui/u2-thumbnail-grid-enhancement-phase-plan.md`
 - `docs/ui/u2-thumbnail-grid-phase-plan.md`
 - `docs/ui/ui-definition.md`
-- `docs/logs/20260312.md`
+- `docs/logs/20260313.md`
 - `docs/README.md`
 
 ### 14.2 todo 顺序
@@ -462,6 +462,7 @@ thumbnailMaxEdge = ceil(devicePixelRatio * max(actualCellWidth, actualMediaHeigh
 必要时补充：
 
 - `npm run tauri:dev`
+- `npm run e2e:desktop`
 
 建议手动点验清单：
 
@@ -481,17 +482,18 @@ thumbnailMaxEdge = ceil(devicePixelRatio * max(actualCellWidth, actualMediaHeigh
   - ready-commit 缓冲
   - gap snap
   - 分辨率自适应
-- `docs/logs/20260312.md` 需要同步记录：
+- `docs/logs/20260313.md` 需要同步记录：
   - 实际改动
   - 实际验证
   - 未做项
 
 ### 14.4 phase 完成后状态 check
 
-- [ ] `npm run build:web` 已通过
-- [ ] 本计划文档已回填 phase/check 状态
-- [ ] `docs/ui/ui-definition.md` 已同步增强项口径
-- [ ] `docs/logs/20260312.md` 已同步增强项记录
+- [x] `npm run build:web` 已通过
+- [x] `npm run e2e:desktop` 已通过（`Spec Files: 4 passed, 4 total`）
+- [x] 本计划文档已回填 phase/check 状态
+- [x] `docs/ui/ui-definition.md` 已同步增强项口径
+- [x] `docs/logs/20260313.md` 已同步增强项记录
 
 ---
 

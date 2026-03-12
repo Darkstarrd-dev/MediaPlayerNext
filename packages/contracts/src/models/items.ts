@@ -31,6 +31,11 @@ export const itemListEntrySchema = z.object({
   thumbnailKey: z.string().min(1).optional(),
 });
 
+export const itemsListResultSchema = z.object({
+  items: z.array(itemListEntrySchema),
+  hasNextPage: z.boolean(),
+});
+
 export const itemDetailSchema = z.object({
   assetId: assetIdSchema,
   sourceKind: itemSourceKindSchema,
@@ -47,4 +52,5 @@ export const itemDetailSchema = z.object({
 export type ItemSourceKind = z.infer<typeof itemSourceKindSchema>;
 export type ItemsListQuery = z.infer<typeof itemsListQuerySchema>;
 export type ItemListEntry = z.infer<typeof itemListEntrySchema>;
+export type ItemsListResult = z.infer<typeof itemsListResultSchema>;
 export type ItemDetail = z.infer<typeof itemDetailSchema>;
