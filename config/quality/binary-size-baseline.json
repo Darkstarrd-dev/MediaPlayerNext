@@ -1,0 +1,10 @@
+{
+  "updatedAt": "2026-03-12T23:10:00",
+  "artifacts": [
+    {
+      "path": "src-tauri/target/release/mediaplayernext.exe",
+      "maxBytes": 268435456,
+      "baselineBytes": null
+    }
+  ]
+}
