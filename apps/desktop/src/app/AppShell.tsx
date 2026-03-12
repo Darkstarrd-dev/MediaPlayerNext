@@ -7,15 +7,9 @@ import type {
   ScanStats,
   SidebarNodeSummary,
   TaskProgress,
-  WorkspaceCursor,
 } from '@mediaplayernext/contracts'
-import { open as openDialog } from '@tauri-apps/plugin-dialog'
-import { readText as readClipboardText } from '@tauri-apps/plugin-clipboard-manager'
-import { getCurrentWindow } from '@tauri-apps/api/window'
-import { hasFiles as clipboardHasFiles, readFiles as readClipboardFiles } from 'tauri-plugin-clipboard-x-api'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { consumeE2eDirectorySelection } from './e2e-test-bridge'
 import { ImportTaskPanel } from './ImportTaskPanel'
 import { SettingsIcon } from './SettingsIcon'
 import {
@@ -24,13 +18,8 @@ import {
   formatTaskStateLabel,
   getErrorMessage,
   isActiveTaskProgress,
-  isEditablePasteTarget,
-  isTaskNotFoundError,
-  normalizePathBatch,
-  parseClipboardPaths,
   resolveItemDisplayLabel,
   resolveItemLocation,
-  resolveLibrarySelection,
   resolvePathLeaf,
 } from './app-shell-utils'
 import {
@@ -38,6 +27,13 @@ import {
   toThumbnailZoomLevel,
 } from './thumbnail-grid-layout'
 import { useAppShellLayout, type DragTarget } from './use-app-shell-layout'
+import { useAppShellImportActivities } from './use-app-shell-import-activities'
+import { useAppShellImportController } from './use-app-shell-import-controller'
+import { useAppShellScanState } from './use-app-shell-scan-state'
+import { useAppShellWorkspaceCursor } from './use-app-shell-workspace-cursor'
+import { useAppShellWorkspaceData } from './use-app-shell-workspace-data'
+import { useAppShellWorkspaceSelection } from './use-app-shell-workspace-selection'
+import { useAppShellItemData } from './use-app-shell-item-data'
 import { useMediaRepository } from './use-media-repository'
 
 const ACTION_LABELS = {
@@ -45,9 +41,6 @@ const ACTION_LABELS = {
   addAndScan: '登记并扫描',
   dropImport: '拖拽导入',
   pasteImport: '粘贴导入',
-  scan: '开始扫描',
-  resume: '恢复扫描',
-  refresh: '刷新主界面',
 } as const
 
 const DATABASE_ACTION_LABELS = {
@@ -56,83 +49,17 @@ const DATABASE_ACTION_LABELS = {
   clearDatabase: '清除数据库',
 } as const
 
-type ActionKind = keyof typeof ACTION_LABELS
 type DatabaseActionKind = keyof typeof DATABASE_ACTION_LABELS
 type SettingsPage = 'ui' | 'database'
-
-type ImportActivityStatus = 'running' | 'completed' | 'failed'
-
-interface ImportActivity {
-  id: string
-  title: string
-  source: string
-  status: ImportActivityStatus
-  detail: string
-  createdAt: string
-}
-
-interface SidebarSelection {
-  selectedSidebarNodeId: string | null
-  selectedMediaSourceId: string | null
-}
-
-function isMediaSourceNode(node: SidebarNodeSummary): boolean {
-  return node.nodeType === 'media_source' && typeof node.mediaSourceId === 'string'
-}
-
-function resolveSidebarSelection(
-  nodes: SidebarNodeSummary[],
-  preferredSidebarNodeId?: string | null,
-  preferredMediaSourceId?: string | null,
-): SidebarSelection {
-  if (preferredSidebarNodeId !== undefined && preferredSidebarNodeId !== null) {
-    const matchedNode = nodes.find((node) => node.nodeId === preferredSidebarNodeId)
-    if (matchedNode) {
-      return {
-        selectedSidebarNodeId: matchedNode.nodeId,
-        selectedMediaSourceId: isMediaSourceNode(matchedNode) ? matchedNode.mediaSourceId ?? null : null,
-      }
-    }
-  }
-
-  if (preferredMediaSourceId !== undefined && preferredMediaSourceId !== null) {
-    const matchedNode = nodes.find((node) => node.mediaSourceId === preferredMediaSourceId)
-    if (matchedNode) {
-      return {
-        selectedSidebarNodeId: matchedNode.nodeId,
-        selectedMediaSourceId: matchedNode.mediaSourceId ?? null,
-      }
-    }
-  }
-
-  const firstMediaNode = nodes.find((node) => isMediaSourceNode(node))
-  if (firstMediaNode) {
-    return {
-      selectedSidebarNodeId: firstMediaNode.nodeId,
-      selectedMediaSourceId: firstMediaNode.mediaSourceId ?? null,
-    }
-  }
-
-  return {
-    selectedSidebarNodeId: nodes[0]?.nodeId ?? null,
-    selectedMediaSourceId: null,
-  }
-}
 
 export function AppShell() {
   const repository = useMediaRepository()
   const libraryLoadRequestIdRef = useRef(0)
   const itemDetailRequestIdRef = useRef(0)
-  const handleDropImportRef = useRef<(paths: string[]) => Promise<void>>(async () => undefined)
-  const handlePasteImportRef = useRef<(text: string) => Promise<void>>(async () => undefined)
-  const activeScanActivityTaskIdRef = useRef<string | null>(null)
-  const activeScanActivityEntryIdRef = useRef<string | null>(null)
-  const completedScanSurfaceSyncTaskIdRef = useRef<string | null>(null)
   const [importTaskPanelOpen, setImportTaskPanelOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsPage, setSettingsPage] = useState<SettingsPage>('ui')
   const [clearDatabaseDialogOpen, setClearDatabaseDialogOpen] = useState(false)
-  const [dropImportActive, setDropImportActive] = useState(false)
   const {
     dragState,
     beginSplitterDrag,
@@ -177,11 +104,6 @@ export function AppShell() {
   const [itemDetailError, setItemDetailError] = useState<string | null>(null)
   const [itemThumbnailUrls, setItemThumbnailUrls] = useState<Record<string, string>>({})
 
-  const [importRootPath, setImportRootPath] = useState('')
-  const [actionBusy, setActionBusy] = useState<ActionKind | null>(null)
-  const [actionMessage, setActionMessage] = useState<string | null>(null)
-  const [actionError, setActionError] = useState<string | null>(null)
-  const [importActivities, setImportActivities] = useState<ImportActivity[]>([])
   const [runtimeInfo, setRuntimeInfo] = useState<RuntimeInfo | null>(null)
   const [runtimeInfoLoading, setRuntimeInfoLoading] = useState(false)
   const [runtimeInfoError, setRuntimeInfoError] = useState<string | null>(null)
@@ -212,360 +134,56 @@ export function AppShell() {
     setItemThumbnailUrls({})
   }, [])
 
-  const appendImportActivity = useCallback(
-    (activity: Omit<ImportActivity, 'id' | 'createdAt'>): string => {
-      const nextActivity: ImportActivity = {
-        ...activity,
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        createdAt: new Date().toISOString(),
-      }
+  const { importActivities, appendImportActivity, updateImportActivity } = useAppShellImportActivities()
 
-      setImportActivities((current) => [nextActivity, ...current].slice(0, 8))
-      return nextActivity.id
-    },
-    [],
-  )
-
-  const updateImportActivity = useCallback(
-    (activityId: string, patch: Partial<Omit<ImportActivity, 'id' | 'createdAt'>>) => {
-      setImportActivities((current) =>
-        current.map((activity) =>
-          activity.id === activityId
-            ? {
-                ...activity,
-                ...patch,
-              }
-            : activity,
-        ),
-      )
-    },
-    [],
-  )
-
-  const bootstrapScanSnapshot = useCallback(
-    async (libraryId: string): Promise<void> => {
-      const maxAttempts = 24
-
-      for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-        try {
-          const snapshot = await repository.scan.snapshot(libraryId)
-          setScanSnapshot(snapshot)
-          return
-        } catch (error) {
-          if (!isTaskNotFoundError(error)) {
-            throw error
-          }
-        }
-
-        await new Promise<void>((resolve) => {
-          window.setTimeout(resolve, 250)
-        })
-      }
-    },
-    [repository],
-  )
-
-  const loadLibrarySurface = useCallback(
-    async (options: {
-      libraryId: string
-      mediaSourceId: string | null
-      requestedPageIndex: number
-      preferredAssetId?: string | null
-    }) => {
-      const { libraryId, mediaSourceId, requestedPageIndex, preferredAssetId } = options
-      const requestId = libraryLoadRequestIdRef.current + 1
-      libraryLoadRequestIdRef.current = requestId
-
-      setWorkspaceRefreshing(true)
-      setWorkspaceError(null)
-
-      try {
-        const pageSize = thumbnailGridLayout.pageSize
-        let resolvedPageIndex = Math.max(1, requestedPageIndex)
-
-        const readItemsPage = (pageIndex: number) =>
-          repository.items.list({
-            libraryId,
-            mediaSourceId: mediaSourceId ?? undefined,
-            page: pageIndex,
-            pageSize,
-          })
-
-        let nextItems = await readItemsPage(resolvedPageIndex)
-
-        while (resolvedPageIndex > 1 && nextItems.length === 0) {
-          resolvedPageIndex -= 1
-          nextItems = await readItemsPage(resolvedPageIndex)
-        }
-
-        const [detail, stats, snapshot] = await Promise.all([
-          repository.library.get(libraryId),
-          repository.scan.stats(libraryId),
-          repository.scan.snapshot(libraryId).catch((error: unknown) => {
-            if (isTaskNotFoundError(error)) {
-              return null
-            }
-
-            throw error
-          }),
-        ])
-
-        if (libraryLoadRequestIdRef.current !== requestId) {
-          return
-        }
-
-        setSelectedLibraryDetail(detail)
-        setScanStats(stats)
-        setScanSnapshot(snapshot)
-        setItemsPageIndex(resolvedPageIndex)
-        setItemsHasNextPage(resolvedPageIndex === requestedPageIndex && nextItems.length === pageSize)
-        setItems(nextItems)
-        setWorkspaceHydrated(true)
-        setItemThumbnailUrls((current) => {
-          const allowedAssetIds = new Set(nextItems.map((item) => item.assetId))
-          const next: Record<string, string> = {}
-
-          for (const [assetId, url] of Object.entries(current)) {
-            if (allowedAssetIds.has(assetId)) {
-              next[assetId] = url
-            }
-          }
-
-          return next
-        })
-        setSelectedAssetId((currentAssetId) => {
-          if (preferredAssetId && nextItems.some((item) => item.assetId === preferredAssetId)) {
-            return preferredAssetId
-          }
-
-          if (currentAssetId !== null && nextItems.some((item) => item.assetId === currentAssetId)) {
-            return currentAssetId
-          }
-
-          return nextItems[0]?.assetId ?? null
-        })
-      } catch (error) {
-        if (libraryLoadRequestIdRef.current !== requestId) {
-          return
-        }
-
-        setWorkspaceError(getErrorMessage(error))
-
-        if (!workspaceHydrated) {
-          setSelectedLibraryDetail(null)
-          setScanStats(null)
-          setScanSnapshot(null)
-          setItems([])
-          setItemsPageIndex(1)
-          setItemsHasNextPage(false)
-          setSelectedAssetId(null)
-          setItemThumbnailUrls({})
-        }
-      } finally {
-        if (libraryLoadRequestIdRef.current === requestId) {
-          setWorkspaceRefreshing(false)
-        }
-      }
-    },
-    [repository, thumbnailGridLayout.pageSize, workspaceHydrated],
-  )
-
-  const refreshLibraries = useCallback(
-    async (preferredLibraryId?: string | null): Promise<string | null> => {
-      setLibrariesLoading(true)
-
-      try {
-        const nextLibraries = await repository.library.list()
-        const nextSelectedLibraryId = resolveLibrarySelection(nextLibraries, preferredLibraryId)
-
-        setLibraries(nextLibraries)
-        setSelectedLibraryId(nextSelectedLibraryId)
-
-        return nextSelectedLibraryId
-      } catch (error) {
-        setLibraries([])
-        setSelectedLibraryId(null)
-        setWorkspaceError(getErrorMessage(error))
-        clearWorkspaceData()
-        return null
-      } finally {
-        setLibrariesLoading(false)
-      }
-    },
-    [clearWorkspaceData, repository],
-  )
-
-  const refreshSidebarNodes = useCallback(
-    async (
-      libraryId: string,
-      preferredSidebarNodeId?: string | null,
-      preferredMediaSourceId?: string | null,
-    ): Promise<SidebarSelection> => {
-      setSidebarNodesLoading(true)
-      setSidebarNodes([])
-      setSelectedSidebarNodeId(null)
-      setSelectedMediaSourceId(null)
-
-      try {
-        const nextNodes = await repository.library.nodes(libraryId)
-        const nextSelection = resolveSidebarSelection(
-          nextNodes,
-          preferredSidebarNodeId,
-          preferredMediaSourceId,
-        )
-
-        setSidebarNodes(nextNodes)
-        setSelectedSidebarNodeId(nextSelection.selectedSidebarNodeId)
-        setSelectedMediaSourceId(nextSelection.selectedMediaSourceId)
-        return nextSelection
-      } catch (error) {
-        setSidebarNodes([])
-        setSelectedSidebarNodeId(null)
-        setSelectedMediaSourceId(null)
-        setWorkspaceError(getErrorMessage(error))
-        return {
-          selectedSidebarNodeId: null,
-          selectedMediaSourceId: null,
-        }
-      } finally {
-        setSidebarNodesLoading(false)
-      }
-    },
-    [repository],
-  )
-
-  const refreshWorkspace = useCallback(
-    async (options?: {
-      preferredLibraryId?: string | null
-      preferredSidebarNodeId?: string | null
-      preferredMediaSourceId?: string | null
-      preferredPageIndex?: number
-      preferredAssetId?: string | null
-    }) => {
-      const preferredLibraryId = options?.preferredLibraryId
-      const nextSelectedLibraryId = await refreshLibraries(preferredLibraryId)
-
-      if (nextSelectedLibraryId === null) {
-        clearWorkspaceData()
-        return
-      }
-
-      const nextSelection = await refreshSidebarNodes(
-        nextSelectedLibraryId,
-        options?.preferredSidebarNodeId,
-        options?.preferredMediaSourceId,
-      )
-      const nextPageIndex = Math.max(1, options?.preferredPageIndex ?? 1)
-
-      setItemsPageIndex(nextPageIndex)
-      await loadLibrarySurface({
-        libraryId: nextSelectedLibraryId,
-        mediaSourceId: nextSelection.selectedMediaSourceId,
-        requestedPageIndex: nextPageIndex,
-        preferredAssetId: options?.preferredAssetId,
-      })
-    },
-    [clearWorkspaceData, loadLibrarySurface, refreshLibraries, refreshSidebarNodes],
-  )
-
-  const previousPageSizeRef = useRef(thumbnailGridLayout.pageSize)
-
-  useEffect(() => {
-    const previousPageSize = previousPageSizeRef.current
-    previousPageSizeRef.current = thumbnailGridLayout.pageSize
-
-    if (selectedLibraryId === null || previousPageSize === thumbnailGridLayout.pageSize) {
-      return
-    }
-
-    void loadLibrarySurface({
-      libraryId: selectedLibraryId,
-      mediaSourceId: selectedMediaSourceId,
-      requestedPageIndex: itemsPageIndex,
-    })
-  }, [
-    itemsPageIndex,
-    loadLibrarySurface,
-    selectedLibraryId,
-    selectedMediaSourceId,
-    thumbnailGridLayout.pageSize,
-  ])
-
-  useEffect(() => {
-    let cancelled = false
-
-    const hydrateWorkspace = async (): Promise<void> => {
-      try {
-        const cursor = await repository.database.readWorkspaceCursor()
-        if (cancelled) {
-          return
-        }
-
-        const normalizedCursor: WorkspaceCursor = {
-          selectedLibraryId: cursor?.selectedLibraryId ?? null,
-          selectedSidebarNodeId:
-            cursor?.selectedSidebarNodeId ?? cursor?.selectedNodeId ?? null,
-          selectedMediaSourceId: cursor?.selectedMediaSourceId ?? null,
-          selectedNodeId: cursor?.selectedNodeId ?? null,
-          itemsPageIndex: Math.max(1, cursor?.itemsPageIndex ?? 1),
-          selectedAssetId: cursor?.selectedAssetId ?? null,
-        }
-
-        await refreshWorkspace({
-          preferredLibraryId: normalizedCursor.selectedLibraryId,
-          preferredSidebarNodeId: normalizedCursor.selectedSidebarNodeId,
-          preferredMediaSourceId: normalizedCursor.selectedMediaSourceId,
-          preferredPageIndex: normalizedCursor.itemsPageIndex ?? 1,
-          preferredAssetId: normalizedCursor.selectedAssetId,
-        })
-      } catch {
-        if (cancelled) {
-          return
-        }
-
-        await refreshWorkspace()
-      }
-    }
-
-    void hydrateWorkspace()
-
-    return () => {
-      cancelled = true
-    }
-  }, [refreshWorkspace, repository])
-
-  useEffect(() => {
-    if (!workspaceHydrated) {
-      return
-    }
-
-    const timer = window.setTimeout(() => {
-      void repository.database
-        .writeWorkspaceCursor({
-          selectedLibraryId,
-          selectedSidebarNodeId,
-          selectedMediaSourceId,
-          selectedNodeId: selectedSidebarNodeId,
-          itemsPageIndex,
-          selectedAssetId,
-        })
-        .catch(() => {
-          // ignore workspace cursor persistence failure
-        })
-    }, 180)
-
-    return () => {
-      window.clearTimeout(timer)
-    }
-  }, [
-    itemsPageIndex,
+  const { refreshLibraries, refreshSidebarNodes } = useAppShellWorkspaceSelection({
     repository,
-    selectedAssetId,
-    selectedLibraryId,
-    selectedMediaSourceId,
-    selectedSidebarNodeId,
+    clearWorkspaceData,
+    setLibraries,
+    setLibrariesLoading,
+    setSelectedLibraryId,
+    setSidebarNodes,
+    setSidebarNodesLoading,
+    setSelectedSidebarNodeId,
+    setSelectedMediaSourceId,
+    setWorkspaceError,
+  })
+
+  const { bootstrapScanSnapshot, loadLibrarySurface, refreshWorkspace } =
+    useAppShellWorkspaceData({
+      repository,
+      thumbnailPageSize: thumbnailGridLayout.pageSize,
+      libraryLoadRequestIdRef,
+      selectedLibraryId,
+      selectedMediaSourceId,
+      itemsPageIndex,
+      workspaceHydrated,
+      clearWorkspaceData,
+      setSelectedLibraryDetail,
+      setScanStats,
+      setScanSnapshot,
+      setWorkspaceRefreshing,
+      setWorkspaceHydrated,
+      setWorkspaceError,
+      setItems,
+      setItemsPageIndex,
+      setItemsHasNextPage,
+      setSelectedAssetId,
+      setItemThumbnailUrls,
+      refreshLibraries,
+      refreshSidebarNodes,
+    })
+
+  useAppShellWorkspaceCursor({
+    cursorStore: repository.database,
+    refreshWorkspace,
     workspaceHydrated,
-  ])
+    selectedLibraryId,
+    selectedSidebarNodeId,
+    selectedMediaSourceId,
+    itemsPageIndex,
+    selectedAssetId,
+  })
 
   useEffect(() => {
     if (!settingsOpen && !importTaskPanelOpen) {
@@ -590,100 +208,16 @@ export function AppShell() {
     }
   }, [importTaskPanelOpen, settingsOpen])
 
-  useEffect(() => {
-    if (selectedAssetId === null) {
-      itemDetailRequestIdRef.current += 1
-      setSelectedItemDetail(null)
-      setItemDetailError(null)
-      setItemDetailLoading(false)
-      return
-    }
-
-    const requestId = itemDetailRequestIdRef.current + 1
-    itemDetailRequestIdRef.current = requestId
-    setItemDetailLoading(true)
-    setItemDetailError(null)
-
-    void repository.items
-      .detail(selectedAssetId)
-      .then((detail) => {
-        if (itemDetailRequestIdRef.current !== requestId) {
-          return
-        }
-
-        setSelectedItemDetail(detail)
-      })
-      .catch((error: unknown) => {
-        if (itemDetailRequestIdRef.current !== requestId) {
-          return
-        }
-
-        setSelectedItemDetail(null)
-        setItemDetailError(getErrorMessage(error))
-      })
-      .finally(() => {
-        if (itemDetailRequestIdRef.current === requestId) {
-          setItemDetailLoading(false)
-        }
-      })
-  }, [repository, selectedAssetId])
-
-  useEffect(() => {
-    if (items.length === 0) {
-      setItemThumbnailUrls({})
-      return
-    }
-
-    let disposed = false
-
-    const visibleAssetIds = new Set(items.map((item) => item.assetId))
-    setItemThumbnailUrls((current) => {
-      const next: Record<string, string> = {}
-      for (const [assetId, url] of Object.entries(current)) {
-        if (visibleAssetIds.has(assetId)) {
-          next[assetId] = url
-        }
-      }
-      return next
-    })
-
-    const applyThumbnailUrl = (assetId: string, thumbnailUrl: string) => {
-      if (disposed) {
-        return
-      }
-
-      setItemThumbnailUrls((current) => {
-        if (current[assetId] === thumbnailUrl) {
-          return current
-        }
-
-        return {
-          ...current,
-          [assetId]: thumbnailUrl,
-        }
-      })
-    }
-
-    for (const item of items) {
-      if (item.thumbnailKey) {
-        applyThumbnailUrl(item.assetId, repository.urls.thumbnail(item.thumbnailKey))
-        continue
-      }
-
-      void repository.thumbnail
-        .ensure(item.assetId, 'grid-md')
-        .then((ensuredThumbnail) => {
-          applyThumbnailUrl(item.assetId, repository.urls.thumbnail(ensuredThumbnail.thumbnailKey))
-        })
-        .catch(() => {
-          // ignore missing thumbnail and keep placeholder
-        })
-    }
-
-    return () => {
-      disposed = true
-    }
-  }, [items, repository])
+  useAppShellItemData({
+    repository,
+    itemDetailRequestIdRef,
+    selectedAssetId,
+    items,
+    setSelectedItemDetail,
+    setItemDetailError,
+    setItemDetailLoading,
+    setItemThumbnailUrls,
+  })
 
   function handleSplitterPointerDown(target: DragTarget) {
     return (event: ReactPointerEvent<HTMLDivElement>): void => {
@@ -732,478 +266,42 @@ export function AppShell() {
     [loadLibrarySurface, selectedLibraryId, sidebarNodes],
   )
 
-  const handleAddLibrary = useCallback(
-    async (shouldScanAfterAdd: boolean) => {
-      const rootPath = importRootPath.trim()
-
-      if (rootPath.length === 0) {
-        setActionError('请先输入要登记的本地路径。')
-        return
-      }
-
-      const activityId = appendImportActivity({
-        title: shouldScanAfterAdd ? '登记并扫描' : '登记媒体库',
-        source: '手动路径',
-        status: 'running',
-        detail: shouldScanAfterAdd
-          ? `正在登记并扫描：${rootPath}`
-          : `正在登记媒体库：${rootPath}`,
-      })
-
-      setActionBusy(shouldScanAfterAdd ? 'addAndScan' : 'addLibrary')
-      setActionError(null)
-
-      try {
-        const createdLibrary = await repository.library.add({ rootPath })
-
-        if (shouldScanAfterAdd) {
-          setActionMessage(`已登记并启动扫描：${createdLibrary.rootPath}`)
-          updateImportActivity(activityId, {
-            status: 'completed',
-            detail: `已登记并启动扫描：${createdLibrary.rootPath}`,
-          })
-          void repository.scan
-            .start(createdLibrary.id)
-            .then(async () => {
-              await bootstrapScanSnapshot(createdLibrary.id)
-            })
-            .catch((error: unknown) => {
-              setActionError(`扫描启动失败：${getErrorMessage(error)}`)
-            })
-        } else {
-          setActionMessage(`已登记媒体库：${createdLibrary.rootPath}`)
-          updateImportActivity(activityId, {
-            status: 'completed',
-            detail: `已登记媒体库：${createdLibrary.rootPath}`,
-          })
-        }
-
-        setImportRootPath('')
-        await refreshWorkspace({
-          preferredLibraryId: createdLibrary.id,
-          preferredPageIndex: 1,
-        })
-      } catch (error) {
-        setActionError(getErrorMessage(error))
-        updateImportActivity(activityId, {
-          status: 'failed',
-          detail: `登记失败：${getErrorMessage(error)}`,
-        })
-      } finally {
-        setActionBusy(null)
-      }
-    },
-    [
-      appendImportActivity,
-      bootstrapScanSnapshot,
-      importRootPath,
-      refreshWorkspace,
-      repository,
-      updateImportActivity,
-    ],
-  )
-
-  const runPathImport = useCallback(
-    async (
-      rawPaths: string[],
-      actionKind: Extract<ActionKind, 'dropImport' | 'pasteImport'>,
-      emptyErrorMessage: string,
-      successSummaryLabel: string,
-      failureSummaryLabel: string,
-    ) => {
-      const paths = normalizePathBatch(rawPaths)
-
-      if (paths.length === 0) {
-        setActionError(emptyErrorMessage)
-        return
-      }
-
-      const activityId = appendImportActivity({
-        title: ACTION_LABELS[actionKind],
-        source: actionKind === 'dropImport' ? '拖拽导入' : '粘贴导入',
-        status: 'running',
-        detail: `正在处理 ${paths.length} 条路径。`,
-      })
-
-      setActionBusy(actionKind)
-      setActionError(null)
-      setActionMessage(null)
-
-      const successLibraries: LibraryDetail[] = []
-      const failedPaths: string[] = []
-
-      for (const path of paths) {
-        try {
-          const createdLibrary = await repository.library.add({ rootPath: path })
-          successLibraries.push(createdLibrary)
-          void repository.scan
-            .start(createdLibrary.id)
-            .then(async () => {
-              await bootstrapScanSnapshot(createdLibrary.id)
-            })
-            .catch((error: unknown) => {
-              setActionError(`扫描启动失败：${getErrorMessage(error)}`)
-            })
-        } catch (error) {
-          failedPaths.push(`${path}：${getErrorMessage(error)}`)
-        }
-      }
-
-      try {
-        const preferredLibraryId = successLibraries.at(-1)?.id ?? selectedLibraryId
-        await refreshWorkspace({
-          preferredLibraryId,
-          preferredPageIndex: 1,
-        })
-      } finally {
-        setActionBusy(null)
-      }
-
-      if (successLibraries.length > 0) {
-        const successSummary = `已处理 ${successLibraries.length} 条${successSummaryLabel}，并刷新主界面快照。`
-
-        if (failedPaths.length > 0) {
-          setActionMessage(`${successSummary} 部分路径失败。`)
-          setActionError(failedPaths.join('；'))
-          updateImportActivity(activityId, {
-            status: 'completed',
-            detail: `${successSummary} 部分路径失败。`,
-          })
-        } else {
-          setActionMessage(successSummary)
-          setActionError(null)
-          updateImportActivity(activityId, {
-            status: 'completed',
-            detail: successSummary,
-          })
-        }
-
-        return
-      }
-
-      setActionMessage(null)
-      setActionError(failedPaths.join('；') || failureSummaryLabel)
-      updateImportActivity(activityId, {
-        status: 'failed',
-        detail: failedPaths.join('；') || failureSummaryLabel,
-      })
-    },
-    [
-      appendImportActivity,
-      bootstrapScanSnapshot,
-      refreshWorkspace,
-      repository,
-      selectedLibraryId,
-      updateImportActivity,
-    ],
-  )
-
-  const handleDropImport = useCallback(
-    async (rawPaths: string[]) => {
-      await runPathImport(
-        rawPaths,
-        'dropImport',
-        '未从拖拽事件中解析到可用路径。',
-        '拖拽路径',
-        '拖拽导入失败。',
-      )
-    },
-    [runPathImport],
-  )
-
-  const handlePasteImport = useCallback(
-    async (rawText: string) => {
-      await runPathImport(
-        parseClipboardPaths(rawText),
-        'pasteImport',
-        '未从剪贴板解析到可用路径。',
-        '粘贴路径',
-        '粘贴导入失败。',
-      )
-    },
-    [runPathImport],
-  )
-
-  useEffect(() => {
-    handleDropImportRef.current = handleDropImport
-  }, [handleDropImport])
-
-  useEffect(() => {
-    handlePasteImportRef.current = handlePasteImport
-  }, [handlePasteImport])
-
-  useEffect(() => {
-    let cancelled = false
-    let cleanup: (() => void) | null = null
-
-    void getCurrentWindow()
-      .onDragDropEvent((event) => {
-        if (cancelled) {
-          return
-        }
-
-        if (event.payload.type === 'enter' || event.payload.type === 'over') {
-          setDropImportActive(true)
-          return
-        }
-
-        if (event.payload.type === 'leave') {
-          setDropImportActive(false)
-          return
-        }
-
-        setDropImportActive(false)
-        setImportTaskPanelOpen(true)
-        void handleDropImportRef.current(event.payload.paths)
-      })
-      .then((unlisten) => {
-        if (cancelled) {
-          void unlisten()
-          return
-        }
-
-        cleanup = unlisten
-      })
-      .catch((error: unknown) => {
-        setActionError(`拖拽监听初始化失败：${getErrorMessage(error)}`)
-      })
-
-    return () => {
-      cancelled = true
-      cleanup?.()
-    }
-  }, [])
-
-  useEffect(() => {
-    const handlePaste = (event: ClipboardEvent): void => {
-      if (isEditablePasteTarget(event.target)) {
-        return
-      }
-
-      const clipboardText =
-        event.clipboardData?.getData('text/plain') || event.clipboardData?.getData('text/uri-list') || ''
-
-      const processPaste = async (): Promise<void> => {
-        const nativeFilePaths = await clipboardHasFiles()
-          .then(async (hasFiles) => {
-            if (!hasFiles) {
-              return []
-            }
-
-            const result = await readClipboardFiles()
-            return normalizePathBatch(result.paths)
-          })
-          .catch(() => [])
-
-        if (nativeFilePaths.length > 0) {
-          event.preventDefault()
-          setImportTaskPanelOpen(true)
-          await handlePasteImportRef.current(nativeFilePaths.join('\n'))
-          return
-        }
-
-        const fallbackText = clipboardText.length > 0 ? clipboardText : await readClipboardText().catch(() => '')
-        const parsedPaths = parseClipboardPaths(fallbackText)
-
-        if (parsedPaths.length === 0) {
-          return
-        }
-
-        event.preventDefault()
-        setImportTaskPanelOpen(true)
-        await handlePasteImportRef.current(fallbackText)
-      }
-
-      void processPaste()
-    }
-
-    window.addEventListener('paste', handlePaste)
-
-    return () => {
-      window.removeEventListener('paste', handlePaste)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (selectedLibraryId === null || !isActiveTaskProgress(scanSnapshot)) {
-      return
-    }
-
-    let cancelled = false
-
-    const pollSnapshot = async (): Promise<void> => {
-      try {
-        const [nextSnapshot, nextStats] = await Promise.all([
-          repository.scan.snapshot(selectedLibraryId).catch((error: unknown) => {
-            if (isTaskNotFoundError(error)) {
-              return null
-            }
-
-            throw error
-          }),
-          repository.scan.stats(selectedLibraryId),
-        ])
-
-        if (cancelled) {
-          return
-        }
-
-        setScanSnapshot(nextSnapshot)
-        setScanStats(nextStats)
-
-        if (isActiveTaskProgress(scanSnapshot) && nextSnapshot !== null && !isActiveTaskProgress(nextSnapshot)) {
-          const nextSelection = await refreshSidebarNodes(
-            selectedLibraryId,
-            selectedSidebarNodeId,
-            selectedMediaSourceId,
-          )
-          await loadLibrarySurface({
-            libraryId: selectedLibraryId,
-            mediaSourceId: nextSelection.selectedMediaSourceId,
-            requestedPageIndex: itemsPageIndex,
-          })
-        }
-      } catch (error) {
-        if (cancelled) {
-          return
-        }
-
-        setActionError(`扫描进度轮询失败：${getErrorMessage(error)}`)
-      }
-    }
-
-    void pollSnapshot()
-    const timer = window.setInterval(() => {
-      void pollSnapshot()
-    }, 1500)
-
-    return () => {
-      cancelled = true
-      window.clearInterval(timer)
-    }
-  }, [
-    itemsPageIndex,
-    loadLibrarySurface,
-    refreshSidebarNodes,
+  const {
+    actionBusy,
+    actionError,
+    actionMessage,
+    dropImportActive,
+    handleAddLibrary,
+    handlePickDirectory,
+    importRootPath,
+    pickSingleDirectory,
+    setActionError,
+    setImportRootPath,
+  } = useAppShellImportController({
     repository,
-    scanSnapshot,
+    selectedLibraryId,
+    refreshWorkspace,
+    bootstrapScanSnapshot,
+    appendImportActivity,
+    updateImportActivity,
+    setImportTaskPanelOpen,
+  })
+
+  useAppShellScanState({
+    repository,
     selectedLibraryId,
     selectedSidebarNodeId,
     selectedMediaSourceId,
-  ])
-
-  useEffect(() => {
-    if (scanSnapshot === null || selectedLibraryId === null) {
-      completedScanSurfaceSyncTaskIdRef.current = null
-      return
-    }
-
-    if (isActiveTaskProgress(scanSnapshot)) {
-      return
-    }
-
-    if (completedScanSurfaceSyncTaskIdRef.current === scanSnapshot.taskId) {
-      return
-    }
-
-    completedScanSurfaceSyncTaskIdRef.current = scanSnapshot.taskId
-
-    void (async () => {
-      const nextSelection = await refreshSidebarNodes(
-        selectedLibraryId,
-        selectedSidebarNodeId,
-        selectedMediaSourceId,
-      )
-      await loadLibrarySurface({
-        libraryId: selectedLibraryId,
-        mediaSourceId: nextSelection.selectedMediaSourceId,
-        requestedPageIndex: itemsPageIndex,
-      })
-    })()
-  }, [
     itemsPageIndex,
+    scanSnapshot,
     loadLibrarySurface,
     refreshSidebarNodes,
-    scanSnapshot,
-    selectedLibraryId,
-    selectedSidebarNodeId,
-    selectedMediaSourceId,
-  ])
-
-  useEffect(() => {
-    if (scanSnapshot === null) {
-      activeScanActivityTaskIdRef.current = null
-      activeScanActivityEntryIdRef.current = null
-      return
-    }
-
-    const statusMap: Record<TaskProgress['state'], ImportActivityStatus> = {
-      queued: 'running',
-      running: 'running',
-      completed: 'completed',
-      failed: 'failed',
-      cancelled: 'failed',
-    }
-    const detail = `${formatTaskStateLabel(scanSnapshot.state)} · ${scanSnapshot.current}/${scanSnapshot.total ?? '?'} · ${scanSnapshot.message ?? '暂无消息'}`
-
-    if (activeScanActivityTaskIdRef.current !== scanSnapshot.taskId || activeScanActivityEntryIdRef.current === null) {
-      const nextActivityId = appendImportActivity({
-        title: '扫描任务',
-        source: '扫描轮询',
-        status: statusMap[scanSnapshot.state],
-        detail,
-      })
-
-      activeScanActivityTaskIdRef.current = scanSnapshot.taskId
-      activeScanActivityEntryIdRef.current = nextActivityId
-      return
-    }
-
-    updateImportActivity(activeScanActivityEntryIdRef.current, {
-      status: statusMap[scanSnapshot.state],
-      detail,
-    })
-
-    if (!isActiveTaskProgress(scanSnapshot)) {
-      activeScanActivityTaskIdRef.current = null
-      activeScanActivityEntryIdRef.current = null
-    }
-  }, [appendImportActivity, scanSnapshot, updateImportActivity])
-
-  const pickSingleDirectory = useCallback(async (title: string): Promise<string | null> => {
-    const e2eSelection = consumeE2eDirectorySelection(title)
-    if (e2eSelection.handled) {
-      return e2eSelection.path
-    }
-
-    const selection = await openDialog({
-      directory: true,
-      multiple: false,
-      title,
-    })
-
-    if (selection === null) {
-      return null
-    }
-
-    const nextPath = Array.isArray(selection) ? selection[0] : selection
-    return typeof nextPath === 'string' && nextPath.trim().length > 0 ? nextPath : null
-  }, [])
-
-  const handlePickDirectory = useCallback(async () => {
-    setActionError(null)
-
-    try {
-      const nextPath = await pickSingleDirectory('选择媒体库目录')
-      if (nextPath === null) {
-        return
-      }
-
-      setImportRootPath(nextPath)
-    } catch (error) {
-      setActionError(`系统文件夹选择器不可用：${getErrorMessage(error)}`)
-    }
-  }, [pickSingleDirectory])
+    setScanSnapshot,
+    setScanStats,
+    setActionError,
+    appendImportActivity,
+    updateImportActivity,
+  })
 
   const refreshRuntimeInfo = useCallback(async () => {
     setRuntimeInfoLoading(true)

@@ -201,18 +201,41 @@ Current validated tool versions for the Rust `1.88.0` project baseline:
 - `cargo-audit 0.22.1`
 - `cargo-udeps 0.1.56`
 
-### Recommended Next Implementation Items
+### 当前待办（含最新进度）
 
-After layered quality pipeline `Phase 0~5` completion, current recommended implementation priorities are:
+#### 已完成进度（2026-03-12）
 
-1. Stabilize existing failing gates:
+1. `AppShell.tsx` 单体继续拆分并显著降体积
+   - 已从历史大文件基线持续下降到当前约 `1288` 行
+   - 已拆出并接入：
+     - `use-app-shell-layout*`
+     - `use-app-shell-workspace-cursor.ts`
+     - `use-app-shell-workspace-selection.ts`
+     - `use-app-shell-workspace-data.ts`
+     - `use-app-shell-item-data.ts`
+     - `use-app-shell-import-activities.ts`
+     - `use-app-shell-import-controller.ts`
+     - `use-app-shell-import-listeners.ts`
+     - `use-app-shell-directory-picker.ts`
+     - `use-app-shell-scan-state.ts`
+2. 本轮质量门禁结果
+   - `npm run build:web`：通过
+   - `npm run check:module-boundaries`：通过
+   - `npm run check:quality:fast`：通过
+
+#### 待拆分 / 待完成
+
+1. 继续拆分 `AppShell.tsx` 视图层（优先）
+   - 将 Sidebar/Main/Metadata 的 JSX 渲染段继续下沉为更小的渲染模块，进一步降低 `react-container` 风险
+2. 持续收口新增模块体积
+   - 新增 hook 保持在 `react-module` 硬上限内（`<=300` 行），避免“从一个大文件拆出多个超限文件”
+3. 处理分层质量中的既有失败项
    - `clippy`
    - `deny`
    - `duplicate-deps`
-2. Add missing gates:
+4. 补齐缺失门禁项
    - `capabilities drift`
    - `contract drift`
-3. Land CI workflows for layered gates (`fast/standard/heavy/release`)
-4. Extend release-level verification:
-   - installer/upgrade replay
-   - signing/offline smoke
+5. 落地 CI 分层流水线与发布增强验收
+   - 分层工作流：`fast / standard / heavy / release`
+   - 发布侧补充：installer/upgrade replay、signing/offline smoke
