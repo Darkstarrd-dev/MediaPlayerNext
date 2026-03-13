@@ -7,6 +7,7 @@ import {
   mediaSourceIdSchema,
   sourceIdSchema,
 } from "./ids.js";
+import { thumbnailProfileSchema } from "./thumbnail.js";
 
 export const itemSourceKindSchema = z.enum(["file", "archive_entry"]);
 
@@ -14,6 +15,7 @@ export const itemsListQuerySchema = z.object({
   libraryId: libraryIdSchema,
   mediaSourceId: mediaSourceIdSchema.optional(),
   sourceId: sourceIdSchema.optional(),
+  thumbnailProfile: thumbnailProfileSchema.optional(),
   page: z.number().int().positive().optional(),
   pageSize: z.number().int().positive().optional(),
 });

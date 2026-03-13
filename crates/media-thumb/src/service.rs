@@ -1,4 +1,6 @@
-use crate::cache::{cache_path_for_key, thumbnail_key_for_source, write_thumbnail_atomically};
+use crate::cache::{
+    cache_path_for_key_with_extension, thumbnail_key_for_source, write_thumbnail_atomically,
+};
 use crate::pipeline::{render_thumbnail_from_memory, render_thumbnail_from_path};
 use crate::profiles::ThumbnailProfile;
 use crate::source::ThumbnailSource;
@@ -37,7 +39,7 @@ impl ThumbnailService {
         profile: ThumbnailProfile,
     ) -> Result<GeneratedThumbnail> {
         let thumbnail_key = thumbnail_key_for_source(source, profile, &self.pipeline_version);
-        let layout = cache_path_for_key(&self.cache_root, &thumbnail_key);
+        let layout = cache_path_for_key_with_extension(&self.cache_root, &thumbnail_key, "jpg");
 
         if layout.absolute_path.exists() {
             let metadata = std::fs::metadata(&layout.absolute_path)?;
@@ -47,7 +49,7 @@ impl ThumbnailService {
                 disk_path: layout.absolute_path,
                 width: dimensions.0,
                 height: dimensions.1,
-                format: "webp".to_string(),
+                format: "jpeg".to_string(),
                 byte_size: metadata.len() as usize,
                 cache_hit: true,
             });
@@ -67,6 +69,8 @@ impl ThumbnailService {
             }
         };
 
+        let extension = extension_for_format(render.format);
+        let layout = cache_path_for_key_with_extension(&self.cache_root, &thumbnail_key, extension);
         write_thumbnail_atomically(&layout.absolute_path, &render.bytes)?;
 
         Ok(GeneratedThumbnail {
@@ -78,6 +82,14 @@ impl ThumbnailService {
             byte_size: render.bytes.len(),
             cache_hit: false,
         })
+    }
+}
+
+fn extension_for_format(format: &str) -> &'static str {
+    match format {
+        "jpeg" => "jpg",
+        "webp" => "webp",
+        _ => "bin",
     }
 }
 

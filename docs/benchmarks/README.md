@@ -19,6 +19,7 @@
 - `p6-debt-delta-baseline-20260312.md`
 - `p6-bad-path-validation-20260308.md`
 - `benchmark-threshold-policy.md`
+- `thumbnail-codec-comparison-reference-20260313.md`
 - `docs/benchmarks/business-benchmark-latest.json`（业务路径 benchmark 当前值）
 - `docs/benchmarks/business-benchmark-history.json`（业务路径 benchmark 历史样本）
 

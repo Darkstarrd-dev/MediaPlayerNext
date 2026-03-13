@@ -22,6 +22,7 @@ import {
 } from './app-shell-layout-constants'
 import {
   computeThumbnailGridLayout,
+  resolveThumbnailCardChromePx,
   THUMBNAIL_ZOOM_LEVELS,
   toThumbnailZoomLevel,
   type ThumbnailZoomLevel,
@@ -166,14 +167,17 @@ export function useAppShellLayout() {
   )
 
   const thumbnailGridLayout = useMemo(
-    () =>
-      computeThumbnailGridLayout({
+    () => {
+      const cardChromePx = resolveThumbnailCardChromePx()
+      return computeThumbnailGridLayout({
         containerWidth: mainGridSize.width,
         containerHeight: mainGridSize.height,
         zoomLevel: thumbnailZoomLevel,
         gapPx: THUMBNAIL_GRID_GAP_PX,
         minCellSizePx: THUMBNAIL_GRID_MIN_CELL_PX,
-      }),
+        cardChromePx,
+      })
+    },
     [mainGridSize.height, mainGridSize.width, thumbnailZoomLevel],
   )
 
@@ -215,7 +219,9 @@ export function useAppShellLayout() {
 
     const targetMainWidthPx = computeGapSnapTargetWidth({
       containerWidth: mainGridSize.width,
-      columns: thumbnailGridLayout.columns,
+      gridUsedWidth:
+        thumbnailGridLayout.columns * thumbnailGridLayout.cellWidth +
+        Math.max(0, thumbnailGridLayout.columns - 1) * thumbnailGridLayout.gapPx,
       cellSizePx: thumbnailGridLayout.cellSizePx,
       gapPx: thumbnailGridLayout.gapPx,
       minMainWidthPx,
@@ -260,6 +266,7 @@ export function useAppShellLayout() {
     maxMainWidthPx,
     minMainWidthPx,
     thumbnailGridLayout.cellSizePx,
+    thumbnailGridLayout.cellWidth,
     thumbnailGridLayout.columns,
     thumbnailGridLayout.gapPx,
     workspaceLayout.availableWidth,

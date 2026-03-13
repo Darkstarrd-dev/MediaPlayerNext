@@ -2,12 +2,13 @@ import type { ThumbnailProfile } from '@mediaplayernext/contracts'
 
 export const PAGE_WHEEL_DELTA_THRESHOLD_PX = 96
 export const PAGE_WHEEL_SETTLE_MS = 160
-export const GAP_SNAP_MIN_REMAINDER_PX = 36
+export const GAP_SNAP_MIN_REMAINDER_PX = 8
 export const GAP_SNAP_MIN_ADJUST_PX = 12
+export const GAP_SNAP_EXPAND_BUFFER_PX = 2
 
 interface GapSnapTargetWidthInput {
   containerWidth: number
-  columns: number
+  gridUsedWidth: number
   cellSizePx: number
   gapPx: number
   minMainWidthPx: number
@@ -49,7 +50,7 @@ export function resolveThumbnailProfileForGrid(
 
 export function computeGapSnapTargetWidth(input: GapSnapTargetWidthInput): number | null {
   const containerWidth = Math.max(0, Math.round(input.containerWidth))
-  const columns = Math.max(1, Math.round(input.columns))
+  const gridUsedWidth = Math.max(1, Math.round(input.gridUsedWidth))
   const cellSizePx = Math.max(48, Math.round(input.cellSizePx))
   const gapPx = Math.max(0, Math.round(input.gapPx))
   const minMainWidthPx = Math.max(1, Math.round(input.minMainWidthPx))
@@ -59,36 +60,26 @@ export function computeGapSnapTargetWidth(input: GapSnapTargetWidthInput): numbe
     return null
   }
 
-  const usedWidth = columns * cellSizePx + Math.max(0, columns - 1) * gapPx
-  const remainder = Math.max(0, containerWidth - usedWidth)
-  if (remainder < GAP_SNAP_MIN_REMAINDER_PX) {
+  const rightGap = containerWidth - gridUsedWidth
+  if (Math.abs(rightGap) < GAP_SNAP_MIN_REMAINDER_PX) {
     return null
   }
 
-  const previousColumnsWidth = Math.max(cellSizePx, usedWidth - (cellSizePx + gapPx))
-  const nextColumnsWidth = usedWidth + cellSizePx + gapPx
-
-  const candidateWidths = [
-    clampWidth(usedWidth, minMainWidthPx, maxMainWidthPx),
-    clampWidth(previousColumnsWidth, minMainWidthPx, maxMainWidthPx),
-    clampWidth(nextColumnsWidth, minMainWidthPx, maxMainWidthPx),
-  ]
-
-  let bestTarget: number | null = null
-  let bestDistance = Number.POSITIVE_INFINITY
-  for (const candidate of candidateWidths) {
-    const distance = Math.abs(candidate - containerWidth)
-    if (distance < bestDistance) {
-      bestDistance = distance
-      bestTarget = candidate
+  let mainDelta = -rightGap
+  if (rightGap > 0) {
+    const halfCell = cellSizePx * 0.5
+    if (rightGap > halfCell) {
+      const cellSpan = cellSizePx + gapPx
+      mainDelta = cellSpan - rightGap + GAP_SNAP_EXPAND_BUFFER_PX
     }
   }
 
-  if (bestTarget === null || Math.abs(bestTarget - containerWidth) < GAP_SNAP_MIN_ADJUST_PX) {
+  const targetMainWidthPx = clampWidth(containerWidth + mainDelta, minMainWidthPx, maxMainWidthPx)
+  if (Math.abs(targetMainWidthPx - containerWidth) < GAP_SNAP_MIN_ADJUST_PX) {
     return null
   }
 
-  return bestTarget
+  return targetMainWidthPx
 }
 
 export function resolveGapSnapPaneWidths(
@@ -109,40 +100,50 @@ export function resolveGapSnapPaneWidths(
   const maxSidebarWidthPx = Math.max(minSidebarWidthPx, availableWidth - minMetaWidthPx - minMainWidthPx)
   const maxMetaWidthPx = Math.max(minMetaWidthPx, availableWidth - minSidebarWidthPx - minMainWidthPx)
 
-  const currentSidebarWidthPx = Math.max(minSidebarWidthPx, Math.round(input.currentSidebarWidthPx))
-  const currentMetaWidthPx = Math.max(minMetaWidthPx, Math.round(input.currentMetaWidthPx))
-  const currentSum = Math.max(1, currentSidebarWidthPx + currentMetaWidthPx)
-  const sidebarRatio = currentSidebarWidthPx / currentSum
-
   let sidebarWidthPx = clampWidth(
-    Math.round(sideAndMetaTotal * sidebarRatio),
+    Math.round(input.currentSidebarWidthPx),
     minSidebarWidthPx,
     maxSidebarWidthPx,
   )
   let metaWidthPx = clampWidth(
-    sideAndMetaTotal - sidebarWidthPx,
+    Math.round(input.currentMetaWidthPx),
     minMetaWidthPx,
     maxMetaWidthPx,
   )
-  sidebarWidthPx = clampWidth(sideAndMetaTotal - metaWidthPx, minSidebarWidthPx, maxSidebarWidthPx)
 
-  const targetCombinedWidth = sideAndMetaTotal
-  let combinedWidth = sidebarWidthPx + metaWidthPx
-  if (combinedWidth < targetCombinedWidth) {
-    const growthNeeded = targetCombinedWidth - combinedWidth
+  const currentMainWidthPx = Math.max(0, availableWidth - sidebarWidthPx - metaWidthPx)
+  let mainDelta = targetMainWidthPx - currentMainWidthPx
+
+  if (Math.abs(mainDelta) < GAP_SNAP_MIN_ADJUST_PX) {
+    return null
+  }
+
+  if (mainDelta > 0) {
+    const metaShrink = Math.min(mainDelta, metaWidthPx - minMetaWidthPx)
+    metaWidthPx -= metaShrink
+    mainDelta -= metaShrink
+
+    const sidebarShrink = Math.min(mainDelta, sidebarWidthPx - minSidebarWidthPx)
+    sidebarWidthPx -= sidebarShrink
+    mainDelta -= sidebarShrink
+  } else {
+    const growthNeeded = -mainDelta
     const metaGrowth = Math.min(growthNeeded, maxMetaWidthPx - metaWidthPx)
     metaWidthPx += metaGrowth
-    combinedWidth += metaGrowth
-    const sidebarGrowth = Math.min(targetCombinedWidth - combinedWidth, maxSidebarWidthPx - sidebarWidthPx)
+    mainDelta += metaGrowth
+
+    const sidebarGrowth = Math.min(-mainDelta, maxSidebarWidthPx - sidebarWidthPx)
     sidebarWidthPx += sidebarGrowth
-    combinedWidth += sidebarGrowth
-  } else if (combinedWidth > targetCombinedWidth) {
-    const shrinkNeeded = combinedWidth - targetCombinedWidth
-    const metaShrink = Math.min(shrinkNeeded, metaWidthPx - minMetaWidthPx)
-    metaWidthPx -= metaShrink
-    combinedWidth -= metaShrink
-    const sidebarShrink = Math.min(combinedWidth - targetCombinedWidth, sidebarWidthPx - minSidebarWidthPx)
-    sidebarWidthPx -= sidebarShrink
+    mainDelta += sidebarGrowth
+  }
+
+  if (Math.abs(mainDelta) >= GAP_SNAP_MIN_ADJUST_PX) {
+    return null
+  }
+
+  const maxSideAndMetaTotal = maxSidebarWidthPx + maxMetaWidthPx
+  if (sideAndMetaTotal > maxSideAndMetaTotal) {
+    return null
   }
 
   const finalMainWidthPx = availableWidth - sidebarWidthPx - metaWidthPx

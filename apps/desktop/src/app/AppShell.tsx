@@ -7,6 +7,7 @@ import { AppShellWorkspace } from './app-shell-workspace'
 import type { AppShellSettingsPage } from './app-shell-settings-types'
 import { useAppShellDatabaseSettings } from './use-app-shell-database-settings'
 import { useAppShellLayout, type DragTarget } from './use-app-shell-layout'
+import { resolveThumbnailProfileForGrid } from './thumbnail-grid-enhancements'
 import { useAppShellImportActivities } from './use-app-shell-import-activities'
 import { useAppShellImportController } from './use-app-shell-import-controller'
 import { useAppShellOverlayEscape } from './use-app-shell-overlay-escape'
@@ -50,6 +51,7 @@ export function AppShell() {
     setThumbnailZoomLevel,
     workspaceStyle,
   } = useAppShellLayout()
+  const thumbnailProfile = resolveThumbnailProfileForGrid(thumbnailGridLayout.cellSizePx)
 
   const {
     libraryLoadRequestIdRef,
@@ -119,6 +121,7 @@ export function AppShell() {
     useAppShellWorkspaceData({
       repository,
       thumbnailPageSize: thumbnailGridLayout.pageSize,
+      thumbnailProfile,
       libraryLoadRequestIdRef,
       selectedLibraryId,
       selectedMediaSourceId,
@@ -164,7 +167,12 @@ export function AppShell() {
     itemDetailRequestIdRef,
     selectedAssetId,
     items,
-    thumbnailCellSizePx: thumbnailGridLayout.cellSizePx,
+    selectedLibraryId,
+    selectedMediaSourceId,
+    itemsPageIndex,
+    itemsHasNextPage,
+    thumbnailPageSize: thumbnailGridLayout.pageSize,
+    thumbnailProfile,
     setSelectedItemDetail,
     setItemDetailError,
     setItemDetailLoading,

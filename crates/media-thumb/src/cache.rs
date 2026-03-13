@@ -33,11 +33,19 @@ pub fn thumbnail_key_for_source(
 }
 
 pub fn cache_path_for_key(cache_root: &Path, thumbnail_key: &str) -> ThumbnailCacheLayout {
+    cache_path_for_key_with_extension(cache_root, thumbnail_key, "jpg")
+}
+
+pub fn cache_path_for_key_with_extension(
+    cache_root: &Path,
+    thumbnail_key: &str,
+    extension: &str,
+) -> ThumbnailCacheLayout {
     let level_one = &thumbnail_key[0..2];
     let level_two = &thumbnail_key[2..4];
     let relative_path = PathBuf::from(level_one)
         .join(level_two)
-        .join(format!("{thumbnail_key}.webp"));
+        .join(format!("{thumbnail_key}.{extension}"));
 
     ThumbnailCacheLayout {
         root_dir: cache_root.to_path_buf(),
@@ -52,7 +60,12 @@ pub fn write_thumbnail_atomically(target_path: &Path, bytes: &[u8]) -> Result<()
         .expect("thumbnail target path should always have parent directory");
     fs::create_dir_all(parent)?;
 
-    let temp_path = target_path.with_extension("webp.tmp");
+    let temp_extension = target_path
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(|value| format!("{value}.tmp"))
+        .unwrap_or_else(|| "tmp".to_string());
+    let temp_path = target_path.with_extension(temp_extension);
     fs::write(&temp_path, bytes)?;
     if target_path.exists() {
         fs::remove_file(target_path)?;
@@ -63,7 +76,10 @@ pub fn write_thumbnail_atomically(target_path: &Path, bytes: &[u8]) -> Result<()
 
 #[cfg(test)]
 mod tests {
-    use super::{cache_path_for_key, thumbnail_key_for_source, write_thumbnail_atomically};
+    use super::{
+        cache_path_for_key, cache_path_for_key_with_extension, thumbnail_key_for_source,
+        write_thumbnail_atomically,
+    };
     use crate::profiles::ThumbnailProfile;
     use crate::source::ThumbnailSource;
     use tempfile::tempdir;
@@ -92,6 +108,19 @@ mod tests {
         );
 
         assert!(layout.relative_path.ends_with(
+            "ab/cd/abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789.jpg"
+        ));
+    }
+
+    #[test]
+    fn maps_key_to_custom_extension_cache_path() {
+        let layout = cache_path_for_key_with_extension(
+            tempdir().expect("tempdir").path(),
+            "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+            "webp",
+        );
+
+        assert!(layout.relative_path.ends_with(
             "ab/cd/abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789.webp"
         ));
     }
@@ -99,10 +128,10 @@ mod tests {
     #[test]
     fn writes_thumbnail_atomically() {
         let temp = tempdir().expect("tempdir");
-        let target = temp.path().join("ab").join("cd").join("thumb.webp");
-        write_thumbnail_atomically(&target, b"webp").expect("atomic write should succeed");
+        let target = temp.path().join("ab").join("cd").join("thumb.jpg");
+        write_thumbnail_atomically(&target, b"jpeg").expect("atomic write should succeed");
 
         let written = std::fs::read(&target).expect("thumbnail should exist");
-        assert_eq!(written, b"webp");
+        assert_eq!(written, b"jpeg");
     }
 }

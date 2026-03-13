@@ -1,17 +1,27 @@
-import type { ItemDetail, ItemListEntry } from '@mediaplayernext/contracts'
+import type {
+  ItemDetail,
+  ItemListEntry,
+  ThumbnailProfile,
+} from '@mediaplayernext/contracts'
 import { useEffect, useRef } from 'react'
 import type { MediaRepository } from '../repositories/media-repository'
 import { getErrorMessage } from './app-shell-utils'
-import { resolveThumbnailProfileForGrid } from './thumbnail-grid-enhancements'
 
-const THUMBNAIL_ENSURE_MAX_CONCURRENT = 2
+const THUMBNAIL_ENSURE_MAX_CONCURRENT = 6
+const THUMBNAIL_WARMUP_RADIUS = 1
+const THUMBNAIL_WARMUP_MAX_CONCURRENT = 2
 
 interface UseAppShellItemDataParams {
   repository: MediaRepository
   itemDetailRequestIdRef: { current: number }
   selectedAssetId: string | null
   items: ItemListEntry[]
-  thumbnailCellSizePx: number
+  selectedLibraryId: string | null
+  selectedMediaSourceId: string | null
+  itemsPageIndex: number
+  itemsHasNextPage: boolean
+  thumbnailPageSize: number
+  thumbnailProfile: ThumbnailProfile
   setSelectedItemDetail: (value: ItemDetail | null) => void
   setItemDetailError: (value: string | null) => void
   setItemDetailLoading: (value: boolean) => void
@@ -26,7 +36,12 @@ export function useAppShellItemData(params: UseAppShellItemDataParams) {
     itemDetailRequestIdRef,
     selectedAssetId,
     items,
-    thumbnailCellSizePx,
+    selectedLibraryId,
+    selectedMediaSourceId,
+    itemsPageIndex,
+    itemsHasNextPage,
+    thumbnailPageSize,
+    thumbnailProfile,
     setSelectedItemDetail,
     setItemDetailError,
     setItemDetailLoading,
@@ -89,7 +104,6 @@ export function useAppShellItemData(params: UseAppShellItemDataParams) {
 
     const requestId = thumbnailEnsureRequestIdRef.current + 1
     thumbnailEnsureRequestIdRef.current = requestId
-    const thumbnailProfile = resolveThumbnailProfileForGrid(thumbnailCellSizePx)
     const visibleAssetIds = new Set(items.map((item) => item.assetId))
 
     setItemThumbnailUrls((current) => {
@@ -142,36 +156,37 @@ export function useAppShellItemData(params: UseAppShellItemDataParams) {
       return request
     }
 
-    const pendingAssetIds = items
-      .filter(
-        (item) =>
-          item.thumbnailKey == null ||
-          item.thumbnailKey.length === 0 ||
-          thumbnailProfile !== 'grid-md',
+    const ensureAssetIds = async (assetIds: string[], maxConcurrent: number, applyThumbnail: boolean) => {
+      const workerCount = Math.min(Math.max(1, maxConcurrent), assetIds.length)
+      const workers = Array.from(
+        {
+          length: workerCount,
+        },
+        async () => {
+          while (assetIds.length > 0 && isCurrentRequest()) {
+            const assetId = assetIds.shift()
+            if (!assetId) {
+              return
+            }
+
+            try {
+              const thumbnailKey = await resolveThumbnailKey(assetId)
+              if (applyThumbnail) {
+                applyThumbnailUrl(assetId, repository.urls.thumbnail(thumbnailKey))
+              }
+            } catch {
+              // ignore missing thumbnail and keep placeholder
+            }
+          }
+        },
       )
+
+      await Promise.all(workers)
+    }
+
+    const pendingVisibleAssetIds = items
+      .filter((item) => item.thumbnailKey == null || item.thumbnailKey.length === 0)
       .map((item) => item.assetId)
-
-    const workerCount = Math.min(THUMBNAIL_ENSURE_MAX_CONCURRENT, pendingAssetIds.length)
-    const workers = Array.from(
-      {
-        length: workerCount,
-      },
-      async () => {
-        while (pendingAssetIds.length > 0 && isCurrentRequest()) {
-          const assetId = pendingAssetIds.shift()
-          if (!assetId) {
-            return
-          }
-
-          try {
-            const thumbnailKey = await resolveThumbnailKey(assetId)
-            applyThumbnailUrl(assetId, repository.urls.thumbnail(thumbnailKey))
-          } catch {
-            // ignore missing thumbnail and keep placeholder
-          }
-        }
-      },
-    )
 
     for (const item of items) {
       if (item.thumbnailKey) {
@@ -179,12 +194,85 @@ export function useAppShellItemData(params: UseAppShellItemDataParams) {
       }
     }
 
-    void Promise.all(workers)
+    const warmupAdjacentPages = async () => {
+      if (!isCurrentRequest() || selectedLibraryId === null || THUMBNAIL_WARMUP_RADIUS <= 0) {
+        return
+      }
+
+      const effectivePageSize = Math.max(1, thumbnailPageSize)
+      const targetPageIndexes: number[] = []
+
+      for (let offset = 1; offset <= THUMBNAIL_WARMUP_RADIUS; offset += 1) {
+        const previousPageIndex = itemsPageIndex - offset
+        if (previousPageIndex >= 1) {
+          targetPageIndexes.push(previousPageIndex)
+        }
+
+        const nextPageIndex = itemsPageIndex + offset
+        if (offset === 1 && itemsHasNextPage) {
+          targetPageIndexes.push(nextPageIndex)
+        }
+      }
+
+      if (targetPageIndexes.length === 0) {
+        return
+      }
+
+      const warmupAssetIds = new Set<string>()
+      for (const pageIndex of targetPageIndexes) {
+        if (!isCurrentRequest()) {
+          return
+        }
+
+        try {
+          const warmupPage = await repository.items.list({
+            libraryId: selectedLibraryId,
+            mediaSourceId: selectedMediaSourceId ?? undefined,
+            thumbnailProfile,
+            page: pageIndex,
+            pageSize: effectivePageSize,
+          })
+
+          for (const item of warmupPage.items) {
+            if (item.thumbnailKey && item.thumbnailKey.length > 0) {
+              continue
+            }
+            if (visibleAssetIds.has(item.assetId)) {
+              continue
+            }
+            warmupAssetIds.add(item.assetId)
+          }
+        } catch {
+          return
+        }
+      }
+
+      if (!isCurrentRequest() || warmupAssetIds.size === 0) {
+        return
+      }
+
+      await ensureAssetIds([...warmupAssetIds], THUMBNAIL_WARMUP_MAX_CONCURRENT, false)
+    }
+
+    void (async () => {
+      await ensureAssetIds(pendingVisibleAssetIds, THUMBNAIL_ENSURE_MAX_CONCURRENT, true)
+      await warmupAdjacentPages()
+    })()
 
     return () => {
       if (thumbnailEnsureRequestIdRef.current === requestId) {
         thumbnailEnsureRequestIdRef.current += 1
       }
     }
-  }, [items, repository, setItemThumbnailUrls, thumbnailCellSizePx])
+  }, [
+    items,
+    itemsHasNextPage,
+    itemsPageIndex,
+    repository,
+    selectedLibraryId,
+    selectedMediaSourceId,
+    setItemThumbnailUrls,
+    thumbnailPageSize,
+    thumbnailProfile,
+  ])
 }

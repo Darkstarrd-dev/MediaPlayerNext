@@ -56,6 +56,7 @@ pub async fn items_list_command(
     library_id: String,
     media_source_id: Option<String>,
     source_id: Option<String>,
+    thumbnail_profile: Option<String>,
     page: Option<u32>,
     page_size: Option<u32>,
 ) -> CommandResult<ItemsListPayload> {
@@ -77,6 +78,10 @@ pub async fn items_list_command(
                 })
                 .unwrap_or(0);
             let limit = page_size.map(|value| i64::from(value.max(1))).unwrap_or(-1);
+            let thumbnail_profile = thumbnail_profile
+                .as_deref()
+                .unwrap_or(crate::SIDEBAR_THUMBNAIL_PROFILE);
+            let resolved_profile = parse_thumbnail_profile(thumbnail_profile)?;
 
             query_items_page(
                 environment.database.connection(),
@@ -85,7 +90,7 @@ pub async fn items_list_command(
                 source_id.as_deref(),
                 offset,
                 limit,
-                crate::SIDEBAR_THUMBNAIL_PROFILE,
+                resolved_profile.as_str(),
             )
         })
     })

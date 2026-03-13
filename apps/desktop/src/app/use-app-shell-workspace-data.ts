@@ -3,6 +3,7 @@ import type {
   LibraryDetail,
   ScanStats,
   TaskProgress,
+  ThumbnailProfile,
 } from '@mediaplayernext/contracts'
 import { useCallback, useEffect, useRef } from 'react'
 import type { MediaRepository } from '../repositories/media-repository'
@@ -21,6 +22,7 @@ interface RefreshWorkspaceOptions {
 interface UseAppShellWorkspaceDataParams {
   repository: MediaRepository
   thumbnailPageSize: number
+  thumbnailProfile: ThumbnailProfile
   libraryLoadRequestIdRef: { current: number }
   selectedLibraryId: string | null
   selectedMediaSourceId: string | null
@@ -54,6 +56,7 @@ export function useAppShellWorkspaceData(params: UseAppShellWorkspaceDataParams)
   const {
     repository,
     thumbnailPageSize,
+    thumbnailProfile,
     libraryLoadRequestIdRef,
     selectedLibraryId,
     selectedMediaSourceId,
@@ -118,6 +121,7 @@ export function useAppShellWorkspaceData(params: UseAppShellWorkspaceDataParams)
           repository.items.list({
             libraryId,
             mediaSourceId: mediaSourceId ?? undefined,
+            thumbnailProfile,
             page: pageIndex,
             pageSize: effectivePageSize,
           })
@@ -223,6 +227,7 @@ export function useAppShellWorkspaceData(params: UseAppShellWorkspaceDataParams)
       setWorkspaceHydrated,
       setWorkspaceRefreshing,
       thumbnailPageSize,
+      thumbnailProfile,
       workspaceHydrated,
     ],
   )
@@ -261,12 +266,21 @@ export function useAppShellWorkspaceData(params: UseAppShellWorkspaceDataParams)
     ],
   )
 
-  const previousPageSizeRef = useRef(thumbnailPageSize)
+  const previousListParamsRef = useRef({
+    thumbnailPageSize,
+    thumbnailProfile,
+  })
   useEffect(() => {
-    const previousPageSize = previousPageSizeRef.current
-    previousPageSizeRef.current = thumbnailPageSize
+    const previousListParams = previousListParamsRef.current
+    previousListParamsRef.current = {
+      thumbnailPageSize,
+      thumbnailProfile,
+    }
 
-    if (selectedLibraryId === null || previousPageSize === thumbnailPageSize) {
+    const pageSizeChanged = previousListParams.thumbnailPageSize !== thumbnailPageSize
+    const profileChanged = previousListParams.thumbnailProfile !== thumbnailProfile
+
+    if (selectedLibraryId === null || (!pageSizeChanged && !profileChanged)) {
       return
     }
 
@@ -276,7 +290,14 @@ export function useAppShellWorkspaceData(params: UseAppShellWorkspaceDataParams)
       requestedPageIndex: itemsPageIndex,
       includeWorkspaceSummary: false,
     })
-  }, [itemsPageIndex, loadLibrarySurface, selectedLibraryId, selectedMediaSourceId, thumbnailPageSize])
+  }, [
+    itemsPageIndex,
+    loadLibrarySurface,
+    selectedLibraryId,
+    selectedMediaSourceId,
+    thumbnailPageSize,
+    thumbnailProfile,
+  ])
 
   return {
     bootstrapScanSnapshot,

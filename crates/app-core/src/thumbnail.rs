@@ -12,7 +12,7 @@ use shared_model::{
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-const THUMBNAIL_PIPELINE_VERSION: &str = "b5-v1";
+const THUMBNAIL_PIPELINE_VERSION: &str = "b6-v1";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]

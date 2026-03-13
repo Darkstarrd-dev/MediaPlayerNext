@@ -532,3 +532,7 @@ Sidebar | Main | Metadata
 - `Sidebar.main` 已按源项目口径补齐 image 目录压缩链路：`single-chain compact + procedural prune`，并保留直属媒体父目录节点
 - `Sidebar.main` 节点文案当前固定为单行省略策略（title/subtitle 均不换行），并收紧节点高度与标题字号，避免长路径场景互相覆盖与点击区错位
 - `Main` 当前已接入 `gap snap`：在 splitter commit、resize、zoom、首次挂载后尝试贴合网格列宽，拖动中不实时吸附，且继续遵守三列最小宽度边界
+- `items.list` contracts 与 `items_list_command` 已补入 `thumbnailProfile` 参数；主工作区分页读取会按当前网格 profile 回传对应 `thumbnailKey`，不再固定绑定 `grid-md`
+- `Main` 缩略图 ensure 并发已从 `2` 提升到 `6`，并补入相邻页 `radius=1 / concurrency=2` 预热，降低翻页命中冷缩略图的概率
+- `thumbnail-grid-layout` 当前已按源项目口径重算：补齐 `cardChrome`、`pickClosestCols`、`idealGridWidth/idealGridHeight` 与 `renderGap`，不再使用旧版“仅按高度反推 cell/columns”简化算法
+- `gap snap` 当前已从“三候选宽度择近”升级到 `rightGap + halfCell` 判定，并改为“优先调 metadata、不足再回退 sidebar”的吸附分配策略

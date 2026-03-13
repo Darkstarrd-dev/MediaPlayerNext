@@ -534,3 +534,17 @@ thumbnailMaxEdge = ceil(devicePixelRatio * max(actualCellWidth, actualMediaHeigh
   3. gap snap
   4. 分辨率自适应
 - 这个顺序的原因是：前两者直接改善交互连续性，第三项改善布局贴合感，第四项再进一步补清晰度与性能平衡
+
+## 18. 2026-03-13 补充：性能与布局口径对齐批
+
+### 18.1 已落地内容
+
+- `items.list` 已补入 `thumbnailProfile` 查询参数，前端分页读取会按当前网格 profile 请求，后端 SQL 也按该 profile 回传 `thumbnailKey`。
+- `use-app-shell-item-data` 已将可见页 ensure 并发提升到 `6`，并补入相邻页 warmup（`radius=1`、`max concurrency=2`）。
+- `thumbnail-grid-layout.ts` 已按源项目公式重算，补齐 `cardChrome`、`pickClosestCols`、`idealGridWidth/idealGridHeight`、`computeRenderGap`。
+- `thumbnail-grid-enhancements.ts` 中 `gap snap` 已从简化候选策略切到 `rightGap/halfCell` 逻辑，并改为 `metadata -> sidebar` 的优先吸附分配。
+
+### 18.2 当前收益判断
+
+- 缩略图后端编码链已完成 JPEG 优化后，前端链路的 profile 对齐、并发与 warmup 成为首屏体验差距的主要改进点。
+- 主区容器算法已从“可用版本”进入“源项目口径对齐版本”，后续更适合基于真实样本做阈值微调，而不是继续回到旧的简化模型。

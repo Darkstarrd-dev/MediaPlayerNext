@@ -50,6 +50,7 @@
 - `docs/benchmarks/`
   - benchmark 与验证记录
   - benchmark 阈值策略：`docs/benchmarks/benchmark-threshold-policy.md`
+  - 缩略图编码格式对比参考：`docs/benchmarks/thumbnail-codec-comparison-reference-20260313.md`
 - `docs/fixtures/`
   - fixtures 与 golden 说明
 - `docs/runtime/`
